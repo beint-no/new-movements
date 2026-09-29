@@ -41,12 +41,39 @@ mobileNav?.addEventListener('click', (event) => { if (event.target.closest('a'))
 
 const megaToggle = document.querySelector('[data-mega-toggle]');
 const megaMenu = document.querySelector('[data-mega-menu]');
+const megaBackdrop = document.querySelector('[data-mega-backdrop]');
+let megaCloseTimer = 0;
 const setMegaMenu = (open) => {
   if (!megaToggle || !megaMenu) return;
+  clearTimeout(megaCloseTimer);
   megaToggle.setAttribute('aria-expanded', String(open));
-  megaMenu.hidden = !open;
+  megaMenu.setAttribute('aria-hidden', String(!open));
+  megaMenu.dataset.open = String(open);
+  megaMenu.inert = !open;
+  document.body.classList.toggle('mega-open', open);
 };
-megaToggle?.addEventListener('click', () => setMegaMenu(megaToggle.getAttribute('aria-expanded') !== 'true'));
+megaToggle?.addEventListener('click', () => {
+  const supportsHover = window.matchMedia('(hover: hover)').matches;
+  setMegaMenu(supportsHover || megaToggle.getAttribute('aria-expanded') !== 'true');
+});
+const scheduleMegaClose = () => {
+  clearTimeout(megaCloseTimer);
+  megaCloseTimer = setTimeout(() => setMegaMenu(false), 140);
+};
+const cancelMegaClose = () => clearTimeout(megaCloseTimer);
+megaToggle?.addEventListener('mouseenter', () => setMegaMenu(true));
+megaToggle?.addEventListener('mouseleave', scheduleMegaClose);
+megaToggle?.addEventListener('focus', () => setMegaMenu(true));
+megaMenu?.addEventListener('mouseenter', cancelMegaClose);
+megaMenu?.addEventListener('mouseleave', scheduleMegaClose);
+megaBackdrop?.addEventListener('click', () => setMegaMenu(false));
+document.addEventListener('focusin', (event) => {
+  if (megaToggle?.getAttribute('aria-expanded') === 'true' && !megaToggle.contains(event.target) && !megaMenu?.contains(event.target)) setMegaMenu(false);
+});
+document.addEventListener('pointerdown', (event) => {
+  if (megaToggle?.getAttribute('aria-expanded') === 'true' && !megaToggle.contains(event.target) && !megaMenu?.contains(event.target)) setMegaMenu(false);
+});
+setMegaMenu(false);
 
 const backdrop = document.querySelector('[data-drawer-backdrop]');
 const searchDrawer = document.querySelector('[data-search-drawer]');
@@ -102,7 +129,7 @@ const syncVariant = () => {
   add.dataset.variant = option?.value || '';
   add.dataset.price = option?.dataset.price || '';
   add.disabled = option?.dataset.available !== 'true' || !UUID.test(add.dataset.variant);
-  add.textContent = add.disabled ? 'Sold out' : 'Add to bag';
+  add.textContent = add.disabled ? 'Sold out' : 'Add to cart';
   if (productPrice && add.dataset.price) productPrice.textContent = money(add.dataset.price);
 };
 variant?.addEventListener('change', syncVariant);

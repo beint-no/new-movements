@@ -31,7 +31,10 @@ const product = {
   ],
 };
 const store = {
-  currency: "NOK", catalogVersion: 1, products: [product],
+  currency: "NOK", catalogVersion: 1, products: [
+    product,
+    { ...product, id: "00000000-0000-4000-8000-000000000002", handle: "allrounder-y-black", title: "Allrounder Y (Black)" },
+  ],
   collections: [
     { id: "c1", handle: "new-arrivals", title: "New Arrivals", products: [{ handle: product.handle }] },
     { id: "c2", handle: "sneakers", title: "Sneakers", products: [{ handle: product.handle }] },
@@ -55,10 +58,15 @@ assert.match(home, /https:\/\/app\.reai\.no\/media\/product-images/);
 assert.doesNotMatch(home, /cdn\.shopify\.com|assets\/products|catalog\.json/);
 assert.match(home, new RegExp(STORE_SCRIPT.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
 assert.match(home, new RegExp(STORE_STYLE.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+assert.match(home, /data-mega-menu data-open="false" aria-hidden="true"/);
+assert.match(home, /data-mega-backdrop aria-hidden="true"/);
+assert.doesNotMatch(home, /data-mega-menu hidden/);
 
 const collection = renderCollectionPage(store, "sneakers");
 assert.match(collection, /data-filter-count>1<\/b> items/);
 assert.match(collection, /allrounder-y-white/);
+assert.match(collection, /class="collection-filters"/);
+assert.match(collection, /<summary>Color<\/summary>/);
 assert.doesNotMatch(collection, /cdn\.shopify\.com/);
 
 const page = renderProductPage(store, product, {
@@ -71,6 +79,10 @@ assert.match(page, /application\/ld\+json/);
 assert.match(page, /schema\.org\/InStock/);
 assert.match(page, /data-gallery-srcset/);
 assert.match(page, /White leather sneaker/);
+assert.match(page, /You may also like/);
+assert.match(page, /Shop with New Movements/);
+assert.match(page, /Four generations of shoemakers/);
+assert.match(page, /Size guide/);
 
 const sitemap = renderSitemap(store);
 assert.match(sitemap, /products\/allrounder-y-white/);
