@@ -41,39 +41,65 @@ mobileNav?.addEventListener('click', (event) => { if (event.target.closest('a'))
 
 const megaToggle = document.querySelector('[data-mega-toggle]');
 const megaMenu = document.querySelector('[data-mega-menu]');
+const aboutToggle = document.querySelector('[data-about-toggle]');
+const aboutMenu = document.querySelector('[data-about-menu]');
 const megaBackdrop = document.querySelector('[data-mega-backdrop]');
-let megaCloseTimer = 0;
+let navCloseTimer = 0;
+const setDropdownState = (toggle, menu, open) => {
+  if (!toggle || !menu) return;
+  toggle.setAttribute('aria-expanded', String(open));
+  menu.setAttribute('aria-hidden', String(!open));
+  menu.dataset.open = String(open);
+  menu.inert = !open;
+};
+const syncDropdownBackdrop = () => {
+  const open = megaToggle?.getAttribute('aria-expanded') === 'true' || aboutToggle?.getAttribute('aria-expanded') === 'true';
+  document.body.classList.toggle('mega-open', open);
+};
 const setMegaMenu = (open) => {
   if (!megaToggle || !megaMenu) return;
-  clearTimeout(megaCloseTimer);
-  megaToggle.setAttribute('aria-expanded', String(open));
-  megaMenu.setAttribute('aria-hidden', String(!open));
-  megaMenu.dataset.open = String(open);
-  megaMenu.inert = !open;
-  document.body.classList.toggle('mega-open', open);
+  clearTimeout(navCloseTimer);
+  if (open) setDropdownState(aboutToggle, aboutMenu, false);
+  setDropdownState(megaToggle, megaMenu, open);
+  syncDropdownBackdrop();
+};
+const setAboutMenu = (open) => {
+  if (!aboutToggle || !aboutMenu) return;
+  clearTimeout(navCloseTimer);
+  if (open) setDropdownState(megaToggle, megaMenu, false);
+  setDropdownState(aboutToggle, aboutMenu, open);
+  syncDropdownBackdrop();
 };
 megaToggle?.addEventListener('click', () => {
   const supportsHover = window.matchMedia('(hover: hover)').matches;
   setMegaMenu(supportsHover || megaToggle.getAttribute('aria-expanded') !== 'true');
 });
-const scheduleMegaClose = () => {
-  clearTimeout(megaCloseTimer);
-  megaCloseTimer = setTimeout(() => setMegaMenu(false), 140);
+const scheduleDropdownClose = (close) => {
+  clearTimeout(navCloseTimer);
+  navCloseTimer = setTimeout(close, 140);
 };
-const cancelMegaClose = () => clearTimeout(megaCloseTimer);
+const cancelDropdownClose = () => clearTimeout(navCloseTimer);
 megaToggle?.addEventListener('mouseenter', () => setMegaMenu(true));
-megaToggle?.addEventListener('mouseleave', scheduleMegaClose);
+megaToggle?.addEventListener('mouseleave', () => scheduleDropdownClose(() => setMegaMenu(false)));
 megaToggle?.addEventListener('focus', () => setMegaMenu(true));
-megaMenu?.addEventListener('mouseenter', cancelMegaClose);
-megaMenu?.addEventListener('mouseleave', scheduleMegaClose);
-megaBackdrop?.addEventListener('click', () => setMegaMenu(false));
+megaMenu?.addEventListener('mouseenter', cancelDropdownClose);
+megaMenu?.addEventListener('mouseleave', () => scheduleDropdownClose(() => setMegaMenu(false)));
+aboutToggle?.addEventListener('mouseenter', () => setAboutMenu(true));
+aboutToggle?.addEventListener('mouseleave', () => scheduleDropdownClose(() => setAboutMenu(false)));
+aboutToggle?.addEventListener('focus', () => setAboutMenu(true));
+aboutMenu?.addEventListener('mouseenter', cancelDropdownClose);
+aboutMenu?.addEventListener('mouseleave', () => scheduleDropdownClose(() => setAboutMenu(false)));
+megaBackdrop?.addEventListener('click', () => { setMegaMenu(false); setAboutMenu(false); });
 document.addEventListener('focusin', (event) => {
   if (megaToggle?.getAttribute('aria-expanded') === 'true' && !megaToggle.contains(event.target) && !megaMenu?.contains(event.target)) setMegaMenu(false);
+  if (aboutToggle?.getAttribute('aria-expanded') === 'true' && !aboutToggle.contains(event.target) && !aboutMenu?.contains(event.target)) setAboutMenu(false);
 });
 document.addEventListener('pointerdown', (event) => {
   if (megaToggle?.getAttribute('aria-expanded') === 'true' && !megaToggle.contains(event.target) && !megaMenu?.contains(event.target)) setMegaMenu(false);
+  if (aboutToggle?.getAttribute('aria-expanded') === 'true' && !aboutToggle.contains(event.target) && !aboutMenu?.contains(event.target)) setAboutMenu(false);
 });
 setMegaMenu(false);
+setAboutMenu(false);
 
 const backdrop = document.querySelector('[data-drawer-backdrop]');
 const searchDrawer = document.querySelector('[data-search-drawer]');
@@ -99,7 +125,7 @@ document.querySelectorAll('[data-cart-open], .utility-nav a[href="/cart"], .site
 document.querySelectorAll('[data-drawer-close]').forEach((button) => button.addEventListener('click', closeDrawers));
 backdrop?.addEventListener('click', closeDrawers);
 document.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape') { setMenu(false); setMegaMenu(false); closeDrawers(); }
+  if (event.key === 'Escape') { setMenu(false); setMegaMenu(false); setAboutMenu(false); closeDrawers(); }
 });
 
 function renderDrawerCart() {
@@ -305,9 +331,23 @@ document.querySelector('[data-sort]')?.addEventListener('change', (event) => {
 });
 
 const filters = document.querySelector('[data-filters]');
+const facetDetails = filters ? [...filters.querySelectorAll('details')] : [];
+facetDetails.forEach((detail) => detail.addEventListener('toggle', () => {
+  if (!detail.open) return;
+  facetDetails.forEach((other) => { if (other !== detail) other.open = false; });
+}));
+document.addEventListener('pointerdown', (event) => {
+  if (!filters || event.target.closest('[data-filters]')) return;
+  facetDetails.forEach((detail) => { detail.open = false; });
+});
+document.addEventListener('keydown', (event) => {
+  if (event.key !== 'Escape') return;
+  facetDetails.forEach((detail) => { detail.open = false; });
+});
 const applyFilters = () => {
   if (!filters || !collectionGrid) return;
   const active = [...filters.querySelectorAll('[data-facet]:checked')];
+  const minimumPrice = Number(filters.querySelector('[data-price-min]')?.value || 0);
   const maximumPrice = Number(filters.querySelector('[data-price-filter]')?.value || Infinity);
   const byFacet = Map.groupBy(active, (input) => input.dataset.facet);
   let visible = 0;
@@ -315,9 +355,11 @@ const applyFilters = () => {
     const haystack = `${card.dataset.productSearch || ''} ${card.dataset.productOptions || ''}`;
     const matchesFacets = [...byFacet].every(([facet, inputs]) => inputs.some((input) => {
       if (facet === 'product type') return card.dataset.productType === input.value;
+      if (facet === 'availability') return card.dataset.productAvailability === input.value.replace(' ', '-');
       return haystack.includes(input.value);
     }));
-    const shown = matchesFacets && Number(card.dataset.productPrice) <= maximumPrice;
+    const price = Number(card.dataset.productPrice);
+    const shown = matchesFacets && price >= minimumPrice && price <= maximumPrice;
     card.hidden = !shown;
     if (shown) visible += 1;
   });
@@ -325,12 +367,12 @@ const applyFilters = () => {
   const empty = document.querySelector('[data-filter-empty]');
   if (count) count.textContent = String(visible);
   if (empty) empty.hidden = visible !== 0;
-  const output = filters.querySelector('[data-price-output]');
-  if (output && Number.isFinite(maximumPrice)) output.textContent = money(maximumPrice);
 };
 filters?.addEventListener('input', applyFilters);
 filters?.querySelector('[data-clear-filters]')?.addEventListener('click', () => {
   filters.querySelectorAll('[data-facet]').forEach((input) => { input.checked = false; });
+  const minimum = filters.querySelector('[data-price-min]');
+  if (minimum) minimum.value = minimum.min || '0';
   const range = filters.querySelector('[data-price-filter]');
   if (range) range.value = range.max;
   applyFilters();

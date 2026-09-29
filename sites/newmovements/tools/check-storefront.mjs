@@ -3,7 +3,7 @@ import { access } from "node:fs/promises";
 import path from "node:path";
 import {
   STORE_SCRIPT, STORE_STYLE, imageCandidates, imageUrl, matchRoute, priceRange,
-  renderCollectionPage, renderHomePage, renderProductPage, renderSitemap,
+  renderCollectionPage, renderHomePage, renderPage, renderProductPage, renderSitemap, renderStoryPage,
 } from "../storefront.mjs";
 
 const image = {
@@ -44,8 +44,11 @@ const store = {
 
 assert.equal(matchRoute("/products/allrounder-y-white").type, "product");
 assert.equal(matchRoute("/collections/all").type, "collection");
+assert.equal(matchRoute("/pages/evensen-story").type, "page");
+assert.equal(matchRoute("/blogs/news").type, "page");
+assert.equal(matchRoute("/cart").type, "page");
 assert.equal(matchRoute("/sitemap.xml").type, "sitemap");
-assert.equal(matchRoute("/pages/materials"), null);
+assert.equal(matchRoute("/pages/materials").type, "page");
 assert.equal(imageCandidates(image).length, 3);
 assert.match(imageUrl(image, 600), /960\.avif$/);
 assert.match(priceRange(product.variants, "NOK"), /2\D595/);
@@ -61,6 +64,32 @@ assert.match(home, new RegExp(STORE_STYLE.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 assert.match(home, /data-mega-menu data-open="false" aria-hidden="true"/);
 assert.match(home, /data-mega-backdrop aria-hidden="true"/);
 assert.doesNotMatch(home, /data-mega-menu hidden/);
+
+const story = renderStoryPage(store);
+assert.match(story, /<h1>Our Story<\/h1>/);
+assert.match(story, /Johnny Evensen/);
+assert.match(story, /Rolf Johnny Evensen/);
+assert.match(story, /Knut Evensen/);
+assert.match(story, /Martin Evensen/);
+assert.match(story, /Fresh of the truck/);
+assert.match(story, /data-about-menu/);
+
+const journal = renderPage(store, "/blogs/news");
+assert.match(journal, /<h1>Journal<\/h1>/);
+assert.match(journal, /New Movements, sneakers and fashion/);
+assert.match(journal, /data-about-toggle/);
+assert.match(journal, /class="site-footer"/);
+assert.match(journal, new RegExp(STORE_STYLE.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+
+const materials = renderPage(store, "/pages/materials");
+assert.match(materials, /Chosen to last/);
+assert.match(materials, /data-mega-toggle/);
+
+const cart = renderPage(store, "/cart");
+assert.match(cart, /data-cart-root/);
+assert.match(cart, /data-checkout-start/);
+assert.match(story, /story-product-rail/);
+assert.match(story, /data-mega-toggle/);
 
 const collection = renderCollectionPage(store, "sneakers");
 assert.match(collection, /data-filter-count>1<\/b> items/);
@@ -90,9 +119,7 @@ assert.match(sitemap, /collections\/sneakers/);
 
 const root = path.resolve(import.meta.dirname, "..");
 for (const file of [
-  "public/index.html", "public/cart/index.html", "public/search/index.html", "public/order/complete/index.html",
-  "public/pages/evensen-story/index.html", "public/pages/materials/index.html",
-  "public/policies/privacy-policy/index.html", "public/assets/store.js", "public/assets/store.css",
+  "public/index.html", "public/assets/store.js", "public/assets/store.css",
 ]) await access(path.join(root, file));
 
 console.log("New Movements storefront checks passed.");

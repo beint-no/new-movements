@@ -515,6 +515,14 @@ export function createReaiStorefrontWorker({
       return response;
     }
 
+    if (route.type === "page" && typeof storefront.renderPage === "function") {
+      const html = storefront.renderPage(store, route.handle, renderContext);
+      if (!html) return htmlResponse(storefront.renderNotFoundPage(store, renderContext, route.canonicalPath), env, 404);
+      const response = htmlResponse(html, env);
+      response.headers.set("X-ReAI-Storefront-Cache", cacheStatus);
+      return response;
+    }
+
     if (route.type === "collection") {
       if (!route.valid) return htmlResponse(storefront.renderNotFoundPage(store, renderContext, route.canonicalPath), env, 404);
       if (route.handle !== "all" && !storefront.collectionByHandle(store, route.handle)) {
