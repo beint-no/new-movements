@@ -35,6 +35,7 @@ const BRAND_ASSETS = new Map([
   ["/brand-assets/hero-women.jpg", "https://newmovements.com/cdn/shop/files/cloud_boots_brown_full_body_2.jpg?v=1772235076&width=1920"],
   ["/brand-assets/hero-men.jpg", "https://newmovements.com/cdn/shop/files/moss_brown_close_3.jpg?v=1790535895&width=1920"],
   ["/brand-assets/community-center.jpg", "https://newmovements.com/cdn/shop/files/nm-cc-store-01.jpg?height=1200&v=1739536072"],
+  ["/brand-assets/about-history.jpg", "https://cdn.shopify.com/s/files/1/0549/5295/1991/files/history.jpg?v=1779871446"],
   ["/brand-assets/story-johnny.jpg", "https://cdn.shopify.com/s/files/1/0549/5295/1991/files/Johnny_Evensen_First_Generation.jpg?v=1779870700"],
   ["/brand-assets/story-rolf.jpg", "https://cdn.shopify.com/s/files/1/0549/5295/1991/files/Rolf_Johnny_Evensen_01.jpg?v=1779868874"],
   ["/brand-assets/story-knut.jpg", "https://cdn.shopify.com/s/files/1/0549/5295/1991/files/Knut_Evensen_Third_Generation.jpg?v=1779868824"],

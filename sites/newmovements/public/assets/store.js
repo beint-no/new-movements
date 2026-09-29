@@ -11,7 +11,10 @@ const writeCart = (items) => {
 };
 const updateCount = () => {
   const count = readCart().reduce((total, item) => total + Number(item.quantity || 0), 0);
-  document.querySelectorAll('[data-cart-count]').forEach((node) => { node.textContent = String(count); });
+  document.querySelectorAll('[data-cart-count]').forEach((node) => {
+    node.textContent = String(count);
+    node.hidden = count === 0;
+  });
 };
 const money = (value, currency = 'NOK') => new Intl.NumberFormat('en-NO', {
   style: 'currency', currency, currencyDisplay: 'code', maximumFractionDigits: Number(value) % 1 ? 2 : 0,
@@ -189,8 +192,11 @@ document.querySelector('.product-thumbs')?.addEventListener('click', (event) => 
   const button = event.target.closest('[data-gallery-url]');
   const current = document.querySelector('[data-gallery-main] img');
   if (!button || !current) return;
+  const source = current.closest('picture')?.querySelector('source');
+  const srcset = button.dataset.gallerySrcset || '';
+  if (source) source.srcset = srcset;
+  current.srcset = srcset;
   current.src = button.dataset.galleryUrl;
-  current.srcset = button.dataset.gallerySrcset || '';
   current.alt = button.dataset.galleryAlt || add?.dataset.title || '';
   document.querySelectorAll('[data-gallery-url]').forEach((item) => item.setAttribute('aria-current', String(item === button)));
 });
