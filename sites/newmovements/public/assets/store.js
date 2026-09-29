@@ -157,8 +157,18 @@ const syncVariant = () => {
   add.disabled = option?.dataset.available !== 'true' || !UUID.test(add.dataset.variant);
   add.textContent = add.disabled ? 'Sold out' : 'Add to cart';
   if (productPrice && add.dataset.price) productPrice.textContent = money(add.dataset.price);
+  document.querySelectorAll('[data-variant-choice]').forEach((button) => {
+    const selected = button.dataset.variantChoice === add.dataset.variant;
+    button.classList.toggle('is-selected', selected);
+    button.setAttribute('aria-pressed', String(selected));
+  });
 };
 variant?.addEventListener('change', syncVariant);
+document.querySelectorAll('[data-variant-choice]').forEach((button) => button.addEventListener('click', () => {
+  if (!variant) return;
+  variant.value = button.dataset.variantChoice || '';
+  variant.dispatchEvent(new Event('change', { bubbles: true }));
+}));
 syncVariant();
 
 add?.addEventListener('click', () => {
