@@ -1,0 +1,6 @@
+{
+  "name": "@reai/site-client",
+  "private": true,
+  "type": "module",
+  "exports": "./client.mjs"
+}

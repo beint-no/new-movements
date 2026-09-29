@@ -1,0 +1,10 @@
+{
+  "name": "@reai/cloudflare-storefront",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./worker.mjs",
+    "./footer": "./footer.mjs"
+  }
+}
