@@ -97,6 +97,8 @@ assert.match(collection, /data-filter-count>1<\/b> items/);
 assert.match(collection, /allrounder-y-white/);
 assert.match(collection, /class="collection-filters"/);
 assert.match(collection, /<summary>Color<\/summary>/);
+assert.match(collection, /class="facet-options color-options"/);
+assert.match(collection, /class="color-swatch"/);
 assert.doesNotMatch(collection, /cdn\.shopify\.com/);
 
 const page = renderProductPage(store, product, {

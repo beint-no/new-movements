@@ -4,7 +4,7 @@ import { renderCompactLegalFooter } from "../../packages/reai-cloudflare-storefr
 export const SITE_ORIGIN = "https://newmovements.com";
 export const HANDLE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 export const STORE_SCRIPT = "/assets/store.js?v=12";
-export const STORE_STYLE = "/assets/store.css?v=22";
+export const STORE_STYLE = "/assets/store.css?v=23";
 const BRAND_LOGO = "/brand-assets/logo.png";
 const HOME_HERO_IMAGES = [
   "/brand-assets/hero-women.jpg",
@@ -221,6 +221,31 @@ function filterGroup(name, values) {
   return `<details name="collection-facet"><summary>${escapeHtml(name)}</summary><div class="facet-options">${values.map((value) => `<label><input type="checkbox" value="${escapeHtml(value.toLowerCase())}" data-facet="${escapeHtml(name.toLowerCase())}"><span>${escapeHtml(value)}</span></label>`).join("")}</div></details>`;
 }
 
+const COLOR_SWATCHES = {
+  beige: "#ead8ab", black: "#000000", blue: "#0d5dcc", brown: "#955731",
+  gray: "#8e8e8e", grey: "#8e8e8e", green: "#08a73d", navy: "#30238f",
+  olive: "#6f7040", orange: "#ff8200", pink: "#f6b8c6", turquoise: "#43a9aa",
+  white: "#ffffff",
+};
+const COLOR_ORDER = ["beige", "black", "blue", "brown", "gray", "grey", "green", "navy", "orange", "olive", "pink", "turquoise", "white"];
+
+function colorFilterGroup(values) {
+  if (!values.length) return "";
+  const order = new Map(COLOR_ORDER.map((value, index) => [value, index]));
+  const sorted = [...values].sort((left, right) => {
+    const leftRank = order.get(left.toLowerCase()) ?? COLOR_ORDER.length;
+    const rightRank = order.get(right.toLowerCase()) ?? COLOR_ORDER.length;
+    return leftRank - rightRank || left.localeCompare(right);
+  });
+  const options = sorted.map((value) => {
+    const key = value.toLowerCase();
+    const label = key === "grey" ? "Gray" : value;
+    const swatch = COLOR_SWATCHES[key] || "#d8d8d8";
+    return `<label class="color-option"><input type="checkbox" value="${escapeHtml(key)}" data-facet="color" aria-label="${escapeHtml(label)}"><span class="color-swatch" style="--swatch-color:${swatch}" aria-hidden="true"></span><span>${escapeHtml(label)}</span></label>`;
+  }).join("");
+  return `<details class="color-facet" name="collection-facet"><summary>Color</summary><div class="facet-options color-options">${options}</div></details>`;
+}
+
 export function renderHomePage(store) {
   const currency = store.currency || "NOK";
   const arrivals = findCollection(store, ["new-arrival", "new"]);
@@ -337,7 +362,7 @@ export function renderCollectionPage(store, handle) {
   const highestPrice = new Intl.NumberFormat("nb-NO", { maximumFractionDigits: 0 }).format(maxPrice);
   const priceFacet = maxPrice ? `<details name="collection-facet"><summary>Price</summary><div class="price-filter"><div class="price-fields"><label><span>kr</span><input type="number" min="0" max="${maxPrice}" value="0" step="50" inputmode="numeric" aria-label="Minimum price" data-price-min></label><span>to</span><label><span>kr</span><input type="number" min="0" max="${maxPrice}" value="${maxPrice}" step="50" inputmode="numeric" aria-label="Maximum price" data-price-filter></label></div><p>The highest price is ${highestPrice}</p></div></details>` : "";
   const availabilityFacet = filterGroup("Availability", ["In stock", "Out of stock"]);
-  const body = `<header class="collection-header"><h1>${escapeHtml(title)}</h1></header><section class="collection-layout"><div class="catalog-toolbar"><button type="button" data-mobile-filter>Filter</button><aside class="collection-filters" data-filters><div class="filter-heading"><strong>Filters</strong><span><button type="button" data-clear-filters>Clear all</button><button type="button" data-close-filters>Close</button></span></div>${priceFacet}${availabilityFacet}${filterGroup("Size", sizes)}${filterGroup("Product type", types)}${filterGroup("Color", colors)}${filterGroup("Material", ["Leather", "Suede", "Wool", "Recycled", "Rubber"])}${filterGroup("Shoe features", ["Water resistant", "Wool lined", "Lightweight"])}</aside><span class="catalog-count"><b data-filter-count>${products.length}</b> items</span><label class="catalog-sort">Sort <select data-sort><option value="featured">Featured</option><option value="az">Alphabetically, A–Z</option><option value="price-asc">Price, low to high</option><option value="price-desc">Price, high to low</option></select></label></div><div data-collection-grid>${productGrid(products, store.currency || "NOK")}</div><p class="empty-state" data-filter-empty hidden>No products match those filters.</p></section>`;
+  const body = `<header class="collection-header"><h1>${escapeHtml(title)}</h1></header><section class="collection-layout"><div class="catalog-toolbar"><button type="button" data-mobile-filter>Filter</button><aside class="collection-filters" data-filters><div class="filter-heading"><strong>Filters</strong><span><button type="button" data-clear-filters>Clear all</button><button type="button" data-close-filters>Close</button></span></div>${priceFacet}${availabilityFacet}${filterGroup("Size", sizes)}${filterGroup("Product type", types)}${colorFilterGroup(colors)}${filterGroup("Material", ["Leather", "Suede", "Wool", "Recycled", "Rubber"])}${filterGroup("Shoe features", ["Water resistant", "Wool lined", "Lightweight"])}</aside><span class="catalog-count"><b data-filter-count>${products.length}</b> items</span><label class="catalog-sort">Sort <select data-sort><option value="featured">Featured</option><option value="az">Alphabetically, A–Z</option><option value="price-asc">Price, low to high</option><option value="price-desc">Price, high to low</option></select></label></div><div data-collection-grid>${productGrid(products, store.currency || "NOK")}</div><p class="empty-state" data-filter-empty hidden>No products match those filters.</p></section>`;
   return documentHtml({ title: `${title} | New Movements – Oslo`, description, path: `/collections/${handle}`, body, store, image: products[0]?.images?.[0]?.url || "" });
 }
 
