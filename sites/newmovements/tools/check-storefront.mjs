@@ -156,9 +156,10 @@ assert.match(storeArticle, /store-01\.jpg[\s\S]*store-02\.jpg[\s\S]*store-03\.jp
 
 const allrounderArticle = renderPage(store, "/blogs/news/allrounder");
 assert.match(allrounderArticle, /What if your next pair of sneakers were made from recycled materials\?/);
-assert.match(allrounderArticle, /Become a zero-waste brand/);
+assert.match(allrounderArticle, /Become a <strong>zero-waste brand<\/strong>/);
 assert.match(allrounderArticle, /The Allrounder is more than a sneaker\./);
 assert.match(allrounderArticle, /Steve Tolo/);
+assert.match(allrounderArticle, /journal-article--allrounder/);
 
 const circularityArticle = renderPage(store, "/blogs/news/circularity");
 assert.match(circularityArticle, /25 billion pairs of shoes/);
@@ -166,6 +167,8 @@ assert.match(circularityArticle, /Our eco-conscious approach/);
 assert.match(circularityArticle, /Inspire new\.\.\. movements/);
 assert.match(circularityArticle, /receive a 20% discount voucher/);
 assert.match(circularityArticle, /Steve Tolo/);
+assert.match(circularityArticle, /journal-article--circularity/);
+assert.match(circularityArticle, /journal-section-title--break/);
 
 const materials = renderPage(store, "/pages/materials");
 assert.match(materials, /Master Your Materials/);
