@@ -85,6 +85,11 @@ assert.match(journal, new RegExp(STORE_STYLE.replace(/[.*+?^${}()|[\]\\]/g, "\\$
 const materials = renderPage(store, "/pages/materials");
 assert.match(materials, /Chosen to last/);
 assert.match(materials, /data-mega-toggle/);
+const recycle = renderPage(store, "/pages/recycle");
+assert.match(recycle, /static-page--recycle/);
+assert.match(recycle, /<h1>Why We Recycle<\/h1>/);
+assert.doesNotMatch(recycle, /20% recycle/);
+assert.match(recycle, /maps\.app\.goo\.gl\/TheZsfUEc8qxNy2j8/);
 
 const cart = renderPage(store, "/cart");
 assert.match(cart, /data-cart-root/);
