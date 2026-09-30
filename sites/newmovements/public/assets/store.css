@@ -161,6 +161,8 @@
 .currency-label::after{width:6px;height:6px;border-right:1px solid currentColor;border-bottom:1px solid currentColor;content:"";transform:translateY(-2px) rotate(45deg)}
 .cart-badge{top:1px;right:1px;min-width:14px;height:14px;font-size:.55rem}
 .cart-badge[hidden]{display:none}
+.cart-summary .checkout-error{display:block}
+.cart-summary .checkout-error[hidden]{display:none}
 
 @media(max-width:560px){
   .collection-header h1{font-size:1.45rem}
