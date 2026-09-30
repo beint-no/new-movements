@@ -12,6 +12,7 @@
 .journal-meta{display:block;margin-top:14px;color:#777;font-size:.72rem;letter-spacing:.04em}
 .static-page--about{padding-top:clamp(55px,7vw,95px);padding-bottom:clamp(90px,12vw,170px)}.static-reading{max-width:672px;margin:0 auto}.static-page--about h1{margin:0 0 24px;font-size:clamp(2.5rem,4vw,3.6rem);line-height:1;letter-spacing:-.055em}.static-page--about .eyebrow{margin-bottom:18px}.static-copy--intro{max-width:none}.static-page--about .static-copy{max-width:none;font-size:.98rem;line-height:1.6;color:#111}.static-page--about .static-copy p{margin:0 0 24px}.static-feature-image{width:100%;margin:36px 0 70px}.static-feature-image img{display:block;width:100%;height:auto;object-fit:cover}.static-page--about .static-copy h2{margin-top:2.8em;font-size:2rem}
 .static-page--recycle{min-height:0;padding:40px var(--pad) 80px}.static-reading--recycle{max-width:672px}.static-page--recycle h1{max-width:none;margin:0 0 32px;font-size:32px;font-weight:500;line-height:1.1;letter-spacing:0}.static-page--recycle .static-copy{max-width:none;color:#1c1c1c;font-size:14px;line-height:1.6}.static-page--recycle .static-copy p{margin:14px 0}.static-page--recycle .static-copy p:first-child{margin-top:0}.static-page--recycle .static-copy p:last-child{margin-bottom:0}.static-page--recycle .static-copy h2{margin:40px 0 6px;color:#1c1c1c;font-size:24px;font-weight:500;line-height:1.2;letter-spacing:0}.static-page--recycle .static-copy a{text-decoration:underline;text-underline-offset:2px}
+.materials-page{padding:40px var(--pad) 80px}.materials-guide{width:min(100%,672px);margin:0 auto;color:#1c1c1c;font-size:14px;line-height:1.6}.materials-guide p,.materials-guide figure,.materials-guide h3{margin:14px 0}.materials-guide>p:first-of-type{margin-top:0}.materials-guide>p:last-child{margin-bottom:0}.materials-guide h2{margin:40px 0 6px;font-size:24px;font-weight:500;line-height:1.2;letter-spacing:0}.materials-guide h3{font-size:14px;font-weight:700;line-height:1.6;letter-spacing:0}.materials-guide figure img{display:block;width:100%;height:auto}.materials-products{padding-top:48px}
 @media(max-width:900px){.filter-heading span{gap:24px}.filter-heading [data-close-filters]{display:inline-block}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition-duration:.01ms!important}}
 
@@ -356,4 +357,6 @@
   .story-products>header{margin-bottom:18px}
   .story-products>header h2{font-size:26px}
   .story-product-rail .product-card{flex-basis:72vw}
+  .materials-page{padding:34px 18px 64px}
+  .materials-products{padding-top:36px}
 }

@@ -84,9 +84,12 @@ assert.match(journal, /class="site-footer"/);
 assert.match(journal, new RegExp(STORE_STYLE.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
 
 const materials = renderPage(store, "/pages/materials");
-assert.match(materials, /Chosen to last/);
-assert.match(materials, /Materials &amp; production/);
-assert.match(materials, /Shoe care/);
+assert.match(materials, /Master Your Materials/);
+assert.match(materials, /materials-recycled-rubber\.webp/);
+assert.match(materials, /materials-craft\.webp/);
+assert.match(materials, /Shoe Care/);
+assert.match(materials, /Fresh of the truck/);
+assert.match(materials, /story-product-rail/);
 assert.match(materials, /data-mega-toggle/);
 
 const recycle = renderPage(store, "/pages/recycle");
