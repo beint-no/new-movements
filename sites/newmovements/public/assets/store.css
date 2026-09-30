@@ -45,9 +45,10 @@
 .catalog-sort-options button:hover,.catalog-sort-options button:focus-visible{background:#f4f4f2;outline:0}
 .catalog-sort-options svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.4;opacity:0}
 .catalog-sort-options [aria-selected="true"] svg{opacity:1}
-.collection-filters{display:flex;align-items:center;gap:24px;border:0}
+.collection-layout .collection-filters{display:flex;align-items:center;gap:24px;border:0}
 .collection-filters .filter-heading{display:none}
 .collection-layout .collection-filters details{position:relative;padding:0;border:0}
+.collection-layout .catalog-sort{padding:0;border:0}
 .collection-layout .collection-filters summary{display:flex;height:44px;align-items:center;gap:9px;padding:0;list-style:none;cursor:pointer;font-size:.88rem;letter-spacing:0;text-transform:none}
 .collection-layout .collection-filters summary::-webkit-details-marker{display:none}
 .collection-layout .collection-filters summary::after{content:"";width:6px;height:6px;border-right:1px solid #888;border-bottom:1px solid #888;transform:translateY(-2px) rotate(45deg);transition:transform .18s ease}
