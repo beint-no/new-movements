@@ -20,6 +20,7 @@ Cloudflare Worker.
 - Preserve semantic HTML, keyboard operation, visible focus, reduced-motion
   support, and useful metadata.
 - CI may validate and perform Wrangler dry runs, but deployment is local-only.
+  Checks run on pull requests and pushes to `main` only, not every branch push.
 
 ## Brand constraints
 
