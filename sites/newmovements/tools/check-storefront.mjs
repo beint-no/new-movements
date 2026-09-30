@@ -49,6 +49,7 @@ assert.equal(matchRoute("/blogs/news").type, "page");
 assert.equal(matchRoute("/cart").type, "page");
 assert.equal(matchRoute("/sitemap.xml").type, "sitemap");
 assert.equal(matchRoute("/pages/materials").type, "page");
+assert.equal(matchRoute("/pages/shoe-care").type, "page");
 assert.equal(imageCandidates(image).length, 3);
 assert.match(imageUrl(image, 600), /960\.avif$/);
 assert.match(priceRange(product.variants, "NOK"), /2\D595/);
@@ -84,12 +85,20 @@ assert.match(journal, new RegExp(STORE_STYLE.replace(/[.*+?^${}()|[\]\\]/g, "\\$
 
 const materials = renderPage(store, "/pages/materials");
 assert.match(materials, /Chosen to last/);
+assert.match(materials, /Materials &amp; production/);
+assert.match(materials, /Shoe care/);
 assert.match(materials, /data-mega-toggle/);
+
 const recycle = renderPage(store, "/pages/recycle");
 assert.match(recycle, /static-page--recycle/);
 assert.match(recycle, /<h1>Why We Recycle<\/h1>/);
 assert.doesNotMatch(recycle, /20% recycle/);
 assert.match(recycle, /maps\.app\.goo\.gl\/TheZsfUEc8qxNy2j8/);
+
+const shoeCare = renderPage(store, "/pages/shoe-care");
+assert.match(shoeCare, /<h1>Keep your pair moving<\/h1>/);
+assert.match(shoeCare, /Suede and nubuck/);
+assert.match(shoeCare, /href="\/pages\/materials"/);
 
 const cart = renderPage(store, "/cart");
 assert.match(cart, /data-cart-root/);

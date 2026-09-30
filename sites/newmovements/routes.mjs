@@ -21,7 +21,6 @@ const REDIRECTS = new Map([
   ["/pages/store", "/pages/contact-us"],
   ["/pages/store-locator", "/pages/contact-us"],
   ["/pages/video", "/pages/evensen-story"],
-  ["/pages/shoe-care", "/pages/materials"],
   ["/pages/guttestreker-oa-studio-at-new-movements", "/blogs/news/afterwork-at-new-movements"],
   ["/blogs/walk-the-talk", "/blogs/news"],
   ["/blogs/lets-go", "/blogs/news"],
