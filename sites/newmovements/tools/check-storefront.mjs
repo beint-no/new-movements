@@ -72,6 +72,7 @@ assert.match(story, /Rolf Johnny Evensen/);
 assert.match(story, /Knut Evensen/);
 assert.match(story, /Martin Evensen/);
 assert.match(story, /Fresh of the truck/);
+assert.match(story, /<p>2(?:&nbsp;|\s)595<\/p>/);
 assert.match(story, /data-about-menu/);
 
 const journal = renderPage(store, "/blogs/news");

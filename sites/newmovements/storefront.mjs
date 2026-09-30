@@ -4,7 +4,7 @@ import { renderCompactLegalFooter } from "../../packages/reai-cloudflare-storefr
 export const SITE_ORIGIN = "https://newmovements.com";
 export const HANDLE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 export const STORE_SCRIPT = "/assets/store.js?v=12";
-export const STORE_STYLE = "/assets/store.css?v=20";
+export const STORE_STYLE = "/assets/store.css?v=22";
 const BRAND_LOGO = "/brand-assets/logo.png";
 const HOME_HERO_IMAGES = [
   "/brand-assets/hero-women.jpg",
@@ -89,12 +89,15 @@ export const responsiveImage = (image, { alt = "", width = 960, sizes = "100vw",
 
 const imageSrcset = (image) => imageCandidates(image).map((item) => `${item.url} ${item.width}w`).join(", ");
 
-export const priceRange = (variants = [], currency = "NOK") => {
+export const priceRange = (variants = [], currency = "NOK", includeCurrency = true) => {
   const values = variants.map((variant) => Number(variant.price)).filter(Number.isFinite);
-  if (!values.length) return formatMoney(0, currency);
+  const formatPrice = (value) => includeCurrency
+    ? formatMoney(value, currency)
+    : new Intl.NumberFormat("nb-NO", { maximumFractionDigits: Number(value) % 1 ? 2 : 0 }).format(Number(value));
+  if (!values.length) return formatPrice(0);
   const minimum = Math.min(...values);
   const maximum = Math.max(...values);
-  return minimum === maximum ? formatMoney(minimum, currency) : `${formatMoney(minimum, currency)} – ${formatMoney(maximum, currency)}`;
+  return minimum === maximum ? formatPrice(minimum) : `${formatPrice(minimum)} – ${formatPrice(maximum)}`;
 };
 
 export function matchRoute(pathname) {
@@ -173,14 +176,14 @@ function documentHtml({ title, description, path, body, store, schema = "", imag
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title><meta name="description" content="${escapeHtml(description)}"><meta name="theme-color" content="#ffffff"><link rel="canonical" href="${escapeHtml(canonical)}"><link rel="icon" href="/assets/favicon.svg" type="image/svg+xml"><link rel="preconnect" href="https://app.reai.no" crossorigin><meta property="og:title" content="${escapeHtml(title)}"><meta property="og:description" content="${escapeHtml(description)}"><meta property="og:url" content="${escapeHtml(canonical)}"><meta property="og:type" content="${type}">${image ? `<meta property="og:image" content="${escapeHtml(image)}">` : ""}<link rel="stylesheet" href="${STORE_STYLE}"><script type="module" src="${STORE_SCRIPT}"></script>${schema}</head><body>${header}<main id="main">${body}</main>${footer}</body></html>`;
 }
 
-function productCard(product, currency = "NOK", priority = false) {
+function productCard(product, currency = "NOK", priority = false, includeCurrency = true) {
   const image = product.images?.[0];
   const minimumPrice = Math.min(...(product.variants || []).map((variant) => Number(variant.price)).filter(Number.isFinite));
   const optionValues = (product.variants || []).flatMap((variant) => variant.options || []).map((option) => option.value).join(" ").toLowerCase();
   const searchText = `${product.title} ${product.brand || ""} ${product.description || ""} ${optionValues}`.toLowerCase();
   const type = productType(product.title).toLowerCase();
   const availability = (product.variants || []).some((variant) => variant.available === true || variant.available === undefined || Number(variant.inventoryQuantity) > 0) ? "in-stock" : "out-of-stock";
-  return `<article class="product-card" data-product-title="${escapeHtml(product.title.toLowerCase())}" data-product-price="${Number.isFinite(minimumPrice) ? minimumPrice : 0}" data-product-options="${escapeHtml(optionValues)}" data-product-search="${escapeHtml(searchText)}" data-product-type="${escapeHtml(type)}" data-product-availability="${availability}"><a class="product-media" href="/products/${escapeHtml(product.handle)}">${responsiveImage(image, { alt: image?.alt || product.title, width: 640, sizes: "(max-width: 700px) 50vw, 25vw", loading: priority ? undefined : "lazy", priority })}<span class="card-action">Choose</span></a><div class="product-card-copy"><h3><a href="/products/${escapeHtml(product.handle)}">${escapeHtml(product.title)}</a></h3><p>${priceRange(product.variants, currency)}</p></div></article>`;
+  return `<article class="product-card" data-product-title="${escapeHtml(product.title.toLowerCase())}" data-product-price="${Number.isFinite(minimumPrice) ? minimumPrice : 0}" data-product-options="${escapeHtml(optionValues)}" data-product-search="${escapeHtml(searchText)}" data-product-type="${escapeHtml(type)}" data-product-availability="${availability}"><a class="product-media" href="/products/${escapeHtml(product.handle)}">${responsiveImage(image, { alt: image?.alt || product.title, width: 640, sizes: "(max-width: 700px) 50vw, 25vw", loading: priority ? undefined : "lazy", priority })}<span class="card-action">Choose</span></a><div class="product-card-copy"><h3><a href="/products/${escapeHtml(product.handle)}">${escapeHtml(product.title)}</a></h3><p>${priceRange(product.variants, currency, includeCurrency)}</p></div></article>`;
 }
 
 function productType(title) {
@@ -196,10 +199,10 @@ function productType(title) {
   return families.find((family) => name.toLowerCase().startsWith(family.toLowerCase())) || name;
 }
 
-function productGrid(products, currency, limit, className = "") {
+function productGrid(products, currency, limit, className = "", includeCurrency = true) {
   const entries = typeof limit === "number" ? products.slice(0, limit) : products;
   if (!entries.length) return '<p class="empty-state">No published products are available yet.</p>';
-  return `<div class="product-grid${className ? ` ${className}` : ""}">${entries.map((item, index) => productCard(item, currency, index < 2)).join("")}</div>`;
+  return `<div class="product-grid${className ? ` ${className}` : ""}">${entries.map((item, index) => productCard(item, currency, index < 2, includeCurrency)).join("")}</div>`;
 }
 
 function findCollection(store, needles) {
@@ -244,7 +247,7 @@ export function renderStoryPage(store) {
   const products = preferredProducts.length >= 4 ? preferredProducts : (collectionProducts(store, arrivals).length ? collectionProducts(store, arrivals) : (store.products || []));
   const storyImage = (src, alt) => `<figure class="story-image"><img src="${src}" alt="${escapeHtml(alt)}" width="672" loading="lazy" decoding="async"></figure>`;
   const story = `<article class="story-copy"><h1>Our Story</h1><p>Evensen builds on a family tradition that started in 1916, when Johnny Evensen set out to create quality products that could withstand the Nordic seasons and last for generations. These values became the foundation for a family tradition of heritage craftsmanship.</p><p>Today, they form the basis of our commitment to our design philosophy and European production, with repair and recycling services. A product is only as good as the materials and people behind it.</p>${storyImage("/brand-assets/story-johnny.jpg", "Johnny Evensen, first generation shoemaker")}<p>That’s why our fabrics and production choices lead each decision, with price following. Our products are worn, tested, and improved in real conditions—from cities to fjords—to meet the highest standards, for you.</p><section><h2>Johnny Evensen</h2><p>Master shoemaker Nils Jonny Evensen was born in 1893 in Oslo. He served his apprenticeship under royal court shoemaker H. A. Solberg in Oslo. Further education included a pattern-making course in Germany and study stays in Leipzig and Nuremberg. He worked in Denmark until 1916. Many will still remember the shoemaker in the small house built by Peder Dahl next to Øiestad’s house on Osloveien, also known as Grytebua. The workshop, called Askim Shoe Repair Workshop, was run by Rolf Evensen and his father, and remained in operation well into the years after the war. In addition to ordinary repair work and the production of new footwear, they also stitched football boots.</p><p class="story-source">— Original text from Askim museum, Norway</p></section>${storyImage("/brand-assets/story-rolf.jpg", "Rolf Johnny Evensen, second generation shoemaker")}<section><h2>Rolf Johnny Evensen</h2><p>Born in 1918 in Stavern. Apprenticed under his father and qualified as a shoemaker. He served as foreman at Norrøna Skofabrikk outside Hamar until retirement. In 1936, he crafted bespoke football boots called “Even Spesial,” tailored to each individual player.</p><p>Proverbs sometimes receive confirmation in the most surprising ways. “Necessity teaches a naked woman to spin,” goes an old proverb, but Rolf Evensen could testify that necessity also teaches shoeless people to shoe themselves. During the war, people brought old handbags, suitcases, and similar items to be converted into footwear whenever possible. A suitcase on one’s feet was preferable to the paper or fish-skin shoes of the time. In 1954, Rolf Evensen left the business, while Evensen senior continued for a while longer in the old premises.</p><p class="story-source">— Original text from Askim museum, Norway</p></section>${storyImage("/brand-assets/story-knut.jpg", "Knut Evensen, third generation shoemaker")}<section class="story-generation story-generation--brief"><h2>Knut Evensen</h2><p>Born in 1954 in Hamar. He followed in his father’s footsteps, made moccasins, and worked in his father’s factory.</p></section>${storyImage("/brand-assets/story-martin.jpg", "Martin Evensen, founder of New Movements")}<section class="story-generation story-generation--brief"><h2>Martin Evensen</h2><p>Born in 1990 in Oslo. He studied retail and shoe design at the Academy of Art University in San Francisco. In 2017, Martin Evensen, fourth-generation cobbler and founder of New Movements, chose to take that legacy in a new direction: one defined by circularity, innovation, and a modern understanding of what responsible craftsmanship looks like.</p></section></article>`;
-  const rail = `<section class="story-products" aria-labelledby="story-products-title"><header><h2 id="story-products-title">Fresh of the truck</h2><a href="${arrivals ? `/collections/${arrivals.handle}` : "/collections/all"}">View all</a></header>${productGrid(products, store.currency || "NOK", 8, "story-product-rail")}</section>`;
+  const rail = `<section class="story-products" aria-labelledby="story-products-title"><header><h2 id="story-products-title">Fresh of the truck</h2><a href="${arrivals ? `/collections/${arrivals.handle}` : "/collections/all"}">View all</a></header>${productGrid(products, store.currency || "NOK", 8, "story-product-rail", false)}</section>`;
   return documentHtml({ title: "Our Story – New Movements – Oslo", description: "Four generations of Norwegian shoemaking, from Johnny Evensen in 1916 to New Movements today.", path: "/pages/evensen-story", body: `${story}${rail}`, store, image: products[0]?.images?.[0]?.url || "" });
 }
 

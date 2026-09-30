@@ -209,11 +209,16 @@
 .story-image{width:100%;margin:34px 0 56px}
 .story-image img{display:block;width:100%;height:auto;aspect-ratio:auto;object-fit:cover}
 .story-generation--brief p{margin-top:96px}
-.story-products{padding:0 40px 56px;overflow:hidden}
+.story-products{
+  --story-edge:max(24px,calc((100vw - 1450px)/2));
+  padding:0 0 56px var(--story-edge);
+  overflow:hidden;
+}
 .story-products>header{
   display:flex;
   align-items:flex-end;
   justify-content:space-between;
+  margin-right:var(--story-edge);
   margin-bottom:28px;
 }
 .story-products>header h2{
@@ -228,16 +233,28 @@
   display:flex;
   gap:8px;
   overflow-x:auto;
+  border:0;
+  background:transparent;
   scroll-snap-type:x proximity;
   scrollbar-width:none;
 }
 .story-product-rail::-webkit-scrollbar{display:none}
 .story-product-rail .product-card{
-  flex:0 0 clamp(220px,22vw,340px);
+  flex:0 0 clamp(220px,22vw,342px);
+  border:0;
+  background:transparent;
   scroll-snap-align:start;
 }
-.story-product-rail .product-media{aspect-ratio:1;background:#eeece8}
-.story-product-rail .product-media img{height:100%;object-fit:cover}
+.story-product-rail .product-media{
+  aspect-ratio:1;
+  border:0;
+  background:#eceae6;
+}
+.story-product-rail .product-media img{
+  height:100%;
+  object-fit:cover;
+  filter:sepia(.035) saturate(.82) brightness(1.004);
+}
 .story-product-rail .card-action{display:none}
 .story-product-rail .product-card-copy{
   min-height:0;
@@ -245,6 +262,8 @@
   flex-direction:column;
   gap:2px;
   padding:8px 0 0;
+  border:0;
+  background:#fff;
 }
 .story-product-rail .product-card-copy h3,
 .story-product-rail .product-card-copy p{font-size:14px}
@@ -325,7 +344,7 @@
   .story-copy h1{font-size:32px}
   .story-copy h2{font-size:22px}
   .story-generation--brief p{margin-top:36px}
-  .story-products{padding:0 18px 42px}
+  .story-products{--story-edge:18px;padding:0 0 42px var(--story-edge)}
   .story-products>header{margin-bottom:18px}
   .story-products>header h2{font-size:26px}
   .story-product-rail .product-card{flex-basis:72vw}
