@@ -6,6 +6,8 @@ test("canonicalizes legacy Shopify paths", () => {
   assert.equal(canonicalPath("/collections/all-shoes-1"), "/collections/all");
   assert.equal(canonicalPath("/collections/sneakers/products/allrounder-y-white"), "/products/allrounder-y-white");
   assert.equal(canonicalPath("/pages/about-us/"), "/pages/evensen-story");
+  assert.equal(canonicalPath("/blogs/news/allrounder"), "/blogs/news/allrounder");
+  assert.equal(canonicalPath("/blogs/news/circularity"), "/blogs/news/circularity");
 });
 
 test("redirects www and preserves query strings", () => {

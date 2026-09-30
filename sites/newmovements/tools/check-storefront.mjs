@@ -77,11 +77,95 @@ assert.match(story, /<p>2(?:&nbsp;|\s)595<\/p>/);
 assert.match(story, /data-about-menu/);
 
 const journal = renderPage(store, "/blogs/news");
-assert.match(journal, /<h1>Journal<\/h1>/);
-assert.match(journal, /New Movements, sneakers and fashion/);
+assert.match(journal, /<h1>Stories<\/h1>/);
+assert.match(journal, /journal-card--1/);
+assert.match(journal, /brand-assets\/journal\/finansavisen-card\.webp/);
+assert.match(journal, /blogs\/news\/allrounder/);
+assert.match(journal, /blogs\/news\/circularity/);
+assert.match(journal, /Norway's leading financial newspaper ran a piece/);
+assert.match(journal, /Zen: Where Minimalism Meets Movement/);
+assert.match(journal, /Dear NM friends,It has been more than a year/);
+assert.doesNotMatch(journal, /cdn\.shopify\.com|new-movements-sneakers-and-fashion/);
 assert.match(journal, /data-about-toggle/);
 assert.match(journal, /class="site-footer"/);
 assert.match(journal, new RegExp(STORE_STYLE.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+
+const journalRoutes = [
+  ["finansavisen-wrote-about-us", "As seen in Finansavisen"],
+  ["shaping-the-future-of-footwear-together-with-sintef", "Shaping the Future of Footwear"],
+  ["product-story-zen-mindful-design-for-modern-movement", "Product Story: Zen"],
+  ["the-nm-loafer-a-modern-classic-reimagined", "Product Story: The NM Loafer"],
+  ["opening-of-our-flagship-store", "Opening our first store in Oslo"],
+  ["an-update-from-our-founder-and-designer", "An update from our founder and designer"],
+  ["allrounder", "Introducing the Allrounder sneaker"],
+  ["circularity", "Thoughts on Circularity"],
+];
+for (const [slug, title] of journalRoutes) {
+  const route = `/blogs/news/${slug}`;
+  assert.equal(matchRoute(route).type, "page");
+  const article = renderPage(store, route);
+  assert.match(article, new RegExp(title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.match(article, /class="journal-article-content"/);
+  assert.match(article, /<time datetime=/);
+  assert.match(article, />Shop now</);
+  assert.doesNotMatch(article, /shopify-section|rte--/);
+}
+
+const sintefArticle = renderPage(store, "/blogs/news/shaping-the-future-of-footwear-together-with-sintef");
+assert.match(sintefArticle, /around 1\.4%/);
+assert.match(sintefArticle, /Musculoskeletal disorders/);
+assert.match(sintefArticle, /journal-dash-list/);
+assert.match(sintefArticle, /no glue, no stitching/);
+assert.match(sintefArticle, /Want to get involved\?/);
+
+const zenArticle = renderPage(store, "/blogs/news/product-story-zen-mindful-design-for-modern-movement");
+assert.match(zenArticle, /Inspiration &amp; Design/);
+assert.match(zenArticle, /Craftsmanship &amp; Materials/);
+assert.match(zenArticle, /Comfort &amp; Versatility/);
+assert.match(zenArticle, /journal-bullet-list/);
+assert.match(zenArticle, /Gold-certified suede leather from Italy/);
+assert.match(zenArticle, /zen-sand\.jpg/);
+assert.match(zenArticle, /zen-cognac\.jpg/);
+
+const loaferArticle = renderPage(store, "/blogs/news/the-nm-loafer-a-modern-classic-reimagined");
+assert.match(loaferArticle, /Inspiration &amp; Design/);
+assert.match(loaferArticle, /Craftsmanship &amp; Materials/);
+assert.match(loaferArticle, /Comfort &amp; Versatility/);
+assert.match(loaferArticle, /forth-generation cobbler, Martin Evensen/);
+assert.match(loaferArticle, /natural and recycled rubber/);
+assert.match(loaferArticle, /loafer-polido-03\.jpg/);
+assert.match(loaferArticle, /Loafer Polido Leather is available now[\s\S]*loafer-polido-06\.jpg/);
+
+const founderArticle = renderPage(store, "/blogs/news/an-update-from-our-founder-and-designer");
+assert.match(founderArticle, /Dear NM friends/);
+assert.match(founderArticle, /started New Movements in 2018/);
+assert.match(founderArticle, /Dapper Oslo/);
+assert.match(founderArticle, /Retail’s Big Show/);
+assert.match(founderArticle, /Norwegian Sneaker/);
+assert.match(founderArticle, /SINTEF/);
+assert.match(founderArticle, /founder-01\.jpg[\s\S]*founder-02\.jpg[\s\S]*founder-03\.jpg[\s\S]*founder-04\.png[\s\S]*founder-05\.png/);
+assert.match(founderArticle, /Founder and Designer/);
+
+const storeArticle = renderPage(store, "/blogs/news/opening-of-our-flagship-store");
+assert.match(storeArticle, /Steen &amp; Strøm/);
+assert.match(storeArticle, /What we'll be wearing this fall/);
+assert.match(storeArticle, /collections\/allrounder-y/);
+assert.match(storeArticle, /collections\/norwegian-sneaker/);
+assert.match(storeArticle, /10-19 on weekdays/);
+assert.match(storeArticle, /store-01\.jpg[\s\S]*store-02\.jpg[\s\S]*store-03\.jpg[\s\S]*store-04\.jpg[\s\S]*store-05\.jpg[\s\S]*store-06\.jpg[\s\S]*store-07\.jpg[\s\S]*store-08\.jpg/);
+
+const allrounderArticle = renderPage(store, "/blogs/news/allrounder");
+assert.match(allrounderArticle, /What if your next pair of sneakers were made from recycled materials\?/);
+assert.match(allrounderArticle, /Become a zero-waste brand/);
+assert.match(allrounderArticle, /The Allrounder is more than a sneaker\./);
+assert.match(allrounderArticle, /Steve Tolo/);
+
+const circularityArticle = renderPage(store, "/blogs/news/circularity");
+assert.match(circularityArticle, /25 billion pairs of shoes/);
+assert.match(circularityArticle, /Our eco-conscious approach/);
+assert.match(circularityArticle, /Inspire new\.\.\. movements/);
+assert.match(circularityArticle, /receive a 20% discount voucher/);
+assert.match(circularityArticle, /Steve Tolo/);
 
 const materials = renderPage(store, "/pages/materials");
 assert.match(materials, /Master Your Materials/);
@@ -121,6 +205,14 @@ assert.match(collection, /data-card-next/);
 assert.match(collection, /data-card-quick-add/);
 assert.match(collection, /data-card-product/);
 assert.match(collection, /data-quick-add-dialog/);
+assert.match(collection, /data-sort-menu/);
+assert.match(collection, /data-sort-value="manual"/);
+assert.match(collection, /data-sort-value="most-relevant"/);
+assert.match(collection, /data-sort-value="best-selling"/);
+assert.match(collection, /data-sort-value="title-descending"/);
+assert.match(collection, /data-sort-value="price-ascending"/);
+assert.match(collection, /data-sort-value="created-descending"/);
+assert.doesNotMatch(collection, /<select data-sort>/);
 assert.match(collection, /11111111-1111-4111-8111-111111111111/);
 assert.doesNotMatch(collection, /cdn\.shopify\.com/);
 

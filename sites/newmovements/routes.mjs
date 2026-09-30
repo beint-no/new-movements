@@ -25,8 +25,6 @@ const REDIRECTS = new Map([
   ["/blogs/walk-the-talk", "/blogs/news"],
   ["/blogs/lets-go", "/blogs/news"],
   ["/blogs/finansavisen", "/blogs/news"],
-  ["/blogs/news/circularity", "/pages/recycle"],
-  ["/blogs/news/allrounder", "/collections/allrounder"],
 ]);
 
 const BRAND_ASSETS = new Map([

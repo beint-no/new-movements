@@ -468,15 +468,36 @@ document.querySelector('[data-newsletter]')?.addEventListener('submit', async (e
 
 const collectionGrid = document.querySelector('[data-collection-grid] .product-grid');
 const featuredCards = collectionGrid ? [...collectionGrid.querySelectorAll('.product-card')] : [];
-document.querySelector('[data-sort]')?.addEventListener('change', (event) => {
-  if (!collectionGrid) return;
+const featuredPositions = new Map(featuredCards.map((card, index) => [card, index]));
+const sortMenu = document.querySelector('[data-sort-menu]');
+const sortCards = (direction, updateUrl = true) => {
+  if (!collectionGrid || !featuredCards.length) return;
   const cards = [...featuredCards];
-  const direction = event.target.value;
-  if (direction === 'az') cards.sort((a, b) => a.dataset.productTitle.localeCompare(b.dataset.productTitle));
-  if (direction === 'price-asc') cards.sort((a, b) => Number(a.dataset.productPrice) - Number(b.dataset.productPrice));
-  if (direction === 'price-desc') cards.sort((a, b) => Number(b.dataset.productPrice) - Number(a.dataset.productPrice));
+  const featuredOrder = (a, b) => featuredPositions.get(a) - featuredPositions.get(b);
+  if (direction === 'title-ascending') cards.sort((a, b) => a.dataset.productTitle.localeCompare(b.dataset.productTitle) || featuredOrder(a, b));
+  else if (direction === 'title-descending') cards.sort((a, b) => b.dataset.productTitle.localeCompare(a.dataset.productTitle) || featuredOrder(a, b));
+  else if (direction === 'price-ascending') cards.sort((a, b) => Number(a.dataset.productPrice) - Number(b.dataset.productPrice) || featuredOrder(a, b));
+  else if (direction === 'price-descending') cards.sort((a, b) => Number(b.dataset.productPrice) - Number(a.dataset.productPrice) || featuredOrder(a, b));
+  else if (direction === 'created-ascending') cards.sort((a, b) => featuredPositions.get(b) - featuredPositions.get(a));
+  else cards.sort(featuredOrder);
   cards.forEach((card) => collectionGrid.append(card));
+  sortMenu?.querySelectorAll('[data-sort-value]').forEach((option) => option.setAttribute('aria-selected', String(option.dataset.sortValue === direction)));
+  if (updateUrl) {
+    const url = new URL(window.location.href);
+    if (direction === 'manual') url.searchParams.delete('sort_by');
+    else url.searchParams.set('sort_by', direction);
+    history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+  }
+};
+sortMenu?.addEventListener('click', (event) => {
+  const option = event.target.closest('[data-sort-value]');
+  if (!option) return;
+  sortCards(option.dataset.sortValue);
+  sortMenu.open = false;
+  sortMenu.querySelector('summary')?.focus();
 });
+const requestedSort = new URL(window.location.href).searchParams.get('sort_by');
+if (sortMenu?.querySelector(`[data-sort-value="${CSS.escape(requestedSort || 'manual')}"]`)) sortCards(requestedSort || 'manual', false);
 
 const filters = document.querySelector('[data-filters]');
 const facetDetails = filters ? [...filters.querySelectorAll('details')] : [];
@@ -485,12 +506,16 @@ facetDetails.forEach((detail) => detail.addEventListener('toggle', () => {
   facetDetails.forEach((other) => { if (other !== detail) other.open = false; });
 }));
 document.addEventListener('pointerdown', (event) => {
-  if (!filters || event.target.closest('[data-filters]')) return;
-  facetDetails.forEach((detail) => { detail.open = false; });
+  if (filters && !event.target.closest('[data-filters]')) facetDetails.forEach((detail) => { detail.open = false; });
+  if (sortMenu && !event.target.closest('[data-sort-menu]')) sortMenu.open = false;
 });
 document.addEventListener('keydown', (event) => {
   if (event.key !== 'Escape') return;
   facetDetails.forEach((detail) => { detail.open = false; });
+  if (sortMenu?.open) {
+    sortMenu.open = false;
+    sortMenu.querySelector('summary')?.focus();
+  }
 });
 const applyFilters = () => {
   if (!filters || !collectionGrid) return;
