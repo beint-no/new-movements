@@ -116,6 +116,12 @@ assert.match(collection, /class="collection-filters"/);
 assert.match(collection, /<summary>Color<\/summary>/);
 assert.match(collection, /class="facet-options color-options"/);
 assert.match(collection, /class="color-swatch"/);
+assert.match(collection, /data-card-slide/);
+assert.match(collection, /data-card-next/);
+assert.match(collection, /data-card-quick-add/);
+assert.match(collection, /data-card-product/);
+assert.match(collection, /data-quick-add-dialog/);
+assert.match(collection, /11111111-1111-4111-8111-111111111111/);
 assert.doesNotMatch(collection, /cdn\.shopify\.com/);
 
 const page = renderProductPage(store, product, {
