@@ -2,7 +2,7 @@
 
 Private, independently deployable Cloudflare storefront for New Movements. It
 uses the ReAI Site API for products, collections, prices, availability, images,
-and hosted checkout while preserving the editorial character and routes of
+and merchant-domain checkout with a payment-only ReAI handoff while preserving the editorial character and routes of
 `https://newmovements.com`.
 
 The repository follows the same layout as `beint-no/bakst-og-glede`:

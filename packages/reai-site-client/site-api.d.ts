@@ -75,6 +75,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/site/v1/commerce/checkout-sessions/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read merchant-domain checkout
+         * @description Trusted Worker only. Requires both the Site credential and opaque session token. Never cache checkout responses or expose the Site credential to the browser.
+         */
+        get: operations["workerCheckout"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/site/v1/commerce/checkout-sessions/{token}/discount": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Replace checkout discount
+         * @description A null or blank code removes the discount. Refresh shipping after changing discounts, because delivery prices or eligibility may change.
+         */
+        put: operations["workerCheckoutDiscount"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/site/v1/commerce/checkout-sessions/{token}/payment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Prepare payment-only handoff
+         * @description Validates and saves customer and shipping details against the displayed amount in minor units. Does not create an Adyen Session or charge the shopper. Redirect to paymentUrl for payment only. Inventory reservation and provider session finalization remain in the existing ReAI payment flow; webhooks confirm completion.
+         */
+        post: operations["workerCheckoutPayment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/site/v1/commerce/checkout-sessions/{token}/shipping": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Discover and select checkout shipping
+         * @description Send customer destination to discover carrier options. Send the returned option token to select it and load pickup places, then send the pickup token to select a pickup. Static delivery and store pickup use methodId. Prices and selection are validated by ReAI.
+         */
+        post: operations["workerCheckoutShipping"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/site/v1/commerce/collections": {
         parameters: {
             query?: never;
@@ -455,6 +535,87 @@ export interface components {
             /** Format: uuid */
             variantId: string;
         };
+        SiteWorkerCheckoutCustomerDto: {
+            addressPart1?: string;
+            addressPart2?: string | null;
+            city?: string;
+            countryCode?: string;
+            email: string;
+            name: string;
+            organizationNumber?: string | null;
+            phone: string;
+            postalCode?: string;
+        };
+        SiteWorkerCheckoutDiscountReqDto: {
+            code?: string | null;
+        };
+        SiteWorkerCheckoutDto: {
+            businessSalesEnabled: boolean;
+            carrierShipping: boolean;
+            completed: boolean;
+            currency: string;
+            customer?: components["schemas"]["SiteWorkerCheckoutCustomerDto"] | null;
+            discount: number;
+            discountCode?: string | null;
+            expired: boolean;
+            lines: components["schemas"]["SiteWorkerCheckoutLineDto"][];
+            shipping?: number | null;
+            shippingMethods: components["schemas"]["SiteWorkerCheckoutMethodDto"][];
+            shippingName?: string | null;
+            shippingRequired: boolean;
+            total: number;
+            vat: number;
+        };
+        SiteWorkerCheckoutLineDto: {
+            options: string;
+            /** Format: int32 */
+            quantity: number;
+            title: string;
+            total: number;
+            variantId: string;
+        };
+        SiteWorkerCheckoutMethodDto: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            pickupDetails?: string | null;
+            price: number;
+        };
+        SiteWorkerCheckoutOptionDto: {
+            name: string;
+            pickupRequired: boolean;
+            pickups: components["schemas"]["SiteWorkerCheckoutPickupDto"][];
+            price: number;
+            token: string;
+        };
+        SiteWorkerCheckoutPaymentDto: {
+            paymentUrl: string;
+        };
+        SiteWorkerCheckoutPaymentReqDto: {
+            /** Format: int64 */
+            displayedAmountValue: number;
+            displayedCurrency: string;
+            shipping: components["schemas"]["SiteWorkerCheckoutShippingReqDto"];
+        };
+        SiteWorkerCheckoutPickupDto: {
+            address: string;
+            name: string;
+            token: string;
+        };
+        SiteWorkerCheckoutShippingDto: {
+            checkout: components["schemas"]["SiteWorkerCheckoutDto"];
+            error?: string | null;
+            options: components["schemas"]["SiteWorkerCheckoutOptionDto"][];
+            selectedOptionToken?: string | null;
+            selectedPickupToken?: string | null;
+        };
+        SiteWorkerCheckoutShippingReqDto: {
+            customer: components["schemas"]["SiteWorkerCheckoutCustomerDto"];
+            /** Format: uuid */
+            methodId?: string | null;
+            optionToken?: string | null;
+            pickupToken?: string | null;
+        };
     };
     responses: never;
     parameters: never;
@@ -759,6 +920,312 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SiteCheckoutSessionRes"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    workerCheckout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteWorkerCheckoutDto"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    workerCheckoutDiscount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SiteWorkerCheckoutDiscountReqDto"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteWorkerCheckoutDto"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    workerCheckoutPayment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SiteWorkerCheckoutPaymentReqDto"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteWorkerCheckoutPaymentDto"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Checkout changed, expired, or payment has already started; refresh checkout before retrying */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    workerCheckoutShipping: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SiteWorkerCheckoutShippingReqDto"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteWorkerCheckoutShippingDto"];
                 };
             };
             /** @description Bad request */

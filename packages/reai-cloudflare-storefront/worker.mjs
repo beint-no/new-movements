@@ -87,6 +87,7 @@ function stripPathPrefix(pathname, pathPrefix) {
  *   cacheKey: string,
  *   storefront: any,
  *   checkoutReturnPath?: string,
+ *   merchantCheckout?: boolean,
  *   noStorePaths?: string[],
  *   messages?: Partial<typeof defaultMessages>,
  *   locale: string,
@@ -99,6 +100,7 @@ export function createReaiStorefrontWorker({
   cacheKey,
   storefront,
   checkoutReturnPath = "/bestilling/fullfort/",
+  merchantCheckout = false,
   noStorePaths = ["/handlekurv/", checkoutReturnPath],
   messages: messageOverrides = {},
   locale,
@@ -167,6 +169,7 @@ export function createReaiStorefrontWorker({
   });
 
   async function checkoutRequest(request, url, env) {
+    if (merchantCheckout && request.headers.get("Origin") !== url.origin) return { error: jsonResponse({ error: "Invalid request origin" }, 403, env) };
     let body;
     try {
       body = await request.json();
@@ -189,7 +192,7 @@ export function createReaiStorefrontWorker({
     /** @type {SiteCheckoutSessionRequest} */
     const checkoutBody = {
       lines,
-      returnUrl: new URL(publicPath(checkoutReturnPath), url.origin).href,
+      returnUrl: new URL(publicPath(merchantCheckout ? "/checkout?confirmation=1" : checkoutReturnPath), url.origin).href,
     };
     return { body: checkoutBody };
   }
@@ -447,6 +450,22 @@ export function createReaiStorefrontWorker({
       if (!VARIANT_ID.test(variantId)) return jsonResponse({ error: messages.invalidVariantId }, 400, env);
       upstreamResult = client.availability(variantId, deliveryContext);
       cacheControl = "no-store";
+    } else if (merchantCheckout && route.startsWith("/reai/checkout/" ) && route !== "/reai/checkout/start") {
+      const action = route.slice("/reai/checkout/".length);
+      if (!["read", "shipping", "discount", "payment"].includes(action)) return jsonResponse({ error: messages.routeNotFound }, 404, env);
+      if (request.method !== (action === "read" ? "GET" : "POST")) return jsonResponse({ error: messages.methodNotAllowed }, 405, env);
+      if (action !== "read" && request.headers.get("Origin") !== url.origin) return jsonResponse({ error: "Invalid request origin" }, 403, env);
+      const token = checkoutCookie(request);
+      if (!token) return jsonResponse({ error: "Your checkout has expired. Return to your bag to start again." }, 401, env);
+      let body;
+      if (action !== "read") {
+        if (Number(request.headers.get("Content-Length")) > 32768) return jsonResponse({ error: "Request too large" }, 413, env);
+        const raw = await request.text();
+        if (raw.length > 32768) return jsonResponse({ error: "Request too large" }, 413, env);
+        try { body = JSON.parse(raw); } catch { return jsonResponse({ error: messages.invalidJson }, 400, env); }
+      }
+      upstreamResult = client.workerCheckout(token, /** @type {"read" | "shipping" | "discount" | "payment"} */ (action), body);
+      cacheControl = "no-store";
     } else if (request.method === "POST" && route === "/reai/checkout/start") {
       const checkout = await checkoutRequest(request, url, env);
       if (checkout.error) return checkout.error;
@@ -464,6 +483,13 @@ export function createReaiStorefrontWorker({
 
     try {
       const upstream = (await upstreamResult).response;
+      if (merchantCheckout && route === "/reai/checkout/start" && upstream.ok) {
+        const session = await upstream.json();
+        if (!/^[a-f0-9]{32}$/.test(session.id)) return jsonResponse({ error: messages.temporarilyUnavailable }, 502, env);
+        const response = jsonResponse({ checkoutUrl: new URL(publicPath("/checkout"), url.origin).href }, 200, env);
+        response.headers.set("Set-Cookie", `__Host-reai-checkout=${session.id}; Path=/; Secure; HttpOnly; SameSite=Lax; Max-Age=86400`);
+        return response;
+      }
       const responseHeaders = securityHeaders(new Headers(), env);
       responseHeaders.set("Content-Type", upstream.headers.get("Content-Type") || "application/json; charset=utf-8");
       responseHeaders.set("Cache-Control", upstream.ok ? cacheControl : "no-store");
@@ -565,6 +591,13 @@ export function createReaiStorefrontWorker({
       const storefrontPath = stripPathPrefix(url.pathname, pathPrefix);
       if (storefrontPath?.startsWith("/reai/")) return siteApiResponse(request, env, url, executionContext);
 
+      if (merchantCheckout && storefrontPath === "/checkout") {
+        if (!["GET", "HEAD"].includes(request.method)) return jsonResponse({ error: messages.methodNotAllowed }, 405, env);
+        const rendered = htmlResponse(storefront.renderCheckoutPage(), env, 200, "no-store");
+        rendered.headers.set("Referrer-Policy", "no-referrer");
+        rendered.headers.set("X-Robots-Tag", "noindex, nofollow");
+        return request.method === "HEAD" ? new Response(null, { headers: rendered.headers }) : rendered;
+      }
       const rendered = await renderCommerce(request, env, url, executionContext);
       if (rendered) {
         if (request.method === "HEAD") return new Response(null, { status: rendered.status, headers: rendered.headers });
@@ -592,4 +625,9 @@ export function createReaiStorefrontWorker({
       });
     },
   };
+}
+
+function checkoutCookie(request) {
+  const value = (request.headers.get("Cookie") || "").split(";").map(value => value.trim()).find(value => value.startsWith("__Host-reai-checkout="))?.split("=")[1];
+  return /^[a-f0-9]{32}$/.test(value || "") ? value : null;
 }

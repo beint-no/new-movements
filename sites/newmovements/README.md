@@ -28,3 +28,27 @@ Store the Site API credential as a Cloudflare Worker secret before deploying:
 npm run secret
 npm run deploy
 ```
+
+## Merchant-domain checkout
+
+The Worker serves `/checkout` for contact details, Norwegian delivery, pickup selection, discounts and review.
+The session token stays in a `__Host-reai-checkout` Secure HttpOnly SameSite=Lax cookie; browser requests use the
+same-origin `/reai/checkout/{read,shipping,discount,payment}` routes. All checkout responses use `no-store`,
+and writes require the storefront Origin. Customer details are held in the form and persisted in ReAI only
+when preparing the payment handoff; they are not saved to browser storage.
+
+ReAI validates customer details, delivery and the displayed total before returning a payment-only URL.
+Only payment collection happens on app.reai.no. After webhook confirmation, the shopper returns to
+`/checkout?confirmation=1`, which checks ReAI's payment state before confirming the order and clearing the bag.
+Wallet buttons remain on ReAI's registered payment domain. This flow currently uses the existing Norwegian/NOK
+card and wallet checkout; it does not add international delivery or merchant-domain invoice ordering.
+
+Deploy the ReAI merchant checkout API before deploying this Worker. The new endpoints are declared in the generated
+Site API client. To refresh the declarations against a local ReAI instance:
+
+```sh
+REAI_SITE_OPENAPI_URL=http://localhost:18087/openapi/site npm run generate:site-api
+REAI_SITE_OPENAPI_URL=http://localhost:18087/openapi/site npm run check:contract
+```
+
+Existing stores using the shared Worker keep hosted checkout unless they opt in with `merchantCheckout: true`.

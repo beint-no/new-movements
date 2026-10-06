@@ -103,6 +103,21 @@ export class ReaiSiteClient {
     return this.#fetch(url.href, { ...init, headers });
   }
 
+  /**
+   * @param {string} token
+   * @param {"read" | "shipping" | "discount" | "payment"} action
+   * @param {import("./site-api.d.ts").components["schemas"]["SiteWorkerCheckoutShippingReqDto"] | import("./site-api.d.ts").components["schemas"]["SiteWorkerCheckoutDiscountReqDto"] | import("./site-api.d.ts").components["schemas"]["SiteWorkerCheckoutPaymentReqDto"]} [body]
+   */
+  async workerCheckout(token, action = "read", body) {
+    if (!/^[a-f0-9]{32}$/.test(token)) throw new TypeError("Invalid checkout token");
+    const path = `${CHECKOUT_PATH}/${encodeURIComponent(token)}${action === "read" ? "" : `/${action}`}`;
+    const method = action === "read" ? "GET" : action === "discount" ? "PUT" : "POST";
+    return new SiteApiResponse(await this.#request(path, undefined, {
+      method, headers: { "Content-Type": "application/json" },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    }));
+  }
+
   /** @returns {Promise<SiteApiResponse<SiteDelivery>>} */
   async site() {
     return new SiteApiResponse(await this.#request(SITE_PATH));

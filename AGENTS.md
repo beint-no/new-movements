@@ -31,4 +31,4 @@ Cloudflare Worker.
 - Preserve Shopify-compatible public routes for products, collections, cart,
   search, pages, and policies.
 - Cart state is browser-local. Checkout posts opaque Site API variant IDs and
-  quantities to `/reai/checkout/start` and redirects to hosted checkout.
+  quantities to `/reai/checkout/start`, collects details on the Worker, then hands off to ReAI for payment only.

@@ -9,6 +9,7 @@ export default createReaiStorefrontWorker({
   storefront,
   market: "default",
   locale: "en",
+  merchantCheckout: true,
   checkoutReturnPath: "/order/complete",
   beforeRequest: handleStorefrontRequest,
   noStorePaths: ["/cart/", "/search/", "/order/complete/"],

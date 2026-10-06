@@ -331,7 +331,7 @@ const CONTENT_PAGES = {
   "/pages/join": { title: "Join New Movements", eyebrow: "Join", heading: "Move with us.", copy: `<p>The New Movements community brings together footwear, art, design and the people shaping a more circular future. Follow upcoming releases and events, or visit the NM Community Center in Oslo.</p><p><a href="/pages/contact-us">Visit the flagship store →</a></p><p><a href="/pages/career-opportunities">Career opportunities →</a></p>` },
   "/pages/career-opportunities": { title: "Career opportunities", eyebrow: "Careers", heading: "Build the next movement.", copy: `<p>New Movements is an independent Oslo brand working across footwear, material innovation, retail and community. Open roles are announced through the brand’s official channels.</p><p>For a considered open application, contact <a href="mailto:store@newmovements.com">store@newmovements.com</a> with a short introduction and relevant experience.</p>` },
   "/pages/warranty-policy": { title: "Warranty policy", eyebrow: "Customer care", heading: "Warranty policy.", copy: `<p>If a product develops a suspected manufacturing fault, stop using it and contact New Movements with the order number, a description and clear photographs. Normal wear, accidental damage and incorrect care are assessed separately from manufacturing defects.</p><p><a href="mailto:store@newmovements.com">Contact customer care →</a></p>` },
-  "/policies/privacy-policy": { title: "Privacy policy", eyebrow: "Policy", heading: "Privacy policy.", copy: `<p>The storefront stores bag contents on your device. Product requests are served through the New Movements storefront, while customer, delivery and payment details are collected only in secure hosted checkout.</p><p>Contact New Movements for privacy requests relating to an order or customer communication.</p>` },
+  "/policies/privacy-policy": { title: "Privacy policy", eyebrow: "Policy", heading: "Privacy policy.", copy: `<p>The storefront stores bag contents on your device. Product requests are served through the New Movements storefront, while customer and delivery details are collected in checkout on this store. Payment details are collected on ReAI’s secure payment page.</p><p>Contact New Movements for privacy requests relating to an order or customer communication.</p>` },
   "/policies/refund-policy": { title: "Refund policy", eyebrow: "Policy", heading: "Refund policy.", copy: `<p>Return eligibility depends on the item condition, destination and order date. Keep shoes unworn outside, retain original packaging and follow the return instructions supplied with the order.</p><p>Contact New Movements with your order reference before returning an item.</p>` },
   "/policies/shipping-policy": { title: "Shipping policy", eyebrow: "Policy", heading: "Shipping policy.", copy: `<p>Available delivery services, destination restrictions and the confirmed delivery estimate are shown in secure checkout. Taxes and duties are included where indicated by the selected market.</p>` },
 };
@@ -512,4 +512,26 @@ export const renderUnavailablePage = (store) => renderMessagePage(store, { title
 export function renderSitemap(store) {
   const paths = [...STATIC_PATHS, "/collections/all", ...publishedCollections(store).map((item) => `/collections/${item.handle}`), ...(store.products || []).map((item) => `/products/${item.handle}`)];
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${[...new Set(paths)].map((path) => `  <url><loc>${SITE_ORIGIN}${canonicalPath(path)}</loc></url>`).join("\n")}\n</urlset>\n`;
+}
+
+export function renderCheckoutPage() {
+  return documentHtml({ title: "Checkout | New Movements – Oslo", description: "Secure checkout", path: "/checkout", store: { products: [], collections: [] },
+    body: `<section class="merchant-checkout" data-merchant-checkout><header><h1>Checkout</h1><a href="/cart">Return to bag</a></header>
+    <p role="status" data-checkout-message>Loading your checkout…</p>
+    <div class="merchant-checkout-layout" hidden data-checkout-layout><form data-customer-form>
+    <h2>Contact and delivery</h2>
+    <label>Email<input name="email" type="email" autocomplete="email" required maxlength="254"></label>
+    <label>Full name<input name="name" autocomplete="name" required maxlength="200"></label>
+    <label>Phone<input name="phone" type="tel" autocomplete="tel" required maxlength="40"></label>
+    <label>Address<input name="addressPart1" autocomplete="shipping address-line1" required maxlength="200"></label>
+    <label>Apartment, suite, etc. (optional)<input name="addressPart2" autocomplete="shipping address-line2" maxlength="200"></label>
+    <div class="checkout-address-row"><label>Postal code<input name="postalCode" autocomplete="shipping postal-code" required maxlength="20"></label><label>City<input name="city" autocomplete="shipping address-level2" required maxlength="100"></label></div>
+    <label>Country<select name="countryCode" autocomplete="shipping country"><option value="NO">Norway</option></select></label>
+    <label hidden data-business-field>Organization number (optional)<input name="organizationNumber" maxlength="20"></label>
+    <button type="submit">Show delivery options</button>
+    </form><aside><h2>Order summary</h2><div data-checkout-lines></div><dl data-checkout-totals></dl>
+    <form data-discount-form><label>Discount code<input name="code" maxlength="100"></label><button type="submit">Apply</button><button type="button" data-remove-discount>Remove</button></form>
+    </aside><section><h2>Delivery</h2><div data-checkout-shipping></div></section>
+    <section class="checkout-review"><h2>Review and payment</h2><p>Check your details and delivery option. Continue to secure payment to choose your payment method.</p><button type="button" data-payment-handoff disabled>Continue to secure payment</button></section></div>
+    <noscript>Enable JavaScript to use checkout, or contact us for help.</noscript></section><script type="module" src="/assets/checkout.js"></script>` });
 }
