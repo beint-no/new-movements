@@ -32,3 +32,29 @@ Cloudflare Worker.
   search, pages, and policies.
 - Cart state is browser-local. Checkout posts opaque Site API variant IDs and
   quantities to `/reai/checkout/start` and redirects to hosted checkout.
+
+## Development
+
+Use Node 26 and npm 11.19 or newer:
+
+```sh
+npm ci
+cp sites/newmovements/.dev.vars.example sites/newmovements/.dev.vars
+npm run dev
+```
+
+Open the local URL printed by Wrangler. Keep `REAI_SITE_TOKEN` in
+`sites/newmovements/.dev.vars`; it is ignored by Git and must never be exposed
+to browser JavaScript.
+
+## Validation and deployment
+
+```sh
+npm run check
+npm run secret
+npm run deploy
+```
+
+Deployment is local-only. Product data continues to be managed and published
+through ReAI; this repository does not contain a second catalog or Shopify
+runtime client.
