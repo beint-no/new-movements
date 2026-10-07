@@ -58,3 +58,12 @@ npm run deploy
 Deployment is local-only. Product data continues to be managed and published
 through ReAI; this repository does not contain a second catalog or Shopify
 runtime client.
+
+## Working here
+
+This private repository works independently of the customer-sites hub. Operators
+keep its primary checkout on main and develop in dedicated worktrees under
+~/.r-worktrees. Use pull requests and squash merges. A hub commit records a
+reviewed child revision; editing or deploying this site does not deploy siblings.
+Keep credentials out of Git, documentation and browser code. Client access is
+repository-specific; the hub never grants access to its submodules.
