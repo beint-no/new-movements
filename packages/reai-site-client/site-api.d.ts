@@ -319,7 +319,10 @@ export interface components {
             /** Format: int32 */
             catalogVersion: number;
             currency: components["schemas"]["CurrencyCode"];
+            /** @description Plain text for cards and previews, derived from the stored description in the selected locale. HTML markup is removed and HTML entities are decoded. */
             description?: string | null;
+            /** @description Sanitized HTML body fragment for product or collection content. Plain descriptions are escaped and line breaks are preserved. Supports text formatting, links, images and tables; scripts, styles and event handlers are removed. Insert only into an HTML body container, never an attribute or script. */
+            descriptionHtml?: string | null;
             handle: string;
             /** Format: uuid */
             id: string;
@@ -342,7 +345,10 @@ export interface components {
             title: string;
         };
         SiteDeliveryCollectionRes: {
+            /** @description Plain text for cards and previews, derived from the stored description in the selected locale. HTML markup is removed and HTML entities are decoded. */
             description?: string | null;
+            /** @description Sanitized HTML body fragment for product or collection content. Plain descriptions are escaped and line breaks are preserved. Supports text formatting, links, images and tables; scripts, styles and event handlers are removed. Insert only into an HTML body container, never an attribute or script. */
+            descriptionHtml?: string | null;
             handle: string;
             /** Format: uuid */
             id: string;
@@ -381,7 +387,10 @@ export interface components {
             /** Format: int32 */
             catalogVersion: number;
             currency: components["schemas"]["CurrencyCode"];
+            /** @description Plain text for cards and previews, derived from the stored description in the selected locale. HTML markup is removed and HTML entities are decoded. */
             description?: string | null;
+            /** @description Sanitized HTML body fragment for product or collection content. Plain descriptions are escaped and line breaks are preserved. Supports text formatting, links, images and tables; scripts, styles and event handlers are removed. Insert only into an HTML body container, never an attribute or script. */
+            descriptionHtml?: string | null;
             handle: string;
             /** Format: uuid */
             id: string;
@@ -397,7 +406,10 @@ export interface components {
         };
         SiteDeliveryProductRes: {
             brand?: string | null;
+            /** @description Plain text for cards and previews, derived from the stored description in the selected locale. HTML markup is removed and HTML entities are decoded. */
             description?: string | null;
+            /** @description Sanitized HTML body fragment for product or collection content. Plain descriptions are escaped and line breaks are preserved. Supports text formatting, links, images and tables; scripts, styles and event handlers are removed. Insert only into an HTML body container, never an attribute or script. */
+            descriptionHtml?: string | null;
             handle: string;
             /** Format: uuid */
             id: string;
@@ -428,7 +440,10 @@ export interface components {
             vatRate: number;
         };
         SiteStorefrontCollectionRes: {
+            /** @description Plain text for cards and previews, derived from the stored description in the selected locale. HTML markup is removed and HTML entities are decoded. */
             description?: string | null;
+            /** @description Sanitized HTML body fragment for product or collection content. Plain descriptions are escaped and line breaks are preserved. Supports text formatting, links, images and tables; scripts, styles and event handlers are removed. Insert only into an HTML body container, never an attribute or script. */
+            descriptionHtml?: string | null;
             handle: string;
             /** Format: uuid */
             id: string;
