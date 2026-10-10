@@ -255,3 +255,10 @@ assert.match(search, /data-card-quick-add/);
 assert.match(search, /srcset=/);
 assert.doesNotMatch(search, /data-newsletter/);
 assert.match(search, /Follow on Instagram/);
+
+// Numeric ranges retain published half sizes and keep the overlapping variant identity.
+const { productView } = await import("../merchandising.mjs");
+const rangeProduct = { ...product, variants: [35, 39, 42, 46.5, 48, 49].map((size) => ({ id: String(size), price: 2595, options: [{ name: "Size", value: String(size) }] })) };
+assert.deepEqual(productView(rangeProduct, "women").variants.map((variant) => variant.id), ["35", "39", "42"]);
+assert.deepEqual(productView(rangeProduct, "men").variants.map((variant) => variant.id), ["39", "42", "46.5", "48"]);
+assert.equal(productView(rangeProduct, "women").variants[1], productView(rangeProduct, "men").variants[0]);

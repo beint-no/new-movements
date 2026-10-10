@@ -44,8 +44,8 @@ npm run deploy
 
 ## Merchandising views
 
-`merchandising.mjs` defines women (EU 35–42) and men (EU 40–47). Sizes
-40–42 overlap intentionally. These are presentations of the same ReAI product
+`merchandising.mjs` defines women (EU 35–42) and men (EU 39–48). Sizes
+39–42 overlap intentionally. Numeric range selection retains published half sizes. These are presentations of the same ReAI product
 and variant IDs; do not duplicate products, stock, prices or checkout mappings.
 Collections and product URLs use `?view=women` / `?view=men`; the default product
 URL exposes all published sizes. Cards, quick-add, related colors, recommendations, shop navigation and search
@@ -65,6 +65,10 @@ excluded. Unmarked side/front/back product shots remain neutral. Unmarked lifest
 photos are omitted from gender views rather than classified from appearance; they
 remain in All sizes. Rename/curate images through ReAI when more model photos are
 needed. Keep alt text descriptive; do not use it as a hidden merchandising tag.
+
+Women’s collection cards show studio product shots at 88% scale, with feathered
+background edges. The same ReAI images and proportions are retained; tagged model
+photos keep their original framing. Men and All sizes keep the original scale.
 
 Quick-add reads uncached batch availability before enabling any size. Checkout
 continues to validate the actual ReAI variant ID and quantity.

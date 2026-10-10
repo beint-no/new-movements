@@ -533,3 +533,11 @@ body.quick-add-open{overflow:hidden}
 .search-page{padding-top:56px}.search-page>h1{margin:0 0 24px;font-size:clamp(2.5rem,5vw,4rem)}.search-page .search-form{margin-top:24px}.search-page .search-form input{font-size:1.6rem}.search-page .search-status{margin:28px 0 20px}@media(max-width:560px){.search-page{padding-top:32px}.search-page .search-form input{min-width:0;font-size:1.3rem}}
 
 .store-drawer{visibility:hidden;box-shadow:none}.store-drawer[aria-hidden=false]{visibility:visible;box-shadow:-25px 0 60px rgba(0,0,0,.16)}@media(max-width:900px){.collection-layout aside{visibility:hidden;box-shadow:none}.collection-layout aside.is-open{visibility:visible;box-shadow:-20px 0 50px rgba(0,0,0,.16)}}
+
+/* Give women’s studio shots more space without replacing or distorting the photo. */
+body[data-view="women"] .collection-layout .product-shot picture{
+  display:block;
+  transform:scale(.88);
+  mask-image:linear-gradient(to bottom,transparent,#000 7%,#000 93%,transparent),linear-gradient(to right,transparent,#000 7%,#000 93%,transparent);
+  mask-composite:intersect;
+}
