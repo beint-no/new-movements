@@ -254,8 +254,9 @@ assert.match(search, /href="\/search\?view=men&amp;q=white"/);
 assert.match(search, /href="\/collections\/sneakers\?view=women"/);
 assert.match(search, /data-card-quick-add/);
 assert.match(search, /srcset=/);
-assert.doesNotMatch(search, /data-newsletter/);
-assert.match(search, /Follow on Instagram/);
+assert.match(search, /data-newsletter-form/);
+assert.match(search, /name="email" type="email"/);
+assert.match(search, /aria-label="Instagram"/);
 
 // Numeric ranges retain published half sizes and keep the overlapping variant identity.
 const { productView } = await import("../merchandising.mjs");

@@ -174,6 +174,7 @@ function renderDrawerCart() {
   list.innerHTML = items.length ? items.map((item, index) => `<article class="drawer-cart-line" data-drawer-cart-index="${index}">${item.image ? `<img src="${escapeHtml(item.image)}" alt="">` : '<div class="drawer-cart-placeholder"></div>'}<div><a href="${escapeHtml(item.url || `/products/${item.handle}`)}">${escapeHtml(item.title)}</a><span>${item.label ? `Size ${escapeHtml(item.label)} · ` : ''}${item.quantity} × ${money(item.price)}</span><button type="button" data-drawer-remove>Remove</button></div></article>`).join('') : '<div class="drawer-empty"><p>Your bag is empty.</p><a href="/collections/all">Continue shopping</a></div>';
   if (subtotal) subtotal.textContent = money(items.reduce((sum, item) => sum + item.price * item.quantity, 0));
   syncCartUpsells(items);
+  cartDrawer.querySelectorAll('[data-checkout-start]').forEach((button) => { button.disabled = !items.length || checkoutPending; });
 }
 
 function syncCartUpsells(items = readCart()) {
@@ -415,8 +416,8 @@ document.querySelector('.product-thumbs')?.addEventListener('click', (event) => 
 });
 
 const cartRoot = document.querySelector('[data-cart-root]');
-const checkout = document.querySelector('[data-checkout-start]');
-const checkoutError = document.querySelector('[data-checkout-error]');
+const checkoutButtons = [...document.querySelectorAll('[data-checkout-start]')];
+let checkoutPending = false;
 const renderCart = () => {
   if (!cartRoot) return;
   const items = readCart();
@@ -429,7 +430,7 @@ const renderCart = () => {
   }
   const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   if (subtotal) subtotal.textContent = money(total);
-  if (checkout) checkout.disabled = !items.length;
+  checkoutButtons.forEach((button) => { button.disabled = !items.length || checkoutPending; });
 };
 cartRoot?.addEventListener('change', (event) => {
   const input = event.target.closest('[data-cart-quantity]');
@@ -446,10 +447,15 @@ cartRoot?.addEventListener('click', (event) => {
   const items = readCart(); items.splice(index, 1); writeCart(items); renderCart();
 });
 
-checkout?.addEventListener('click', async () => {
+checkoutButtons.forEach((checkout) => checkout.addEventListener('click', async () => {
+  if (checkoutPending) return;
+  const checkoutError = checkout.parentElement.querySelector('[data-checkout-error]');
   const lines = readCart().filter((item) => UUID.test(item.variant) && item.quantity > 0).map((item) => ({ variantId: item.variant, quantity: item.quantity }));
   if (!lines.length) return;
-  checkout.disabled = true; checkout.textContent = 'Opening secure checkout…';
+  checkoutPending = true;
+  const label = checkout.textContent;
+  checkoutButtons.forEach((button) => { button.disabled = true; });
+  checkout.textContent = 'Opening secure checkout…';
   if (checkoutError) checkoutError.hidden = true;
   try {
     const response = await fetch('/reai/checkout/start', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': crypto.randomUUID() }, body: JSON.stringify({ lines }) });
@@ -458,9 +464,11 @@ checkout?.addEventListener('click', async () => {
     location.assign(payload.checkoutUrl);
   } catch (error) {
     if (checkoutError) { checkoutError.textContent = error.message; checkoutError.hidden = false; }
-    checkout.disabled = false; checkout.textContent = 'Secure checkout';
+    checkoutPending = false;
+    checkoutButtons.forEach((button) => { button.disabled = !readCart().length; });
+    checkout.textContent = label;
   }
-});
+}));
 
 const activeView = document.body.dataset.view || '';
 const searchUrl = (query) => `/search?${new URLSearchParams({ q: query, ...(activeView ? { view: activeView } : {}) })}`;
@@ -597,3 +605,31 @@ filters?.querySelector('[data-close-filters]')?.addEventListener('click', () => 
 updateCount();
 renderCart();
 renderDrawerCart();
+
+document.querySelectorAll('[data-newsletter-form]').forEach((newsletterForm) => newsletterForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  if (!newsletterForm.reportValidity()) return;
+  const button = newsletterForm.querySelector('button');
+  const status = newsletterForm.querySelector('[data-newsletter-status]');
+  if (button.disabled) return;
+  const data = new FormData(newsletterForm);
+  const name = String(data.get('name') || '').trim();
+  button.disabled = true;
+  button.textContent = 'Signing up…';
+  status.hidden = true;
+  try {
+    const response = await fetch('/reai/newsletter/subscribe', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: String(data.get('email') || '').trim(), ...(name ? { name } : {}), consent: true }),
+    });
+    if (!response.ok) throw new Error('Signup unavailable');
+    status.textContent = "You're on the list. Thanks for joining the New Movements community.";
+    newsletterForm.reset();
+  } catch {
+    status.textContent = 'We could not save your signup. Please try again in a moment.';
+  } finally {
+    status.hidden = false;
+    button.disabled = false;
+    button.textContent = 'Sign up';
+  }
+}));
