@@ -524,3 +524,6 @@ body.quick-add-open{overflow:hidden}
 }
 
 @media(prefers-reduced-motion:reduce){.journal-card-media img{transition:none}}
+
+.merchandising-views{display:flex;flex-wrap:wrap;gap:24px;margin-top:20px;font-size:.9rem}.merchandising-views a{padding:8px 0;border-bottom:1px solid transparent;color:#666}.merchandising-views a[aria-current=page]{border-color:#111;color:#111}.size-view-note{margin:12px 0 0;color:#666;font-size:.8rem}.product-details .merchandising-views{margin-top:24px}
+@media(min-width:901px){.home-hero-panel>span,.home-hero-panel:last-child>span{width:204px}.home-hero-panel>span{right:30px}.home-hero-panel:last-child>span{left:30px}}

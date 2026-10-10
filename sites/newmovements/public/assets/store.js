@@ -43,6 +43,8 @@ const addCartItem = (product, variant, quantity = 1) => {
     variant: variant.id,
     handle: product.handle,
     title: product.title,
+    url: product.url || `/products/${product.handle}`,
+    label: variant.label || '',
     image: product.image || '',
     price: Number(variant.price),
     quantity: safeQuantity,
@@ -156,7 +158,7 @@ function renderDrawerCart() {
   const subtotal = document.querySelector('[data-drawer-subtotal]');
   if (!list) return;
   const items = readCart();
-  list.innerHTML = items.length ? items.map((item, index) => `<article class="drawer-cart-line" data-drawer-cart-index="${index}">${item.image ? `<img src="${escapeHtml(item.image)}" alt="">` : '<div class="drawer-cart-placeholder"></div>'}<div><a href="/products/${escapeHtml(item.handle)}">${escapeHtml(item.title)}</a><span>${item.quantity} × ${money(item.price)}</span><button type="button" data-drawer-remove>Remove</button></div></article>`).join('') : '<div class="drawer-empty"><p>Your bag is empty.</p><a href="/collections/all">Continue shopping</a></div>';
+  list.innerHTML = items.length ? items.map((item, index) => `<article class="drawer-cart-line" data-drawer-cart-index="${index}">${item.image ? `<img src="${escapeHtml(item.image)}" alt="">` : '<div class="drawer-cart-placeholder"></div>'}<div><a href="${escapeHtml(item.url || `/products/${item.handle}`)}">${escapeHtml(item.title)}</a><span>${item.label ? `Size ${escapeHtml(item.label)} · ` : ''}${item.quantity} × ${money(item.price)}</span><button type="button" data-drawer-remove>Remove</button></div></article>`).join('') : '<div class="drawer-empty"><p>Your bag is empty.</p><a href="/collections/all">Continue shopping</a></div>';
   if (subtotal) subtotal.textContent = money(items.reduce((sum, item) => sum + item.price * item.quantity, 0));
 }
 cartDrawer?.addEventListener('click', (event) => {
@@ -176,6 +178,7 @@ const syncVariant = () => {
   if (!variant || !add) return;
   const option = variant.selectedOptions[0];
   add.dataset.variant = option?.value || '';
+  add.dataset.label = option?.dataset.label || '';
   add.dataset.price = option?.dataset.price || '';
   add.disabled = option?.dataset.available !== 'true' || !UUID.test(add.dataset.variant);
   add.textContent = add.disabled ? 'Sold out' : 'Add to cart';
@@ -197,7 +200,7 @@ syncVariant();
 add?.addEventListener('click', () => {
   if (!UUID.test(add.dataset.variant || '')) return;
   const quantity = Math.max(1, Math.min(20, Number(document.querySelector('[data-quantity]')?.value || 1)));
-  addCartItem({ id: add.dataset.id, handle: add.dataset.handle, title: add.dataset.title, image: add.dataset.image }, { id: add.dataset.variant, price: Number(add.dataset.price) }, quantity);
+  addCartItem({ id: add.dataset.id, handle: add.dataset.handle, title: add.dataset.title, url: add.dataset.url, image: add.dataset.image }, { id: add.dataset.variant, price: Number(add.dataset.price), label: add.dataset.label }, quantity);
 });
 
 const setCardSlide = (card, requestedIndex) => {
@@ -254,22 +257,20 @@ const selectQuickAddVariant = (variant, button = null) => {
   if (quickAddStatus) quickAddStatus.textContent = variant.available ? '' : `${variant.label} is unavailable.`;
 };
 const closeQuickAdd = () => quickAddDialog?.open && quickAddDialog.close();
-const openQuickAdd = (button) => {
+const openQuickAdd = async (button) => {
   const card = button.closest('.product-card');
   const data = card?.querySelector('[data-card-product]')?.textContent;
   if (!data) return;
   try { quickAddProduct = JSON.parse(data); } catch { return; }
   const variants = (quickAddProduct.variants || []).filter((variant) => UUID.test(variant.id || ''));
   if (!variants.length) return;
-  if (variants.length === 1 && variants[0].label === 'One size') {
-    addCartItem(quickAddProduct, variants[0]);
-    return;
-  }
+  const requestedProduct = quickAddProduct;
+  variants.forEach((variant) => { variant.available = false; });
   quickAddOpener = button;
   quickAddVariant = null;
   if (quickAddTitle) {
     quickAddTitle.textContent = quickAddProduct.title;
-    quickAddTitle.href = `/products/${quickAddProduct.handle}`;
+    quickAddTitle.href = quickAddProduct.url || `/products/${quickAddProduct.handle}`;
   }
   if (quickAddPrice) quickAddPrice.textContent = plainMoney(Math.min(...variants.map((variant) => Number(variant.price))));
   if (quickAddMedia) {
@@ -287,6 +288,7 @@ const openQuickAdd = (button) => {
     variants.forEach((variant) => {
       const size = document.createElement('button');
       size.type = 'button';
+      size.dataset.quickVariant = variant.id;
       size.textContent = variant.label;
       size.disabled = !variant.available;
       size.setAttribute('aria-pressed', 'false');
@@ -295,10 +297,27 @@ const openQuickAdd = (button) => {
       quickAddSizes.append(size);
     });
   }
-  if (quickAddStatus) quickAddStatus.textContent = '';
+  if (quickAddStatus) quickAddStatus.textContent = 'Checking available sizes…';
   if (quickAddSubmit) quickAddSubmit.disabled = true;
   quickAddDialog?.showModal();
   document.body.classList.add('quick-add-open');
+  try {
+    const query = new URLSearchParams(variants.map((variant) => ['variantId', variant.id]));
+    const response = await fetch(`/reai/availability?${query}`, { cache: 'no-store' });
+    if (!response.ok) throw new Error('Availability unavailable');
+    const result = await response.json();
+    if (quickAddProduct !== requestedProduct || !quickAddDialog?.open) return;
+    const available = new Set((result.variants || []).filter((variant) => variant.status === 'AVAILABLE').map((variant) => variant.variantId));
+    variants.forEach((variant) => {
+      variant.available = available.has(variant.id);
+      const size = quickAddSizes?.querySelector(`[data-quick-variant="${variant.id}"]`);
+      if (size) { size.disabled = !variant.available; size.classList.toggle('is-unavailable', !variant.available); }
+    });
+    if (quickAddStatus) quickAddStatus.textContent = available.size ? '' : 'These sizes are currently sold out.';
+  } catch {
+    if (quickAddProduct === requestedProduct && quickAddStatus) quickAddStatus.textContent = 'We could not check stock. Open the product page to try again.';
+  }
+
   quickAddSizes?.querySelector('button:not(:disabled)')?.focus();
 };
 document.addEventListener('click', (event) => {
@@ -344,7 +363,7 @@ const renderCart = () => {
   if (!items.length) {
     list.innerHTML = '<div class="message-page"><h2>Your bag is empty</h2><p><a href="/collections/all">Continue shopping</a></p></div>';
   } else {
-    list.innerHTML = items.map((item, index) => `<article class="cart-line" data-cart-index="${index}">${item.image ? `<img src="${escapeHtml(item.image)}" alt="">` : '<div></div>'}<div><h2><a href="/products/${escapeHtml(item.handle)}">${escapeHtml(item.title)}</a></h2><p>${money(item.price)}</p><label>Qty <input type="number" min="1" max="20" value="${item.quantity}" data-cart-quantity></label><button type="button" data-cart-remove>Remove</button></div><strong>${money(item.price * item.quantity)}</strong></article>`).join('');
+    list.innerHTML = items.map((item, index) => `<article class="cart-line" data-cart-index="${index}">${item.image ? `<img src="${escapeHtml(item.image)}" alt="">` : '<div></div>'}<div><h2><a href="${escapeHtml(item.url || `/products/${item.handle}`)}">${escapeHtml(item.title)}</a></h2>${item.label ? `<p>Size ${escapeHtml(item.label)}</p>` : ''}<p>${money(item.price)}</p><label>Qty <input type="number" min="1" max="20" value="${item.quantity}" data-cart-quantity></label><button type="button" data-cart-remove>Remove</button></div><strong>${money(item.price * item.quantity)}</strong></article>`).join('');
   }
   const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   if (subtotal) subtotal.textContent = money(total);
@@ -402,7 +421,7 @@ const renderSearch = async (query) => {
     const store = await getCatalog();
     const products = catalogMatches(store, query);
     searchStatus.textContent = `${products.length} result${products.length === 1 ? '' : 's'} for “${query}”`;
-    searchResults.innerHTML = products.map((item) => `<article class="product-card"><a class="product-media" href="/products/${escapeHtml(item.handle)}">${item.images?.[0]?.url ? `<img src="${escapeHtml(item.images[0].url)}" alt="${escapeHtml(item.images[0].alt || item.title)}" width="${Number(item.images[0].width) || 800}" height="${Number(item.images[0].height) || 1000}" loading="lazy">` : ''}</a><div class="product-card-copy"><h3><a href="/products/${escapeHtml(item.handle)}">${escapeHtml(item.title)}</a></h3><p>${money(Math.min(...item.variants.map((entry) => Number(entry.price))), store.currency || 'NOK')}</p></div></article>`).join('');
+    searchResults.innerHTML = products.map((item) => `<article class="product-card"><a class="product-media" href="${escapeHtml(item.url || `/products/${item.handle}`)}">${item.images?.[0]?.url ? `<img src="${escapeHtml(item.images[0].url)}" alt="${escapeHtml(item.images[0].alt || item.title)}" width="${Number(item.images[0].width) || 800}" height="${Number(item.images[0].height) || 1000}" loading="lazy">` : ''}</a><div class="product-card-copy"><h3><a href="${escapeHtml(item.url || `/products/${item.handle}`)}">${escapeHtml(item.title)}</a></h3><p>${money(Math.min(...item.variants.map((entry) => Number(entry.price))), store.currency || 'NOK')}</p></div></article>`).join('');
   } catch { searchStatus.textContent = 'The live catalog is temporarily unavailable.'; }
 };
 searchForm?.addEventListener('submit', (event) => {
@@ -436,7 +455,7 @@ const renderPredictiveSearch = async () => {
     if (sequence !== predictiveSequence) return;
     const products = catalogMatches(store, query).slice(0, 6);
     if (predictiveStatus) predictiveStatus.textContent = products.length ? `${products.length} suggested product${products.length === 1 ? '' : 's'}` : `No results for “${query}”`;
-    if (predictiveResults) predictiveResults.innerHTML = products.map((item) => `<a class="predictive-item" href="/products/${escapeHtml(item.handle)}">${item.images?.[0]?.url ? `<img src="${escapeHtml(item.images[0].url)}" alt="" width="80" height="100">` : '<span></span>'}<b>${escapeHtml(item.title)}</b><small>${money(Math.min(...item.variants.map((entry) => Number(entry.price))), store.currency || 'NOK')}</small></a>`).join('');
+    if (predictiveResults) predictiveResults.innerHTML = products.map((item) => `<a class="predictive-item" href="${escapeHtml(item.url || `/products/${item.handle}`)}">${item.images?.[0]?.url ? `<img src="${escapeHtml(item.images[0].url)}" alt="" width="80" height="100">` : '<span></span>'}<b>${escapeHtml(item.title)}</b><small>${money(Math.min(...item.variants.map((entry) => Number(entry.price))), store.currency || 'NOK')}</small></a>`).join('');
   } catch {
     if (predictiveStatus) predictiveStatus.textContent = 'The live catalog is temporarily unavailable.';
   }
@@ -527,6 +546,7 @@ const applyFilters = () => {
   featuredCards.forEach((card) => {
     const haystack = `${card.dataset.productSearch || ''} ${card.dataset.productOptions || ''}`;
     const matchesFacets = [...byFacet].every(([facet, inputs]) => inputs.some((input) => {
+      if (facet === 'size') return JSON.parse(card.dataset.productSizes || '[]').includes(input.value);
       if (facet === 'product type') return card.dataset.productType === input.value;
       if (facet === 'availability') return card.dataset.productAvailability === input.value.replace(' ', '-');
       return haystack.includes(input.value);
