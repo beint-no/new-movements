@@ -27,21 +27,6 @@ const REDIRECTS = new Map([
   ["/blogs/finansavisen", "/blogs/news"],
 ]);
 
-const BRAND_ASSETS = new Map([
-  ["/brand-assets/logo.png", "https://newmovements.com/cdn/shop/files/new-movements-logo-oslo-wave-black_8ba4c646-e72d-4ef0-b7b5-1b13c91173f1.png?height=72&v=1669122861"],
-  ["/brand-assets/hero-women.jpg", "https://newmovements.com/cdn/shop/files/cloud_boots_brown_full_body_2.jpg?v=1772235076&width=1920"],
-  ["/brand-assets/hero-men.jpg", "https://newmovements.com/cdn/shop/files/moss_brown_close_3.jpg?v=1790535895&width=1920"],
-  ["/brand-assets/community-center.jpg", "https://newmovements.com/cdn/shop/files/nm-cc-store-01.jpg?height=1200&v=1739536072"],
-  ["/brand-assets/about-history.jpg", "https://cdn.shopify.com/s/files/1/0549/5295/1991/files/history.jpg?v=1779871446"],
-  ["/brand-assets/story-johnny.jpg", "https://cdn.shopify.com/s/files/1/0549/5295/1991/files/Johnny_Evensen_First_Generation.jpg?v=1779870700"],
-  ["/brand-assets/story-rolf.jpg", "https://cdn.shopify.com/s/files/1/0549/5295/1991/files/Rolf_Johnny_Evensen_01.jpg?v=1779868874"],
-  ["/brand-assets/story-knut.jpg", "https://cdn.shopify.com/s/files/1/0549/5295/1991/files/Knut_Evensen_Third_Generation.jpg?v=1779868824"],
-  ["/brand-assets/story-martin.jpg", "https://cdn.shopify.com/s/files/1/0549/5295/1991/files/Evensen_1.webp?v=1779870769"],
-  ["/brand-assets/instrument-sans-regular.woff2", "https://newmovements.com/cdn/fonts/instrument_sans/instrumentsans_n4.db86542ae5e1596dbdb28c279ae6c2086c4c5bfa.woff2"],
-  ["/brand-assets/instrument-sans-medium.woff2", "https://newmovements.com/cdn/fonts/instrument_sans/instrumentsans_n5.1ce463e1cc056566f977610764d93d4704464858.woff2"],
-  ["/brand-assets/instrument-sans-italic.woff2", "https://newmovements.com/cdn/fonts/instrument_sans/instrumentsans_i4.028d3c3cd8d085648c808ceb20cd2fd1eb3560e5.woff2"],
-]);
-
 export function canonicalPath(pathname) {
   let path = pathname.replace(/\/index\.html$/, "/").replace(/\/$/, "") || "/";
   const scopedProduct = path.match(/^\/collections\/[^/]+\/products\/([^/]+)$/);
@@ -65,16 +50,6 @@ export function redirectStorefrontRequest({ request, url }) {
 
 export async function handleStorefrontRequest(context) {
   const { request, env, url } = context;
-  const brandAsset = BRAND_ASSETS.get(url.pathname);
-  if (brandAsset && ["GET", "HEAD"].includes(request.method)) {
-    const upstream = await fetch(brandAsset, { method: request.method, headers: { Accept: request.headers.get("Accept") || "*/*" } });
-    if (!upstream.ok) return new Response("Brand asset unavailable.", { status: 502 });
-    const headers = new Headers({
-      "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800",
-      "Content-Type": upstream.headers.get("Content-Type") || "application/octet-stream",
-    });
-    return new Response(request.method === "HEAD" ? null : upstream.body, { status: 200, headers });
-  }
   if (url.pathname !== "/newsletter" || request.method !== "POST") return redirectStorefrontRequest(context);
   const email = String((await request.json().catch(() => ({})))?.email || "").trim();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {

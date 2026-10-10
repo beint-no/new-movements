@@ -82,3 +82,8 @@ It renders the current copyright year, a localized link to ReAI, and refund, pri
   opacity: .55;
 }
 ```
+
+Each renderer receives a request-specific context with `url` as well as the fixed
+market/locale context, so merchandising query parameters never leak across requests.
+`GET /reai/availability?variantId=...` proxies the Site client's uncached batch
+availability operation, with 1–100 distinct UUIDs, for quick-add and similar controls.

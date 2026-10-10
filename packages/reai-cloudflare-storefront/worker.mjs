@@ -442,6 +442,13 @@ export function createReaiStorefrontWorker({
         return jsonResponse({ error: messages.invalidCollectionHandle }, 400, env);
       }
       upstreamResult = client.collection(handle, deliveryContext);
+    } else if (request.method === "GET" && route === "/reai/availability") {
+      const variantIds = [...new Set(url.searchParams.getAll("variantId"))];
+      if (!variantIds.length || variantIds.length > 100 || variantIds.some((id) => !VARIANT_ID.test(id))) {
+        return jsonResponse({ error: messages.invalidVariantId }, 400, env);
+      }
+      upstreamResult = client.availabilities(variantIds, deliveryContext);
+      cacheControl = "no-store";
     } else if (request.method === "GET" && route.startsWith("/reai/availability/")) {
       const variantId = route.slice("/reai/availability/".length);
       if (!VARIANT_ID.test(variantId)) return jsonResponse({ error: messages.invalidVariantId }, 400, env);
@@ -480,6 +487,7 @@ export function createReaiStorefrontWorker({
   }
 
   async function renderCommerce(request, env, url, executionContext) {
+    const pageContext = { ...renderContext, url };
     const storefrontPath = stripPathPrefix(url.pathname, pathPrefix);
     if (storefrontPath == null) return null;
     const route = storefront.matchRoute(storefrontPath);
@@ -501,55 +509,55 @@ export function createReaiStorefrontWorker({
       console.error("Storefront snapshot failed", error);
       if (route.type === "home") return null;
       if (route.type === "sitemap") return jsonResponse({ error: messages.temporarilyUnavailable }, 502, env);
-      return htmlResponse(storefront.renderUnavailablePage(null, renderContext, route.canonicalPath || "/"), env, 502);
+      return htmlResponse(storefront.renderUnavailablePage(null, pageContext, route.canonicalPath || "/"), env, 502);
     }
 
     if (route.type === "home") {
-      const response = htmlResponse(storefront.renderHomePage(store, renderContext), env);
+      const response = htmlResponse(storefront.renderHomePage(store, pageContext), env);
       response.headers.set("X-ReAI-Storefront-Cache", cacheStatus);
       return response;
     }
     if (route.type === "sitemap") {
-      const response = xmlResponse(storefront.renderSitemap(store, renderContext), env);
+      const response = xmlResponse(storefront.renderSitemap(store, pageContext), env);
       response.headers.set("X-ReAI-Storefront-Cache", cacheStatus);
       return response;
     }
 
     if (route.type === "page" && typeof storefront.renderPage === "function") {
-      const html = storefront.renderPage(store, route.handle, renderContext);
-      if (!html) return htmlResponse(storefront.renderNotFoundPage(store, renderContext, route.canonicalPath), env, 404);
+      const html = storefront.renderPage(store, route.handle, pageContext);
+      if (!html) return htmlResponse(storefront.renderNotFoundPage(store, pageContext, route.canonicalPath), env, 404);
       const response = htmlResponse(html, env);
       response.headers.set("X-ReAI-Storefront-Cache", cacheStatus);
       return response;
     }
 
     if (route.type === "collection") {
-      if (!route.valid) return htmlResponse(storefront.renderNotFoundPage(store, renderContext, route.canonicalPath), env, 404);
+      if (!route.valid) return htmlResponse(storefront.renderNotFoundPage(store, pageContext, route.canonicalPath), env, 404);
       if (route.handle !== "all" && !storefront.collectionByHandle(store, route.handle)) {
         try {
           const detail = await siteJson(await siteClient(env).collection(route.handle, deliveryContext));
           store = { ...store, collections: [...store.collections, detail] };
         } catch (error) {
-          return htmlResponse(storefront.renderNotFoundPage(store, renderContext, route.canonicalPath), env, error.status === 404 ? 404 : 502);
+          return htmlResponse(storefront.renderNotFoundPage(store, pageContext, route.canonicalPath), env, error.status === 404 ? 404 : 502);
         }
       }
-      const response = htmlResponse(storefront.renderCollectionPage(store, route.handle, renderContext), env);
+      const response = htmlResponse(storefront.renderCollectionPage(store, route.handle, pageContext), env);
       response.headers.set("X-ReAI-Storefront-Cache", cacheStatus);
       return response;
     }
 
     if (route.type === "product") {
-      if (!route.valid) return htmlResponse(storefront.renderNotFoundPage(store, renderContext, route.canonicalPath), env, 404);
+      if (!route.valid) return htmlResponse(storefront.renderNotFoundPage(store, pageContext, route.canonicalPath), env, 404);
       let product = storefront.productByHandle(store, route.handle);
       if (!product) {
         try {
           product = await siteJson(await siteClient(env).product(route.handle, deliveryContext));
         } catch (error) {
-          return htmlResponse(storefront.renderNotFoundPage(store, renderContext, route.canonicalPath), env, error.status === 404 ? 404 : 502);
+          return htmlResponse(storefront.renderNotFoundPage(store, pageContext, route.canonicalPath), env, error.status === 404 ? 404 : 502);
         }
       }
       const availability = await variantAvailability(env, product.variants);
-      const response = htmlResponse(storefront.renderProductPage(store, product, availability, renderContext), env);
+      const response = htmlResponse(storefront.renderProductPage(store, product, availability, pageContext), env);
       response.headers.set("X-ReAI-Storefront-Cache", cacheStatus);
       return response;
     }

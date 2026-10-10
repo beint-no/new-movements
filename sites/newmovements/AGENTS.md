@@ -41,3 +41,50 @@ Store the Site API credential as a Cloudflare Worker secret before deploying:
 npm run secret
 npm run deploy
 ```
+
+## Merchandising views
+
+`merchandising.mjs` defines women (EU 35–42) and men (EU 40–47). Sizes
+40–42 overlap intentionally. These are presentations of the same ReAI product
+and variant IDs; do not duplicate products, stock, prices or checkout mappings.
+Collections and product URLs use `?view=women` / `?view=men`; the default product
+URL exposes all published sizes. Cards, quick-add, related colors and recommendations
+keep that context. The bag identifies the selected size and merges by variant ID.
+
+The reusable `composeProductView` in `packages/reai-site-client/merchandising.mjs`
+filters an option by allowed values and selects images using whole filename tokens.
+ReAI already includes its stored filename in the public image URL. It also accepts
+an explicit `filename` field if a delivery contract supplies one later. No backend
+schema, gender taxonomy or second catalog is needed.
+
+Name model photos with `women` / `men` (legacy `woman`, `female`, `her`, `man`,
+`male`, `him` also work). Matching photos lead the gallery; opposite markers are
+excluded. Unmarked side/front/back product shots remain neutral. Unmarked lifestyle
+photos are omitted from gender views rather than classified from appearance; they
+remain in All sizes. Rename/curate images through ReAI when more model photos are
+needed. Keep alt text descriptive; do not use it as a hidden merchandising tag.
+
+Quick-add reads uncached batch availability before enabling any size. Checkout
+continues to validate the actual ReAI variant ID and quantity.
+
+Brand/editorial photographs, the logo and Instrument Sans fonts are shipped under
+`public/brand-assets`. Refresh them from approved brand material in Git. Product
+photography remains entirely ReAI-managed. Never make brand assets depend on fetching
+`newmovements.com` at runtime: after domain cutover it would point back to this Worker.
+
+## Review deployment and launch
+
+Review URL: https://newmovements.respiro.workers.dev
+
+As checked on 2026-10-10, ReAI Site 10 (tenant 3157) is named New Movements
+Development, has no active domain, and its existing credential is PREVIEW.
+The current market is English/NOK with Norway as its only destination; shipping
+is Bring/PostNord at NOK 69, free from NOK 850. Do not advertise worldwide DHL
+shipping until the corresponding ReAI market and shipping configuration exists.
+
+Before domain cutover: review this Worker, merge the storefront PR and update the
+hub pointer, configure the intended production Site identity/domain/credential,
+verify shipping and a controlled payment end to end, and either connect the optional
+newsletter webhook or remove the signup UI. Hosted checkout creation and payment
+method rendering have been checked; no payment was submitted. The production
+hostname remains on its original storefront during review.
