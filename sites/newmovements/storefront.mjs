@@ -5,7 +5,7 @@ import { renderCompactLegalFooter } from "../../packages/reai-cloudflare-storefr
 export const SITE_ORIGIN = "https://newmovements.com";
 export const HANDLE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 export const STORE_SCRIPT = "/assets/store.js?v=16";
-export const STORE_STYLE = "/assets/store.css?v=42";
+export const STORE_STYLE = "/assets/store.css?v=43";
 const BRAND_LOGO = "/brand-assets/logo.png";
 const HOME_HERO_IMAGES = [
   "/brand-assets/hero-women.jpg",
@@ -412,7 +412,7 @@ function renderUtilityPage(store, path, context = {}) {
       `${product.title} ${product.brand || ""} ${product.description || ""} ${(product.variants || []).flatMap((variant) => variant.options || []).map((option) => option.value).join(" ")}`.toLowerCase().includes(query.toLowerCase()));
     const status = query ? `${products.length} result${products.length === 1 ? "" : "s"} for “${query}”` : "Enter a product name, style or material.";
     return documentHtml({ title: "Search | New Movements – Oslo", description: "Search the live New Movements footwear catalog.", path, store, view,
-      body: `<section class="static-page"><h1>Search</h1>${viewSelector(path, view, { query })}<form class="search-form" role="search" action="/search" method="get" data-search-form><label class="sr-only" for="search-input">Search products</label><input id="search-input" name="q" type="search" value="${escapeHtml(query)}" maxlength="200" autocomplete="off" placeholder="Search shoes, styles, materials">${view ? `<input type="hidden" name="view" value="${view}">` : ""}<button type="submit">Search</button></form><p class="search-status" data-search-status>${escapeHtml(status)}</p><div data-search-results>${query && products.length ? productGrid(products, store.currency || "NOK") : ""}</div></section>` });
+      body: `<section class="static-page search-page"><h1>Search</h1>${viewSelector(path, view, { query })}<form class="search-form" role="search" action="/search" method="get" data-search-form><label class="sr-only" for="search-input">Search products</label><input id="search-input" name="q" type="search" value="${escapeHtml(query)}" maxlength="200" autocomplete="off" placeholder="Search shoes, styles, materials">${view ? `<input type="hidden" name="view" value="${view}">` : ""}<button type="submit">Search</button></form><p class="search-status" data-search-status>${escapeHtml(status)}</p><div data-search-results>${query && products.length ? productGrid(products, store.currency || "NOK") : ""}</div></section>` });
   }
   if (path === "/order/complete") return documentHtml({ title: "Thank you | New Movements – Oslo", description: "Your New Movements order has been received.", path, store, body: `<section class="message-page" data-order-complete><p class="eyebrow">Order confirmed</p><h1>Thank you.</h1><p>Your order has been received. Confirmation and delivery details will be sent to the email used at checkout.</p><a class="outline-button" href="/collections/all">Continue shopping</a></section>` });
   return null;
