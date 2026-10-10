@@ -556,3 +556,35 @@ body[data-view="women"] .collection-layout .product-shot picture{
   mask-image:linear-gradient(to bottom,transparent,#000 7%,#000 93%,transparent),linear-gradient(to right,transparent,#000 7%,#000 93%,transparent);
   mask-composite:intersect;
 }
+
+/* Compact inline brand marks; checkout uses the shared cart action. */
+.payment-methods span{display:inline-flex;padding:0;border:0;background:transparent}
+.payment-methods svg{display:block;width:58px;height:37px}
+.footer-utilities{align-items:center}
+.footer-social a{display:grid;width:44px;height:44px;place-items:center;color:#666}
+.footer-social svg{width:30px;height:30px;fill:currentColor}
+.footer-social a:hover{color:#111}
+.footer-social a:focus-visible{outline:2px solid;outline-offset:2px}
+.newsletter{display:block;border:0;text-align:center;padding:32px 0 44px}
+.newsletter h2{max-width:1050px;margin:0 auto 22px;font-size:clamp(1.15rem,2.2vw,1.8rem);font-weight:500;line-height:1.35;letter-spacing:-.025em}
+.newsletter form{width:min(100%,1000px);margin-inline:auto;text-align:left}
+.newsletter form>div{display:flex;gap:10px;border:0}
+.newsletter input{min-width:0;padding:18px 20px;color:#111;background:#fff;font-size:1rem}
+.newsletter button{flex:0 0 auto;min-width:120px;padding:18px 24px;background:#111;color:#fff;font-size:.85rem;cursor:pointer}
+.newsletter button:disabled{opacity:.65;cursor:wait}
+.newsletter-consent,[data-newsletter-status]{margin:12px 0 0;color:#555;font-size:.78rem;line-height:1.5}
+.newsletter-consent a{text-decoration:underline}
+.cart-drawer footer [data-checkout-start]{width:100%;padding:17px;border:0;color:#fff;background:#111;text-transform:uppercase;cursor:pointer;font-size:.82rem;letter-spacing:.06em}
+.cart-drawer footer [data-checkout-start]:disabled{opacity:.5;cursor:default}
+.cart-drawer footer [data-checkout-error]{display:block;margin:12px 0 0;color:#a12626;font-size:.85rem}
+.cart-drawer footer [data-checkout-error][hidden]{display:none}
+.static-page--contact{width:min(100%,1250px);padding-inline:24px;margin-inline:auto}
+.static-page--contact .static-copy{max-width:none}
+.contact-layout{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:clamp(28px,5vw,70px);align-items:start}
+.contact-layout>img{display:block;width:100%;height:auto}
+.contact-details address{font-style:normal;line-height:1.65}
+.contact-details p{margin:0 0 26px}
+.contact-details a{text-decoration:underline;text-underline-offset:4px}
+@media(max-width:600px){.contact-layout{grid-template-columns:1fr}.newsletter form>div{gap:8px}.newsletter button{min-width:98px;padding-inline:16px}.newsletter input{padding-inline:14px}.payment-methods svg{width:48px;height:31px}.footer-utilities{align-items:flex-start;gap:24px}}
+.static-page--contact{padding-block:64px 80px}
+.static-page--contact h1{margin-bottom:32px;font-size:clamp(2.3rem,4.5vw,4rem);line-height:1.05}

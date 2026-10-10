@@ -12,11 +12,15 @@
 /** @typedef {import("./site-api.d.ts").components["schemas"]["SiteAvailabilitiesRes"]} SiteAvailabilities */
 /** @typedef {import("./site-api.d.ts").components["schemas"]["SiteCheckoutSessionReq"]} SiteCheckoutSessionRequest */
 /** @typedef {import("./site-api.d.ts").components["schemas"]["SiteCheckoutSessionRes"]} SiteCheckoutSession */
+/** @typedef {import("./site-api.d.ts").components["schemas"]["SiteNewsletterSubscriptionReq"]} SiteNewsletterSubscriptionRequest */
+/** @typedef {import("./site-api.d.ts").components["schemas"]["SiteNewsletterSubscriptionRes"]} SiteNewsletterSubscription */
 /** @typedef {{ market: string, locale: string }} DeliveryContext */
 /** @typedef {{ baseUrl?: string, token: string, fetch?: typeof globalThis.fetch }} SiteApiClientOptions */
 
 /** @type {keyof SiteApiPaths} */
 const SITE_PATH = "/site/v1/site";
+/** @type {keyof SiteApiPaths} */
+const NEWSLETTER_PATH = "/site/v1/newsletter/subscriptions";
 /** @type {keyof SiteApiPaths} */
 const STOREFRONT_PATH = "/site/v1/commerce/storefront";
 /** @type {keyof SiteApiPaths} */
@@ -101,6 +105,16 @@ export class ReaiSiteClient {
     headers.set("Accept", "application/json");
     headers.set("Authorization", `Bearer ${this.#token}`);
     return this.#fetch(url.href, { ...init, headers });
+  }
+
+  /**
+   * @param {SiteNewsletterSubscriptionRequest} body
+   * @returns {Promise<SiteApiResponse<SiteNewsletterSubscription>>}
+   */
+  async subscribeNewsletter(body) {
+    return new SiteApiResponse(await this.#request(NEWSLETTER_PATH, undefined, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+    }));
   }
 
   /** @returns {Promise<SiteApiResponse<SiteDelivery>>} */

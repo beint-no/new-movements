@@ -129,3 +129,5 @@ a controlled payment end to end. The inactive signup form has been replaced by
 an Instagram community link. Hosted checkout creation and payment
 method rendering have been checked; no payment was submitted. The production
 hostname remains on its original storefront during review.
+
+The cart drawer's Check out button shares the full-cart checkout action and validation. Footer newsletter signup posts email and explicit consent through the shared Worker/client endpoint; the API also accepts an optional name. Consent uses ReAI customer records; no welcome email or discount is generated. NEWSLETTER_RATE_LIMIT limits repeated public submissions. Payment/social marks are inline SVGs from the reference store optimized with SVGO; show supported checkout brands and verified New Movements social destinations. Contact details and the store photo match the original contact page.

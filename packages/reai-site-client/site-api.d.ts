@@ -160,6 +160,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/site/v1/newsletter/subscriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Subscribe to the Site owner's newsletter
+         * @description Accepts an email and optional name with explicit newsletter consent. Reuses the tenant's customer consent records without changing existing customer details. Repeated submissions are idempotent. Returns the same receipt for new and existing contacts; sends no email and creates no discount.
+         */
+        post: operations["subscribeNewsletter"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/site/v1/site": {
         parameters: {
             query?: never;
@@ -438,6 +458,16 @@ export interface components {
             price: number;
             sku: string;
             vatRate: number;
+        };
+        SiteNewsletterSubscriptionReq: {
+            /** @description Must be true. The shopper explicitly requested newsletter email from this business. */
+            consent: boolean;
+            /** Format: email */
+            email: string;
+            name?: string | null;
+        };
+        SiteNewsletterSubscriptionRes: {
+            accepted: boolean;
         };
         SiteStorefrontCollectionRes: {
             /** @description Plain text for cards and previews, derived from the stored description in the selected locale. HTML markup is removed and HTML entities are decoded. */
@@ -1244,6 +1274,82 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    subscribeNewsletter: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SiteNewsletterSubscriptionReq"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteNewsletterSubscriptionRes"];
+                };
             };
             /** @description Bad request */
             400: {

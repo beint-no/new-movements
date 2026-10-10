@@ -3,7 +3,7 @@
 import { ReaiSiteClient } from "../reai-site-client/client.mjs";
 
 /** @typedef {import("../reai-site-client/site-api.d.ts").components["schemas"]["SiteCheckoutSessionReq"]} SiteCheckoutSessionRequest */
-/** @typedef {{ REAI_BASE_URL?: string, REAI_SITE_TOKEN?: string, CHECKOUT_ENABLED?: string, ASSETS: { fetch(request: Request): Promise<Response> } }} WorkerEnv */
+/** @typedef {{ REAI_BASE_URL?: string, REAI_SITE_TOKEN?: string, CHECKOUT_ENABLED?: string, NEWSLETTER_RATE_LIMIT?: { limit(options: { key: string }): Promise<{ success: boolean }> }, ASSETS: { fetch(request: Request): Promise<Response> } }} WorkerEnv */
 /** @typedef {{ request: Request, env: WorkerEnv, url: URL, renderContext: any }} BeforeRequestContext */
 
 const STATIC_ASSET = /\.(?:avif|css|eot|gif|ico|jpe?g|js|json|map|mp4|ogg|otf|png|svg|ttf|webm|webp|woff2?)$/i;
@@ -15,6 +15,8 @@ const STOREFRONT_CACHE_RETENTION_SECONDS = 86_400;
 
 const defaultMessages = {
   invalidJson: "Invalid JSON.",
+  invalidNewsletter: "Provide a valid email and newsletter consent; name is optional (75 characters maximum).",
+  signupRateLimited: "Please wait a moment before signing up again.",
   invalidLineCount: "The cart must contain between 1 and 100 lines.",
   invalidLine: "The cart contains an invalid variant or quantity.",
   notConfigured: "The Site API is not configured.",
@@ -28,6 +30,8 @@ const defaultMessages = {
 
 export const norwegianMessages = {
   invalidJson: "Ugyldig JSON.",
+  invalidNewsletter: "Oppgi en gyldig e-postadresse og samtykke til nyhetsbrev; navn er valgfritt (maks 75 tegn).",
+  signupRateLimited: "Vent litt før du melder deg på igjen.",
   invalidLineCount: "Handlekurven må inneholde mellom 1 og 100 linjer.",
   invalidLine: "Handlekurven inneholder en ugyldig variant eller et ugyldig antall.",
   notConfigured: "Site API er ikke konfigurert.",
@@ -460,6 +464,26 @@ export function createReaiStorefrontWorker({
       const variantId = route.slice("/reai/availability/".length);
       if (!VARIANT_ID.test(variantId)) return jsonResponse({ error: messages.invalidVariantId }, 400, env);
       upstreamResult = client.availability(variantId, deliveryContext);
+      cacheControl = "no-store";
+    } else if (request.method === "POST" && route === "/reai/newsletter/subscribe") {
+      const origin = request.headers.get("Origin");
+      if (origin && origin !== url.origin) return jsonResponse({ error: messages.invalidNewsletter }, 403, env);
+      if (env.NEWSLETTER_RATE_LIMIT) {
+        const { success } = await env.NEWSLETTER_RATE_LIMIT.limit({ key: `newsletter:${url.host}:${request.headers.get("CF-Connecting-IP") || "local"}` });
+        if (!success) return jsonResponse({ error: messages.signupRateLimited }, 429, env);
+      }
+      let body;
+      try {
+        const text = await request.text();
+        if (text.length > 1024) return jsonResponse({ error: messages.invalidNewsletter }, 400, env);
+        body = JSON.parse(text);
+      } catch { return jsonResponse({ error: messages.invalidJson }, 400, env); }
+      const email = typeof body?.email === "string" ? body.email.trim() : "";
+      const name = typeof body?.name === "string" ? body.name.trim() : body?.name;
+      if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || body.consent !== true || (name != null && (typeof name !== "string" || name.length > 75))) {
+        return jsonResponse({ error: messages.invalidNewsletter }, 400, env);
+      }
+      upstreamResult = client.subscribeNewsletter({ email, consent: true, ...(name ? { name } : {}) });
       cacheControl = "no-store";
     } else if (request.method === "POST" && route === "/reai/checkout/start") {
       const checkout = await checkoutRequest(request, url, env);
