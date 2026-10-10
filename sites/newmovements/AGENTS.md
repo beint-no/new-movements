@@ -73,6 +73,15 @@ photos keep their original framing. Men and All sizes keep the original scale.
 Quick-add reads uncached batch availability before enabling any size. Checkout
 continues to validate the actual ReAI variant ID and quantity.
 
+`CART_UPSELL_HANDLES` in `merchandising.mjs` selects the ordered shoe-care additions
+in the bag drawer. Only handles are site-owned; titles, prices, images and variant
+IDs come from the same ReAI catalog used by the page. A one-click addition requires
+exactly one published variant; skip missing or multi-variant products rather than
+guessing a size. Opening a nonempty bag checks all additions in one uncached
+availability request. Unavailable additions are hidden, and a failed check disables
+new selections. Checkboxes reflect the existing cart, merge by variant ID and update
+the total; unchecking removes that variant. Checkout retains its normal validation.
+
 Brand/editorial photographs, the logo and Instrument Sans fonts are shipped under
 `public/brand-assets`. Refresh them from approved brand material in Git. Product
 photography remains entirely ReAI-managed. Never make brand assets depend on fetching

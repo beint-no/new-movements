@@ -534,6 +534,21 @@ body.quick-add-open{overflow:hidden}
 
 .store-drawer{visibility:hidden;box-shadow:none}.store-drawer[aria-hidden=false]{visibility:visible;box-shadow:-25px 0 60px rgba(0,0,0,.16)}@media(max-width:900px){.collection-layout aside{visibility:hidden;box-shadow:none}.collection-layout aside.is-open{visibility:visible;box-shadow:-20px 0 50px rgba(0,0,0,.16)}}
 
+.cart-drawer-content{flex:1;min-height:0;overflow:auto;padding:0 28px}
+.cart-upsells{padding:24px 0 12px}
+.cart-upsells h3{margin:0 0 16px;font-size:1.15rem;font-weight:600;letter-spacing:-.025em}
+.cart-upsell{display:grid;grid-template-columns:22px 80px minmax(0,1fr);align-items:center;gap:14px;margin-bottom:12px;padding:12px;border:1px solid #c6c6cc;border-radius:10px;cursor:pointer}
+.cart-upsell[hidden],.cart-upsells[hidden]{display:none}
+.cart-upsell:has(:checked){border-color:var(--ink);background:#fafaf9}
+.cart-upsell:has(:disabled){cursor:default;opacity:.55}
+.cart-upsell:has(:focus-visible){outline:2px solid var(--ink);outline-offset:3px}
+.cart-upsell input{width:22px;height:22px;margin:0;accent-color:var(--ink);cursor:inherit}
+.cart-upsell img{display:block;width:80px;height:80px;border-radius:6px;object-fit:contain;background:var(--soft)}
+.cart-upsell-title{display:block;font-size:.95rem;line-height:1.35}
+.cart-upsell-price{display:block;margin-top:6px;color:#666;font-size:.85rem}
+.cart-upsell-status{margin:8px 0;color:#666;font-size:.8rem;line-height:1.4}
+@media(max-width:480px){.cart-drawer-content{padding-inline:20px}.cart-upsell{grid-template-columns:22px 64px minmax(0,1fr);gap:12px}.cart-upsell img{width:64px;height:64px}}
+
 /* Give women’s studio shots more space without replacing or distorting the photo. */
 body[data-view="women"] .collection-layout .product-shot picture{
   display:block;
