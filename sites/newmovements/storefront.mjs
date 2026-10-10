@@ -1,11 +1,12 @@
 import { VIEWS, selectedView, productView, productsForView, isProductShot, viewUrl } from "./merchandising.mjs";
+import { FEATURED_REVIEWS, GOOGLE_REVIEW_COUNT, GOOGLE_REVIEWS_URL } from "./reviews.mjs";
 import { canonicalPath } from "./routes.mjs";
 import { renderCompactLegalFooter } from "../../packages/reai-cloudflare-storefront/footer.mjs";
 
 export const SITE_ORIGIN = "https://newmovements.com";
 export const HANDLE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 export const STORE_SCRIPT = "/assets/store.js?v=16";
-export const STORE_STYLE = "/assets/store.css?v=45";
+export const STORE_STYLE = "/assets/store.css?v=46";
 const BRAND_LOGO = "/brand-assets/logo.png";
 const HOME_HERO_IMAGES = [
   "/brand-assets/hero-women.jpg",
@@ -273,6 +274,12 @@ function colorFilterGroup(values) {
   return `<details class="color-facet" name="collection-facet"><summary>Color</summary><div class="facet-options color-options">${options}</div></details>`;
 }
 
+function renderReviews() {
+  const stars = '<span class="review-stars" aria-label="5 out of 5 stars"><span aria-hidden="true">★★★★★</span></span>';
+  const cards = FEATURED_REVIEWS.map((review) => `<li><a class="review-card" href="${GOOGLE_REVIEWS_URL}" target="_blank" rel="noopener noreferrer external" aria-label="Read ${escapeHtml(review.name)}’s review and all reviews on Google (opens in a new tab)"><header><div><strong>${escapeHtml(review.name)}</strong><time datetime="${review.date}">${review.label}</time></div><span class="review-google" aria-hidden="true">G</span></header>${stars}<blockquote>${escapeHtml(review.excerpt)}</blockquote></a></li>`).join("");
+  return `<section class="review-strip" id="reviews" aria-label="Featured Google reviews"><a class="review-summary" href="${GOOGLE_REVIEWS_URL}" target="_blank" rel="noopener noreferrer external" aria-label="Read all New Movements reviews on Google (opens in a new tab)"><strong>New Movements</strong>${stars}<span>${GOOGLE_REVIEW_COUNT} Google Reviews</span><small>Read all reviews ↗</small></a><ul class="review-cards" tabindex="0" aria-label="Featured reviews; scroll to see more">${cards}</ul></section>`;
+}
+
 export function renderHomePage(store) {
   const currency = store.currency || "NOK";
   const arrivals = findCollection(store, ["new-arrival", "new"]);
@@ -287,7 +294,7 @@ export function renderHomePage(store) {
     const product = collectionProducts(store, collection).find((item) => item.images?.[0]);
     return `<a class="category-card" href="/collections/${escapeHtml(collection.handle)}">${product ? responsiveImage(product.images[0], { alt: product.images[0].alt || label, width: 960, sizes: "(max-width: 760px) 100vw, 50vw", loading: "lazy" }) : ""}<span><small>Sizes 35–47</small><strong>${escapeHtml(label)}</strong><em>Shop now</em></span></a>`;
   }).join("");
-  const community = `<section class="community"><img src="${COMMUNITY_IMAGE}" alt="New Movements Community Center storefront at Steen & Strøm in Oslo" width="1440" height="1000" loading="lazy"><div><p class="eyebrow">NM Community Center</p><h2>Flagship store in Oslo</h2><p>Visit our NM Community Center in Steen & Strøm, Scandinavia's oldest department store, to experience our products and be part of the journey towards a circular future.</p><p>We're looking forward to welcoming you!</p><nav><a href="${DIRECTIONS_URL}" rel="external">⌖ Get directions</a><a href="/pages/contact-us">◌ Get in touch</a></nav></div></section><section class="review-strip"><div><strong>New Movements</strong><span>★★★★★</span><small>65 Google Reviews</small></div><a href="https://www.google.com/search?q=New+Movements+Oslo+reviews" rel="external"><strong>Our customers say it best.</strong><span>Read reviews on Google →</span></a></section>`;
+  const community = `<section class="community"><img src="${COMMUNITY_IMAGE}" alt="New Movements Community Center storefront at Steen & Strøm in Oslo" width="1440" height="1000" loading="lazy"><div><p class="eyebrow">NM Community Center</p><h2>Flagship store in Oslo</h2><p>Visit our NM Community Center in Steen & Strøm, Scandinavia's oldest department store, to experience our products and be part of the journey towards a circular future.</p><p>We're looking forward to welcoming you!</p><nav><a href="${DIRECTIONS_URL}" rel="external">⌖ Get directions</a><a href="/pages/contact-us">◌ Get in touch</a></nav></div></section>${renderReviews()}`;
   const body = `${hero}${promises}<section class="catalog-section"><header><h1>Women & Men New Arrivals</h1><a href="${arrivals ? `/collections/${arrivals.handle}` : "/collections/all"}">View all</a></header>${productGrid(products, currency, 6, "home-product-strip")}</section>${categoryCards ? `<section class="category-grid">${categoryCards}</section>` : ""}${community}`;
   return documentHtml({ title: "New Movements – Oslo", description: "Unisex footwear designed in Oslo and handcrafted in Portugal for a circular future.", path: "/", body, store, image: HOME_HERO_IMAGES[0] });
 }

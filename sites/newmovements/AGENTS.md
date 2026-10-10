@@ -78,6 +78,15 @@ Brand/editorial photographs, the logo and Instrument Sans fonts are shipped unde
 photography remains entirely ReAI-managed. Never make brand assets depend on fetching
 `newmovements.com` at runtime: after domain cutover it would point back to this Worker.
 
+## Google reviews
+
+`reviews.mjs` holds a manually maintained editorial snapshot of the four featured
+Google review excerpts on the original homepage, including their names, dates and
+the displayed review count. Update these from approved source material in Git.
+The homepage renders the cards as static HTML with a native scrolling rail;
+every card and the summary link to the business’s full Google review list.
+Do not add a review API, third-party widget or runtime refresh for this section.
+
 ## Review deployment and launch
 
 Review URL: https://newmovements.respiro.workers.dev
