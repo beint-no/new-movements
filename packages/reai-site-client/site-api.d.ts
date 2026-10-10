@@ -242,6 +242,23 @@ export interface components {
             title?: string | null;
             type?: string | null;
         };
+        ProductAttributeDto: {
+            key: string;
+            name: string;
+            values: components["schemas"]["ProductAttributeValueDto"][];
+        };
+        ProductAttributeTaxonomyValueDto: {
+            id: string;
+            name?: string | null;
+        };
+        ProductAttributeValueDto: {
+            aliases: string[];
+            colors: string[];
+            /** Format: uuid */
+            id: string;
+            label: string;
+            taxonomyValues: components["schemas"]["ProductAttributeTaxonomyValueDto"][];
+        };
         /** @description Public product image. Fetch bytes from url; catalog JSON never includes image data. */
         ProductImage: {
             /** @example RAW Classic rolling papers */
@@ -403,9 +420,11 @@ export interface components {
             value: string;
         };
         SiteDeliveryProductDetailRes: {
+            attributes: components["schemas"]["ProductAttributeDto"][];
             brand?: string | null;
             /** Format: int32 */
             catalogVersion: number;
+            category?: components["schemas"]["SiteProductCategoryRecord"] | null;
             currency: components["schemas"]["CurrencyCode"];
             /** @description Plain text for cards and previews, derived from the stored description in the selected locale. HTML markup is removed and HTML entities are decoded. */
             description?: string | null;
@@ -419,13 +438,17 @@ export interface components {
             marketHandle: string;
             /** Format: uuid */
             marketId: string;
+            productType?: string | null;
             seoDescription?: string | null;
             seoTitle: string;
             title: string;
             variants: components["schemas"]["SiteDeliveryVariantRes"][];
         };
         SiteDeliveryProductRes: {
+            /** @description Public product-wide categorical attributes. Stable entry IDs preserve merchant labels; taxonomyValues carry standard meanings. Variant-linked attributes are on each variant. */
+            attributes: components["schemas"]["ProductAttributeDto"][];
             brand?: string | null;
+            category?: components["schemas"]["SiteProductCategoryRecord"] | null;
             /** @description Plain text for cards and previews, derived from the stored description in the selected locale. HTML markup is removed and HTML entities are decoded. */
             description?: string | null;
             /** @description Sanitized HTML body fragment for product or collection content. Plain descriptions are escaped and line breaks are preserved. Supports text formatting, links, images and tables; scripts, styles and event handlers are removed. Insert only into an HTML body container, never an attribute or script. */
@@ -434,6 +457,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             images: components["schemas"]["ProductImage"][];
+            productType?: string | null;
             seoDescription?: string | null;
             seoTitle: string;
             title: string;
@@ -450,6 +474,8 @@ export interface components {
             status: "enabled" | "disabled";
         };
         SiteDeliveryVariantRes: {
+            /** @description Attributes bound to this variant's selected option values. Combine with product-wide attributes when filtering; keep size, price and availability predicates on the same variant. */
+            attributes: components["schemas"]["ProductAttributeDto"][];
             bundle?: components["schemas"]["SiteDeliveryBundleRes"] | null;
             compareAtPrice?: number | null;
             /** Format: uuid */
@@ -468,6 +494,10 @@ export interface components {
         };
         SiteNewsletterSubscriptionRes: {
             accepted: boolean;
+        };
+        SiteProductCategoryRecord: {
+            id: string;
+            name?: string | null;
         };
         SiteStorefrontCollectionRes: {
             /** @description Plain text for cards and previews, derived from the stored description in the selected locale. HTML markup is removed and HTML entities are decoded. */

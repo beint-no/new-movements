@@ -22,6 +22,12 @@ export default createReaiStorefrontWorker({
 
 `storefront` must export `HANDLE`, `matchRoute`, `collectionByHandle`, `productByHandle`, the page renderers and the sitemap renderer. `market` and `locale` are required because they select the ReAI delivery context. Every commerce delivery call, including availability and checkout, sends both values and isolates cached catalogs by the same pair. `beforeRequest` can implement canonical-domain or legacy-path redirects without forking the shared integration.
 
+Optional `collectionAvailabilityVariants(store, handle, context)` selects variants
+whose live stock the collection renderer needs. They are fetched through the
+existing batch availability client, passed as `context.availability`, and the HTML
+response becomes `no-store`. Returning an empty list keeps ordinary collections
+on the cached catalog path without stock requests.
+
 The Worker reads the complete `/site/v1/commerce/storefront` snapshot into Cloudflare's Cache API. A snapshot is fresh
 for 60 seconds; for the next five minutes it is served immediately while `waitUntil` revalidates its ETag in the
 background. The cache entry is retained for a day so a transient ReAI failure can still serve the last snapshot.

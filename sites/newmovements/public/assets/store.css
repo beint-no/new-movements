@@ -588,3 +588,14 @@ body[data-view="women"] .collection-layout .product-shot picture{
 @media(max-width:600px){.contact-layout{grid-template-columns:1fr}.newsletter form>div{gap:8px}.newsletter button{min-width:98px;padding-inline:16px}.newsletter input{padding-inline:14px}.payment-methods svg{width:48px;height:31px}.footer-utilities{align-items:flex-start;gap:24px}}
 .static-page--contact{padding-block:64px 80px}
 .static-page--contact h1{margin-bottom:32px;font-size:clamp(2.3rem,4.5vw,4rem);line-height:1.05}
+
+.collection-filters form{display:contents}
+.apply-collection-filters{padding:8px 12px;border:1px solid #1c1c1c;background:#1c1c1c;color:#fff;font-size:12px;white-space:nowrap;cursor:pointer}
+.facet-count{margin-left:auto;color:#777;font-size:11px}
+.collection-filters label:has(input:disabled){opacity:.45;cursor:default}
+.collection-filter-notice,.active-filter-summary{margin:16px 0;line-height:1.5}
+.collection-filter-notice{padding:14px;background:#f2f2ef}
+.active-filter-summary a{margin-left:16px;text-decoration:underline}
+.collection-layout .collection-filters .color-options{grid-template-columns:repeat(2,minmax(110px,1fr));width:280px}
+.collection-layout .collection-filters .color-options .color-option{grid-template-columns:28px minmax(0,1fr) auto;gap:8px}
+@media(max-width:900px){.collection-layout .collection-filters{display:block}.apply-collection-filters{width:100%;margin-top:20px;padding:14px}:root:not(.has-store-js) .collection-filters:has(form){transform:none;position:static;width:100%;padding:0;box-shadow:none}:root:not(.has-store-js) .collection-filters:has(form) details{padding:12px 0}.collection-filters:has(form).is-open{position:fixed;inset:0 0 0 auto;z-index:210;width:min(100%,390px);padding:28px;background:#fff;overflow:auto;box-shadow:-20px 0 50px rgba(0,0,0,.16)}}

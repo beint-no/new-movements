@@ -14,3 +14,10 @@ The generated file is committed so ordinary type checks are deterministic and do
 by an option's allowed values and order/filter existing images by filename tokens.
 It preserves product/variant identities and image metadata and never changes the
 catalog or adds API calls. Store-specific ranges and marker names belong in the site.
+
+`filtering.mjs` is a pure catalog projection for categorical facets and price/sort
+parameters. Values within a facet are OR; facets are AND against the same variant.
+Structured facets match stable taxonomy IDs or entry IDs/aliases, never product
+titles. Counts are distinct products matching the other facets. Supply live
+availability only when filtering stock; missing stock remains unknown. Keep
+store-specific facet definitions and URL parameter names in the storefront.

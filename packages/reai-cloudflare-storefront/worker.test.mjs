@@ -342,6 +342,34 @@ test("loads live product availability in one batch request", async (context) => 
   });
 });
 
+test("collection stock filters load live stock in batches and cannot be cached", async (context) => {
+  const originalFetch = globalThis.fetch;
+  context.after(() => { globalThis.fetch = originalFetch; });
+  const id = "018f3c2e-8b1a-4d3e-9c4f-5a6b7c8d9e0f";
+  const calls = [];
+  globalThis.fetch = async (input) => {
+    const url = new URL(input);
+    calls.push(url.pathname);
+    if (url.pathname === "/site/v1/commerce/availability") return Response.json({ variants: [{ variantId: id, status: "AVAILABLE" }] });
+    return Response.json({ catalogVersion: 1, marketId: "market", locale: "en", currency: "NOK", products: [{ id: "product", variants: [{ id }] }], collections: [{ handle: "all" }] });
+  };
+  const rendered = [];
+  const worker = createReaiStorefrontWorker({ cacheKey: "collection-stock", market: "default", locale: "en", storefront: {
+    ...storefront,
+    matchRoute: () => ({ type: "collection", valid: true, needsSlash: false, handle: "all" }),
+    collectionAvailabilityVariants: (store, _handle, ctx) => ctx.url.searchParams.has("filter.v.availability") ? store.products.flatMap(p => p.variants) : [],
+    renderCollectionPage: (_store, _handle, ctx) => { rendered.push(ctx.availability); return "<title>Collection</title>"; },
+  } });
+  const env = { REAI_SITE_TOKEN: "test-token" };
+  const normal = await worker.fetch(new Request("https://shop.example/collections/all"), env);
+  assert.match(normal.headers.get("Cache-Control"), /public/);
+  assert.equal(calls.filter(p => p.endsWith("/availability")).length, 0);
+  const filtered = await worker.fetch(new Request("https://shop.example/collections/all?filter.v.availability=1"), env);
+  assert.equal(filtered.headers.get("Cache-Control"), "no-store");
+  assert.equal(calls.filter(p => p.endsWith("/availability")).length, 1);
+  assert.deepEqual(rendered[1], { [id]: true });
+});
+
 test("rejects invalid market handles", () => {
   assert.throws(
     () => createReaiStorefrontWorker({
