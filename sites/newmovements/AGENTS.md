@@ -25,7 +25,7 @@ npm run dev
 
 Use a Site-scoped credential in `.dev.vars`; it must never be exposed to browser JavaScript. The storefront expects the New Movements Shopify catalog to be connected and published in ReAI, including product images and renditions.
 
-Newsletter signup is delivered server-side to an optional HTTPS webhook. Set `NEWSLETTER_WEBHOOK_URL` and, if the provider requires it, `NEWSLETTER_WEBHOOK_TOKEN` in `.dev.vars`. The webhook receives JSON containing `email` and `source`; the storefront currently links to Instagram instead of displaying a signup form. Only restore the form once provider delivery is configured.
+Newsletter signup posts email, optional name and explicit consent through the shared Worker and ReAI Site API. Keep submissions server-side; no external webhook, welcome email or discount automation is configured.
 
 ## Checks
 
@@ -136,5 +136,5 @@ price, exact Size options, merchant product type, color, footwear material and s
 features. Keep Shopify-compatible parameter names and canonical taxonomy IDs so
 existing filter links work. Use the shared filtering helper and live batch stock
 only when requested. Native published collection membership takes precedence over
-legacy presentation fallbacks. Women use EU 35–42 and men EU 39–48, including half
+legacy presentation fallbacks. Product type preserves a source merchant label for the existing shopper filter; it is not a second canonical category or a new ReAI admin field. Women use EU 35–42 and men EU 39–48, including half
 sizes and the same opaque variant IDs. Do not infer attribute choices from titles.
