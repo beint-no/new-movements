@@ -22,7 +22,7 @@ const product = {
   title: "Allrounder Y (White Leather)",
   brand: "New Movements",
   description: "A water-repellent unisex sneaker designed in Oslo.",
-  seoTitle: "Allrounder Y White",
+  seoTitle: "Allrounder Y (White) - Water-repellent sneaker | New Movements - Osl",
   seoDescription: "White leather unisex sneaker.",
   images: [image, { ...image, url: "https://app.reai.no/media/product-images/allrounder-side.avif", alt: null }],
   variants: [
@@ -55,7 +55,8 @@ assert.match(imageUrl(image, 600), /960\.avif$/);
 assert.match(priceRange(product.variants, "NOK"), /2\D595/);
 
 const home = renderHomePage(store);
-assert.match(home, /Women &amp; Men New Arrivals|Women & Men New Arrivals/);
+assert.match(home, /New Arrivals: Women’s &amp; Men’s Shoes/);
+assert.match(home, /<title>Women’s &amp; Men’s Shoes \| New Movements<\/title>/);
 assert.match(home, /srcset=/);
 assert.match(home, /width="1600" height="2000"/);
 assert.match(home, /https:\/\/app\.reai\.no\/media\/product-images/);
@@ -72,7 +73,7 @@ assert.match(story, /Johnny Evensen/);
 assert.match(story, /Rolf Johnny Evensen/);
 assert.match(story, /Knut Evensen/);
 assert.match(story, /Martin Evensen/);
-assert.match(story, /Fresh of the truck/);
+assert.match(story, /Fresh off the truck/);
 assert.match(story, /<p>2(?:&nbsp;|\s)595<\/p>/);
 assert.match(story, /data-about-menu/);
 
@@ -84,7 +85,7 @@ assert.match(journal, /blogs\/news\/allrounder/);
 assert.match(journal, /blogs\/news\/circularity/);
 assert.match(journal, /Norway's leading financial newspaper ran a piece/);
 assert.match(journal, /Zen: Where Minimalism Meets Movement/);
-assert.match(journal, /Dear NM friends,It has been more than a year/);
+assert.match(journal, /Dear NM friends, here is an update/);
 assert.doesNotMatch(journal, /cdn\.shopify\.com|new-movements-sneakers-and-fashion/);
 assert.match(journal, /data-about-toggle/);
 assert.match(journal, /class="site-footer"/);
@@ -131,7 +132,7 @@ const loaferArticle = renderPage(store, "/blogs/news/the-nm-loafer-a-modern-clas
 assert.match(loaferArticle, /Inspiration &amp; Design/);
 assert.match(loaferArticle, /Craftsmanship &amp; Materials/);
 assert.match(loaferArticle, /Comfort &amp; Versatility/);
-assert.match(loaferArticle, /forth-generation cobbler, Martin Evensen/);
+assert.match(loaferArticle, /fourth-generation cobbler, Martin Evensen/);
 assert.match(loaferArticle, /natural and recycled rubber/);
 assert.match(loaferArticle, /loafer-polido-03\.jpg/);
 assert.match(loaferArticle, /Loafer Polido Leather is available now[\s\S]*loafer-polido-06\.jpg/);
@@ -175,7 +176,7 @@ assert.match(materials, /Master Your Materials/);
 assert.match(materials, /materials-recycled-rubber\.webp/);
 assert.match(materials, /materials-craft\.webp/);
 assert.match(materials, /Shoe Care/);
-assert.match(materials, /Fresh of the truck/);
+assert.match(materials, /Fresh off the truck/);
 assert.match(materials, /story-product-rail/);
 assert.match(materials, /data-mega-toggle/);
 
@@ -262,3 +263,16 @@ const rangeProduct = { ...product, variants: [35, 39, 42, 46.5, 48, 49].map((siz
 assert.deepEqual(productView(rangeProduct, "women").variants.map((variant) => variant.id), ["35", "39", "42"]);
 assert.deepEqual(productView(rangeProduct, "men").variants.map((variant) => variant.id), ["39", "42", "46.5", "48"]);
 assert.equal(productView(rangeProduct, "women").variants[1], productView(rangeProduct, "men").variants[0]);
+
+// Imported SEO names can omit colour or end mid-brand. Use the published name once.
+const productMetadata = renderProductPage(store, product);
+assert.match(productMetadata, /<title>Allrounder Y \(White Leather\) Sneakers \| New Movements<\/title>/);
+assert.doesNotMatch(productMetadata, /<title>[^<]*Osl(?:<| \|)/);
+assert.match(renderCollectionPage(store, "women"), /<title>Women&#39;s Shoes \| New Movements<\/title>/);
+assert.match(renderCollectionPage(store, "men"), /<title>Men&#39;s Shoes \| New Movements<\/title>/);
+assert.match(renderPage(store, "/search"), /name="robots" content="noindex,follow"/);
+assert.doesNotMatch(sitemap, /<loc>[^<]*\/(?:cart|search|order\/complete|collections\/shoe-care-1)<\/loc>/);
+
+const careProduct = { ...product, title: "Shoe Cleaner", variants: [{ ...product.variants[0], options: [{ name: "Size", value: "One size" }] }] };
+const carePage = renderProductPage(store, careProduct);
+assert.doesNotMatch(carePage, /Unisex footwear designed|class="product-promises"/);

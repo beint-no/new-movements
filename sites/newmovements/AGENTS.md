@@ -78,6 +78,23 @@ Brand/editorial photographs, the logo and Instrument Sans fonts are shipped unde
 photography remains entirely ReAI-managed. Never make brand assets depend on fetching
 `newmovements.com` at runtime: after domain cutover it would point back to this Worker.
 
+## Metadata and copy
+
+`metadata.mjs` builds product titles from the published ReAI product name,
+including its colour, and adds a footwear category where the name lacks one.
+This avoids truncated, duplicated or outdated material claims in imported SEO
+titles. Women’s and men’s views retain their audience in the title. Keep names,
+materials, products and variant identities sourced from ReAI.
+
+Collections use descriptive shoe headings and titles. Editorial pages have
+subject-specific titles. The document renderer adds the brand once, uses the
+same title/description for Open Graph, and shortens descriptions at sentence or
+word boundaries. Bag, search, confirmation and error pages are noindexed and
+omitted from the sitemap; the old shoe-care alias redirects to its canonical
+collection. Maintain site-owned copy in Git; correct catalogue copy and
+factual inconsistencies in ReAI or the connected catalogue source, rather than
+adding per-product overrides to the Worker.
+
 ## Google reviews
 
 `reviews.mjs` holds a manually maintained editorial snapshot of the four featured

@@ -1,4 +1,5 @@
 const REDIRECTS = new Map([
+  ["/collections/shoe-care-1", "/collections/shoe-care"],
   ["/collections/all-shoes-1", "/collections/all"],
   ["/collections/all-shoes", "/collections/all"],
   ["/pages/about-us", "/pages/evensen-story"],
@@ -21,7 +22,7 @@ const REDIRECTS = new Map([
   ["/pages/store", "/pages/contact-us"],
   ["/pages/store-locator", "/pages/contact-us"],
   ["/pages/video", "/pages/evensen-story"],
-  ["/pages/guttestreker-oa-studio-at-new-movements", "/blogs/news/afterwork-at-new-movements"],
+  ["/pages/guttestreker-oa-studio-at-new-movements", "/pages/join"],
   ["/blogs/walk-the-talk", "/blogs/news"],
   ["/blogs/lets-go", "/blogs/news"],
   ["/blogs/finansavisen", "/blogs/news"],
