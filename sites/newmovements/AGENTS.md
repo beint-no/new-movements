@@ -25,7 +25,7 @@ npm run dev
 
 Use a Site-scoped credential in `.dev.vars`; it must never be exposed to browser JavaScript. The storefront expects the New Movements Shopify catalog to be connected and published in ReAI, including product images and renditions.
 
-Newsletter signup is delivered server-side to an optional HTTPS webhook. Set `NEWSLETTER_WEBHOOK_URL` and, if the provider requires it, `NEWSLETTER_WEBHOOK_TOKEN` in `.dev.vars`. The webhook receives JSON containing `email` and `source`; without it the form reports that signup is not configured and does not collect the address.
+Newsletter signup is delivered server-side to an optional HTTPS webhook. Set `NEWSLETTER_WEBHOOK_URL` and, if the provider requires it, `NEWSLETTER_WEBHOOK_TOKEN` in `.dev.vars`. The webhook receives JSON containing `email` and `source`; the storefront currently links to Instagram instead of displaying a signup form. Only restore the form once provider delivery is configured.
 
 ## Checks
 
@@ -48,8 +48,10 @@ npm run deploy
 40–42 overlap intentionally. These are presentations of the same ReAI product
 and variant IDs; do not duplicate products, stock, prices or checkout mappings.
 Collections and product URLs use `?view=women` / `?view=men`; the default product
-URL exposes all published sizes. Cards, quick-add, related colors and recommendations
-keep that context. The bag identifies the selected size and merges by variant ID.
+URL exposes all published sizes. Cards, quick-add, related colors, recommendations, shop navigation and search
+keep that context. Search results render on the server and work without browser
+JavaScript; predictive search requests `/reai/catalog?view=women` or `men` through
+the optional catalog projection hook, using exactly the same composition rules. The bag identifies the selected size and merges by variant ID.
 
 The reusable `composeProductView` in `packages/reai-site-client/merchandising.mjs`
 filters an option by allowed values and selects images using whole filename tokens.
@@ -82,9 +84,9 @@ The current market is English/NOK with Norway as its only destination; shipping
 is Bring/PostNord at NOK 69, free from NOK 850. Do not advertise worldwide DHL
 shipping until the corresponding ReAI market and shipping configuration exists.
 
-Before domain cutover: review this Worker, merge the storefront PR and update the
-hub pointer, configure the intended production Site identity/domain/credential,
-verify shipping and a controlled payment end to end, and either connect the optional
-newsletter webhook or remove the signup UI. Hosted checkout creation and payment
+Before domain cutover: review this Worker and update the hub pointer, configure
+the intended production Site identity/domain/credential, and verify shipping and
+a controlled payment end to end. The inactive signup form has been replaced by
+an Instagram community link. Hosted checkout creation and payment
 method rendering have been checked; no payment was submitted. The production
 hostname remains on its original storefront during review.

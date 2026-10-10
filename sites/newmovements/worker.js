@@ -5,7 +5,7 @@ import * as storefront from "./storefront.mjs";
 import { handleStorefrontRequest } from "./routes.mjs";
 
 export default createReaiStorefrontWorker({
-  cacheKey: "newmovements-v6",
+  cacheKey: "newmovements-v7",
   storefront,
   market: "default",
   locale: "en",

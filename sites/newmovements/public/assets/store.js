@@ -400,11 +400,10 @@ checkout?.addEventListener('click', async () => {
   }
 });
 
-const searchForm = document.querySelector('[data-search-form]');
-const searchResults = document.querySelector('[data-search-results]');
-const searchStatus = document.querySelector('[data-search-status]');
+const activeView = document.body.dataset.view || '';
+const searchUrl = (query) => `/search?${new URLSearchParams({ q: query, ...(activeView ? { view: activeView } : {}) })}`;
 let catalogPromise;
-const getCatalog = () => catalogPromise ||= fetch('/reai/catalog').then((response) => {
+const getCatalog = () => catalogPromise ||= fetch(`/reai/catalog${activeView ? `?view=${activeView}` : ''}`).then((response) => {
   if (!response.ok) throw new Error('Catalog unavailable');
   return response.json();
 });
@@ -412,29 +411,7 @@ const catalogMatches = (store, query) => {
   const needle = query.toLowerCase();
   return (store.products || []).filter((item) => `${item.title} ${item.brand || ''} ${item.description || ''} ${(item.variants || []).flatMap((entry) => entry.options || []).map((entry) => entry.value).join(' ')}`.toLowerCase().includes(needle));
 };
-const renderSearch = async (query) => {
-  if (!searchResults || !searchStatus) return;
-  searchStatus.textContent = query ? 'Searching…' : 'Enter a product name, style or material.';
-  searchResults.innerHTML = '';
-  if (!query) return;
-  try {
-    const store = await getCatalog();
-    const products = catalogMatches(store, query);
-    searchStatus.textContent = `${products.length} result${products.length === 1 ? '' : 's'} for “${query}”`;
-    searchResults.innerHTML = products.map((item) => `<article class="product-card"><a class="product-media" href="${escapeHtml(item.url || `/products/${item.handle}`)}">${item.images?.[0]?.url ? `<img src="${escapeHtml(item.images[0].url)}" alt="${escapeHtml(item.images[0].alt || item.title)}" width="${Number(item.images[0].width) || 800}" height="${Number(item.images[0].height) || 1000}" loading="lazy">` : ''}</a><div class="product-card-copy"><h3><a href="${escapeHtml(item.url || `/products/${item.handle}`)}">${escapeHtml(item.title)}</a></h3><p>${money(Math.min(...item.variants.map((entry) => Number(entry.price))), store.currency || 'NOK')}</p></div></article>`).join('');
-  } catch { searchStatus.textContent = 'The live catalog is temporarily unavailable.'; }
-};
-searchForm?.addEventListener('submit', (event) => {
-  event.preventDefault();
-  const query = new FormData(searchForm).get('q')?.toString().trim() || '';
-  history.replaceState(null, '', query ? `/search?q=${encodeURIComponent(query)}` : '/search');
-  renderSearch(query);
-});
-if (searchForm) {
-  const query = new URLSearchParams(location.search).get('q') || '';
-  searchForm.elements.q.value = query;
-  renderSearch(query);
-}
+const searchImageUrl = (image) => image?.renditions?.filter((item) => item.width >= 160).sort((a, b) => a.width - b.width)[0]?.url || image?.url;
 
 const predictiveForm = document.querySelector('[data-predictive-search]');
 const predictiveInput = predictiveForm?.querySelector('input[name="q"]');
@@ -455,7 +432,7 @@ const renderPredictiveSearch = async () => {
     if (sequence !== predictiveSequence) return;
     const products = catalogMatches(store, query).slice(0, 6);
     if (predictiveStatus) predictiveStatus.textContent = products.length ? `${products.length} suggested product${products.length === 1 ? '' : 's'}` : `No results for “${query}”`;
-    if (predictiveResults) predictiveResults.innerHTML = products.map((item) => `<a class="predictive-item" href="${escapeHtml(item.url || `/products/${item.handle}`)}">${item.images?.[0]?.url ? `<img src="${escapeHtml(item.images[0].url)}" alt="" width="80" height="100">` : '<span></span>'}<b>${escapeHtml(item.title)}</b><small>${money(Math.min(...item.variants.map((entry) => Number(entry.price))), store.currency || 'NOK')}</small></a>`).join('');
+    if (predictiveResults) predictiveResults.innerHTML = products.map((item) => `<a class="predictive-item" href="${escapeHtml(item.url || `/products/${item.handle}`)}">${item.images?.[0]?.url ? `<img src="${escapeHtml(searchImageUrl(item.images[0]))}" alt="" width="80" height="100">` : '<span></span>'}<b>${escapeHtml(item.title)}</b><small>${money(Math.min(...item.variants.map((entry) => Number(entry.price))), store.currency || 'NOK')}</small></a>`).join('');
   } catch {
     if (predictiveStatus) predictiveStatus.textContent = 'The live catalog is temporarily unavailable.';
   }
@@ -464,27 +441,10 @@ predictiveInput?.addEventListener('input', renderPredictiveSearch);
 predictiveForm?.addEventListener('submit', (event) => {
   event.preventDefault();
   const query = predictiveInput?.value.trim() || '';
-  if (query) location.assign(`/search?q=${encodeURIComponent(query)}`);
+  if (query) location.assign(searchUrl(query));
 });
 
 document.querySelector('[data-order-complete]') && localStorage.removeItem(CART_KEY);
-document.querySelector('[data-newsletter]')?.addEventListener('submit', async (event) => {
-  event.preventDefault();
-  const form = event.currentTarget;
-  const email = form.querySelector('input[type="email"]')?.value.trim() || '';
-  const status = event.currentTarget.querySelector('[data-newsletter-status]');
-  if (status) status.textContent = 'Signing up…';
-  try {
-    const response = await fetch('/newsletter', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(payload.error || 'Newsletter signup failed.');
-    if (status) status.textContent = 'Thank you — you are on the list.';
-    form.reset();
-  } catch (error) {
-    if (status) status.textContent = error.message;
-  }
-});
-
 const collectionGrid = document.querySelector('[data-collection-grid] .product-grid');
 const featuredCards = collectionGrid ? [...collectionGrid.querySelectorAll('.product-card')] : [];
 const featuredPositions = new Map(featuredCards.map((card, index) => [card, index]));

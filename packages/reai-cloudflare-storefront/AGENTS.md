@@ -87,3 +87,9 @@ Each renderer receives a request-specific context with `url` as well as the fixe
 market/locale context, so merchandising query parameters never leak across requests.
 `GET /reai/availability?variantId=...` proxies the Site client's uncached batch
 availability operation, with 1–100 distinct UUIDs, for quick-add and similar controls.
+
+An optional `catalogProductsForRequest(products, context)` renderer hook projects
+`GET /reai/catalog` for browser search using the same rules as server-rendered pages.
+Projection happens after snapshot retrieval, never inside the shared cache, and
+conditional response tags include the request query and Worker cache key. Keep
+catalog identity and checkout variant IDs intact; filter only the presentation.

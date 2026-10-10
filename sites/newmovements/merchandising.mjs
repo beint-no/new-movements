@@ -23,3 +23,10 @@ export function productView(product, view) {
 }
 
 export const viewUrl = (path, view) => `${path}${view ? `?view=${view}` : ""}`;
+
+export function productsForView(products, view) {
+  return products.flatMap((product) => {
+    const composed = productView(product, view);
+    return composed ? [{ ...composed, view, url: viewUrl(`/products/${product.handle}`, view) }] : [];
+  });
+}

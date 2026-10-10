@@ -210,11 +210,10 @@ assert.match(collection, /data-card-product/);
 assert.match(collection, /data-quick-add-dialog/);
 assert.match(collection, /data-sort-menu/);
 assert.match(collection, /data-sort-value="manual"/);
-assert.match(collection, /data-sort-value="most-relevant"/);
-assert.match(collection, /data-sort-value="best-selling"/);
+assert.doesNotMatch(collection, /data-sort-value="most-relevant"|data-sort-value="best-selling"/);
 assert.match(collection, /data-sort-value="title-descending"/);
 assert.match(collection, /data-sort-value="price-ascending"/);
-assert.match(collection, /data-sort-value="created-descending"/);
+assert.doesNotMatch(collection, /data-sort-value="created-descending"|data-facet="availability"/);
 assert.doesNotMatch(collection, /<select data-sort>/);
 assert.match(collection, /11111111-1111-4111-8111-111111111111/);
 assert.doesNotMatch(collection, /cdn\.shopify\.com/);
@@ -244,3 +243,15 @@ for (const file of [
 ]) await access(path.join(root, file));
 
 console.log("New Movements storefront checks passed.");
+
+const womenContext = { url: new URL("https://shop.example/search?q=white&view=women") };
+const search = renderPage(store, "/search", womenContext);
+assert.match(search, /1 result for/);
+assert.match(search, /href="\/products\/allrounder-y-white\?view=women"/);
+assert.match(search, /name="view" value="women"/);
+assert.match(search, /href="\/search\?view=men&amp;q=white"/);
+assert.match(search, /href="\/collections\/sneakers\?view=women"/);
+assert.match(search, /data-card-quick-add/);
+assert.match(search, /srcset=/);
+assert.doesNotMatch(search, /data-newsletter/);
+assert.match(search, /Follow on Instagram/);

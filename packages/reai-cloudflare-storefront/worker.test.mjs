@@ -225,6 +225,51 @@ test("serves cached catalog JSON stale while revalidating the storefront snapsho
   assert.equal(upstreamCalls, 2);
 });
 
+test("catalog projections share the snapshot but isolate views and conditional responses", async (context) => {
+  const originalFetch = globalThis.fetch;
+  const originalCaches = globalThis.caches;
+  context.after(() => {
+    globalThis.fetch = originalFetch;
+    globalThis.caches = originalCaches;
+  });
+  const cache = new Map();
+  globalThis.caches = { default: {
+    async match(request) { return cache.get(request.url)?.clone(); },
+    async put(request, response) { cache.set(request.url, response.clone()); },
+  } };
+  const products = [{ id: "35", size: "35" }, { id: "42", size: "42" }, { id: "47", size: "47" }];
+  let upstreamCalls = 0;
+  globalThis.fetch = async () => {
+    upstreamCalls++;
+    return Response.json({ catalogVersion: 7, marketId: "market", locale: "en", products, collections: [] });
+  };
+  const worker = createReaiStorefrontWorker({
+    cacheKey: "view-test", market: "default", locale: "en",
+    storefront: { ...storefront, catalogProductsForRequest(entries, { url }) {
+      const view = url.searchParams.get("view");
+      return entries.filter((product) => view === "women" ? Number(product.size) <= 42 : view === "men" ? Number(product.size) >= 40 : true);
+    } },
+  });
+  const request = (view, etag) => new Request(`https://shop.example/reai/catalog${view ? `?view=${view}` : ""}`, { headers: etag ? { "If-None-Match": etag } : {} });
+  const env = { REAI_SITE_TOKEN: "test-token" };
+  const women = await worker.fetch(request("women"), env);
+  const men = await worker.fetch(request("men", women.headers.get("ETag")), env);
+  assert.equal(men.status, 200);
+  assert.deepEqual((await women.json()).products.map((p) => p.id), ["35", "42"]);
+  assert.deepEqual((await men.json()).products.map((p) => p.id), ["42", "47"]);
+  assert.equal((await worker.fetch(request("men", men.headers.get("ETag")), env)).status, 304);
+  assert.deepEqual((await (await worker.fetch(request(""), env)).json()).products, products);
+  assert.equal(upstreamCalls, 1);
+
+  // The direct catalog fallback applies the same projection if the snapshot is unavailable.
+  globalThis.caches = undefined;
+  globalThis.fetch = async (url) => String(url).includes("/storefront")
+    ? new Response(null, { status: 500 }) : Response.json({ products });
+  const fallback = await worker.fetch(request("women"), env);
+  assert.equal(fallback.status, 200);
+  assert.deepEqual((await fallback.json()).products.map((p) => p.id), ["35", "42"]);
+});
+
 test("loads live product availability in one batch request", async (context) => {
   const originalFetch = globalThis.fetch;
   context.after(() => {

@@ -348,7 +348,11 @@ export function createReaiStorefrontWorker({
     return Object.fromEntries(batchEntries.flat());
   }
 
-  function cachedCommerceBody(route, store) {
+  function catalogProducts(store, url) {
+    return storefront.catalogProductsForRequest?.(store.products || [], { ...renderContext, url }) ?? store.products;
+  }
+
+  function cachedCommerceBody(route, store, url) {
     const context = {
       catalogVersion: store.catalogVersion,
       marketId: store.marketId,
@@ -357,7 +361,10 @@ export function createReaiStorefrontWorker({
       currency: store.currency,
     };
     if (route === "/reai/catalog") {
-      return { key: "catalog", body: { ...context, products: store.products } };
+      return {
+        key: storefront.catalogProductsForRequest ? `catalog:${encodeURIComponent(url.search)}` : "catalog",
+        body: { ...context, products: catalogProducts(store, url) },
+      };
     }
     if (route === "/reai/collections") {
       return {
@@ -382,7 +389,7 @@ export function createReaiStorefrontWorker({
   }
 
   function cacheEntityTag(key, store) {
-    return `W/"${key}:${store.catalogVersion}:${store.marketId}:${store.locale}"`;
+    return `W/"${cacheKey}:${key}:${store.catalogVersion}:${store.marketId}:${store.locale}"`;
   }
 
   function matchesEntityTag(request, entityTag) {
@@ -401,7 +408,7 @@ export function createReaiStorefrontWorker({
       && !route.startsWith("/reai/collections/")
     ) return null;
     const cached = await getStorefront(env, executionContext);
-    const resolved = cachedCommerceBody(route, cached.store);
+    const resolved = cachedCommerceBody(route, cached.store, new URL(request.url));
     if (!resolved) return null;
     const entityTag = cacheEntityTag(resolved.key, cached.store);
     const headers = securityHeaders(new Headers({
@@ -475,7 +482,12 @@ export function createReaiStorefrontWorker({
       responseHeaders.set("Content-Type", upstream.headers.get("Content-Type") || "application/json; charset=utf-8");
       responseHeaders.set("Cache-Control", upstream.ok ? cacheControl : "no-store");
       responseHeaders.set("Content-Language", canonicalLocale);
-      return new Response(upstream.body, {
+      let body = upstream.body;
+      if (upstream.ok && route === "/reai/catalog" && storefront.catalogProductsForRequest) {
+        const store = await upstream.json();
+        body = JSON.stringify({ ...store, products: catalogProducts(store, url) });
+      }
+      return new Response(body, {
         status: upstream.status,
         statusText: upstream.statusText,
         headers: responseHeaders,
