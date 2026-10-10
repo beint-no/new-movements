@@ -1,5 +1,11 @@
 import { composeProductView, imageMatchesTokens } from "../../packages/reai-site-client/merchandising.mjs";
 
+export const CART_UPSELL_HANDLES = [
+  "organotex-leather-wax",
+  "organotex-shoe-cleaner",
+  "organotex-waterproofing-spray",
+];
+
 export const VIEWS = {
   women: { label: "Women", minSize: 35, maxSize: 42, imageTokens: ["women", "woman", "female", "her"] },
   men: { label: "Men", minSize: 39, maxSize: 48, imageTokens: ["men", "man", "male", "him"] },

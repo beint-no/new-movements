@@ -50,7 +50,7 @@ const addCartItem = (product, variant, quantity = 1) => {
     quantity: safeQuantity,
   });
   writeCart(items);
-  showToast(`${safeQuantity} × ${product.title} added to your bag.`);
+  if (cartDrawer?.getAttribute('aria-hidden') !== 'false') showToast(`${safeQuantity} × ${product.title} added to your bag.`);
   return true;
 };
 
@@ -129,6 +129,17 @@ setAboutMenu(false);
 const backdrop = document.querySelector('[data-drawer-backdrop]');
 const searchDrawer = document.querySelector('[data-search-drawer]');
 const cartDrawer = document.querySelector('[data-cart-drawer]');
+const cartUpsells = cartDrawer?.querySelector('[data-cart-upsells]');
+const upsellStatus = cartUpsells?.querySelector('[data-cart-upsell-status]');
+const upsellChoices = [...(cartUpsells?.querySelectorAll('[data-cart-upsell]') || [])].flatMap((input) => {
+  try {
+    const selection = JSON.parse(input.dataset.cartUpsell);
+    return UUID.test(selection.variant?.id || '') ? [{ ...selection, input, row: input.closest('[data-cart-upsell-row]') }] : [];
+  } catch { return []; }
+});
+let upsellAvailability = null;
+let checkingUpsellStock = false;
+let upsellStockFailed = false;
 let drawerOpener = null;
 const closeDrawers = () => {
   [searchDrawer, cartDrawer].forEach((drawer) => drawer?.setAttribute('aria-hidden', 'true'));
@@ -139,6 +150,8 @@ const closeDrawers = () => {
 };
 const openDrawer = (drawer, opener) => {
   [searchDrawer, cartDrawer].forEach((item) => item?.setAttribute('aria-hidden', 'true'));
+  const toast = document.querySelector('[data-cart-toast]');
+  if (toast) toast.hidden = true;
   drawerOpener = opener;
   drawer?.setAttribute('aria-hidden', 'false');
   if (backdrop) backdrop.hidden = false;
@@ -146,7 +159,7 @@ const openDrawer = (drawer, opener) => {
   drawer?.querySelector('input,button,a')?.focus();
 };
 document.querySelectorAll('[data-search-open], .utility-nav a[href="/search"]').forEach((button) => button.addEventListener('click', (event) => { event.preventDefault(); openDrawer(searchDrawer, button); }));
-document.querySelectorAll('[data-cart-open], .utility-nav a[href="/cart"], .site-nav>a[href="/cart"]').forEach((button) => button.addEventListener('click', (event) => { event.preventDefault(); renderDrawerCart(); openDrawer(cartDrawer, button); }));
+document.querySelectorAll('[data-cart-open], .utility-nav a[href="/cart"], .site-nav>a[href="/cart"]').forEach((button) => button.addEventListener('click', (event) => { event.preventDefault(); renderDrawerCart(); openDrawer(cartDrawer, button); refreshUpsellStock(); }));
 document.querySelectorAll('[data-drawer-close]').forEach((button) => button.addEventListener('click', closeDrawers));
 backdrop?.addEventListener('click', closeDrawers);
 document.addEventListener('keydown', (event) => {
@@ -160,7 +173,56 @@ function renderDrawerCart() {
   const items = readCart();
   list.innerHTML = items.length ? items.map((item, index) => `<article class="drawer-cart-line" data-drawer-cart-index="${index}">${item.image ? `<img src="${escapeHtml(item.image)}" alt="">` : '<div class="drawer-cart-placeholder"></div>'}<div><a href="${escapeHtml(item.url || `/products/${item.handle}`)}">${escapeHtml(item.title)}</a><span>${item.label ? `Size ${escapeHtml(item.label)} · ` : ''}${item.quantity} × ${money(item.price)}</span><button type="button" data-drawer-remove>Remove</button></div></article>`).join('') : '<div class="drawer-empty"><p>Your bag is empty.</p><a href="/collections/all">Continue shopping</a></div>';
   if (subtotal) subtotal.textContent = money(items.reduce((sum, item) => sum + item.price * item.quantity, 0));
+  syncCartUpsells(items);
 }
+
+function syncCartUpsells(items = readCart()) {
+  const selected = new Set(items.map((item) => item.variant));
+  upsellChoices.forEach(({ input, row, variant }) => {
+    const inCart = selected.has(variant.id);
+    const available = upsellAvailability?.has(variant.id);
+    input.checked = inCart;
+    input.disabled = !inCart && (checkingUpsellStock || !available);
+    row.hidden = upsellAvailability !== null && !available && !inCart;
+  });
+  if (cartUpsells) cartUpsells.hidden = !items.length || !upsellChoices.some(({ row }) => !row.hidden);
+  if (upsellStatus) {
+    upsellStatus.textContent = checkingUpsellStock ? 'Checking shoe-care availability…' : upsellStockFailed ? 'We could not check shoe-care stock. Reopen your bag to try again.' : '';
+    upsellStatus.hidden = !checkingUpsellStock && !upsellStockFailed;
+  }
+}
+
+async function refreshUpsellStock() {
+  if (!upsellChoices.length || !readCart().length || checkingUpsellStock) return;
+  checkingUpsellStock = true;
+  upsellStockFailed = false;
+  upsellAvailability = null;
+  syncCartUpsells();
+  try {
+    const query = new URLSearchParams(upsellChoices.map(({ variant }) => ['variantId', variant.id]));
+    const response = await fetch(`/reai/availability?${query}`, { cache: 'no-store' });
+    if (!response.ok) throw new Error('Availability unavailable');
+    const result = await response.json();
+    upsellAvailability = new Set((result.variants || []).filter((variant) => variant.status === 'AVAILABLE').map((variant) => variant.variantId));
+  } catch {
+    upsellStockFailed = true;
+  } finally {
+    checkingUpsellStock = false;
+    syncCartUpsells();
+  }
+}
+
+cartUpsells?.addEventListener('change', (event) => {
+  const choice = upsellChoices.find(({ input }) => input === event.target);
+  if (!choice) return;
+  if (choice.input.checked) {
+    if (checkingUpsellStock || !upsellAvailability?.has(choice.variant.id)) return syncCartUpsells();
+    addCartItem(choice.product, choice.variant);
+  } else {
+    writeCart(readCart().filter((item) => item.variant !== choice.variant.id));
+  }
+  renderCart();
+});
 cartDrawer?.addEventListener('click', (event) => {
   const button = event.target.closest('[data-drawer-remove]');
   if (!button) return;
