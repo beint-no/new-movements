@@ -577,7 +577,12 @@ export function createReaiStorefrontWorker({
           return htmlResponse(storefront.renderNotFoundPage(store, pageContext, route.canonicalPath), env, error.status === 404 ? 404 : 502);
         }
       }
-      const response = htmlResponse(storefront.renderCollectionPage(store, route.handle, pageContext), env);
+      const requestedVariants = storefront.collectionAvailabilityVariants?.(store, route.handle, pageContext) || [];
+      const availability = requestedVariants.length ? await variantAvailability(env, requestedVariants) : {};
+      const response = htmlResponse(
+        storefront.renderCollectionPage(store, route.handle, { ...pageContext, availability }), env, 200,
+        requestedVariants.length ? "no-store" : "public, max-age=60, stale-while-revalidate=300",
+      );
       response.headers.set("X-ReAI-Storefront-Cache", cacheStatus);
       return response;
     }

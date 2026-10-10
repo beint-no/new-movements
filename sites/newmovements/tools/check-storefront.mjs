@@ -21,6 +21,8 @@ const product = {
   handle: "allrounder-y-white",
   title: "Allrounder Y (White Leather)",
   brand: "New Movements",
+  productType: "Sneakers",
+  attributes: [{ key: "color", name: "Color", values: [{ id: "color-white", label: "White", taxonomyValues: [{ id: "gid://shopify/TaxonomyValue/3", name: "White" }], colors: ["#ffffff"], aliases: [] }] }],
   description: "A water-repellent unisex sneaker designed in Oslo.",
   seoTitle: "Allrounder Y (White) - Water-repellent sneaker | New Movements - Osl",
   seoDescription: "White leather unisex sneaker.",
@@ -210,11 +212,11 @@ assert.match(collection, /data-card-quick-add/);
 assert.match(collection, /data-card-product/);
 assert.match(collection, /data-quick-add-dialog/);
 assert.match(collection, /data-sort-menu/);
-assert.match(collection, /data-sort-value="manual"/);
-assert.doesNotMatch(collection, /data-sort-value="most-relevant"|data-sort-value="best-selling"/);
-assert.match(collection, /data-sort-value="title-descending"/);
-assert.match(collection, /data-sort-value="price-ascending"/);
-assert.doesNotMatch(collection, /data-sort-value="created-descending"|data-facet="availability"/);
+assert.match(collection, /value="manual" role="option"/);
+assert.doesNotMatch(collection, /value="most-relevant"|value="best-selling"/);
+assert.match(collection, /value="title-descending" role="option"/);
+assert.match(collection, /value="price-ascending" role="option"/);
+assert.doesNotMatch(collection, /value="created-descending"/);
 assert.doesNotMatch(collection, /<select data-sort>/);
 assert.match(collection, /11111111-1111-4111-8111-111111111111/);
 assert.doesNotMatch(collection, /cdn\.shopify\.com/);

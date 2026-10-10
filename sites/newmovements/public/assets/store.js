@@ -1,3 +1,4 @@
+document.documentElement.classList.add('has-store-js');
 const CART_KEY = 'newmovements-cart-v1';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -515,39 +516,7 @@ predictiveForm?.addEventListener('submit', (event) => {
 });
 
 document.querySelector('[data-order-complete]') && localStorage.removeItem(CART_KEY);
-const collectionGrid = document.querySelector('[data-collection-grid] .product-grid');
-const featuredCards = collectionGrid ? [...collectionGrid.querySelectorAll('.product-card')] : [];
-const featuredPositions = new Map(featuredCards.map((card, index) => [card, index]));
 const sortMenu = document.querySelector('[data-sort-menu]');
-const sortCards = (direction, updateUrl = true) => {
-  if (!collectionGrid || !featuredCards.length) return;
-  const cards = [...featuredCards];
-  const featuredOrder = (a, b) => featuredPositions.get(a) - featuredPositions.get(b);
-  if (direction === 'title-ascending') cards.sort((a, b) => a.dataset.productTitle.localeCompare(b.dataset.productTitle) || featuredOrder(a, b));
-  else if (direction === 'title-descending') cards.sort((a, b) => b.dataset.productTitle.localeCompare(a.dataset.productTitle) || featuredOrder(a, b));
-  else if (direction === 'price-ascending') cards.sort((a, b) => Number(a.dataset.productPrice) - Number(b.dataset.productPrice) || featuredOrder(a, b));
-  else if (direction === 'price-descending') cards.sort((a, b) => Number(b.dataset.productPrice) - Number(a.dataset.productPrice) || featuredOrder(a, b));
-  else if (direction === 'created-ascending') cards.sort((a, b) => featuredPositions.get(b) - featuredPositions.get(a));
-  else cards.sort(featuredOrder);
-  cards.forEach((card) => collectionGrid.append(card));
-  sortMenu?.querySelectorAll('[data-sort-value]').forEach((option) => option.setAttribute('aria-selected', String(option.dataset.sortValue === direction)));
-  if (updateUrl) {
-    const url = new URL(window.location.href);
-    if (direction === 'manual') url.searchParams.delete('sort_by');
-    else url.searchParams.set('sort_by', direction);
-    history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
-  }
-};
-sortMenu?.addEventListener('click', (event) => {
-  const option = event.target.closest('[data-sort-value]');
-  if (!option) return;
-  sortCards(option.dataset.sortValue);
-  sortMenu.open = false;
-  sortMenu.querySelector('summary')?.focus();
-});
-const requestedSort = new URL(window.location.href).searchParams.get('sort_by');
-if (sortMenu?.querySelector(`[data-sort-value="${CSS.escape(requestedSort || 'manual')}"]`)) sortCards(requestedSort || 'manual', false);
-
 const filters = document.querySelector('[data-filters]');
 const facetDetails = filters ? [...filters.querySelectorAll('details')] : [];
 facetDetails.forEach((detail) => detail.addEventListener('toggle', () => {
@@ -566,42 +535,25 @@ document.addEventListener('keydown', (event) => {
     sortMenu.querySelector('summary')?.focus();
   }
 });
-const applyFilters = () => {
-  if (!filters || !collectionGrid) return;
-  const active = [...filters.querySelectorAll('[data-facet]:checked')];
-  const minimumPrice = Number(filters.querySelector('[data-price-min]')?.value || 0);
-  const maximumPrice = Number(filters.querySelector('[data-price-filter]')?.value || Infinity);
-  const byFacet = Map.groupBy(active, (input) => input.dataset.facet);
-  let visible = 0;
-  featuredCards.forEach((card) => {
-    const haystack = `${card.dataset.productSearch || ''} ${card.dataset.productOptions || ''}`;
-    const matchesFacets = [...byFacet].every(([facet, inputs]) => inputs.some((input) => {
-      if (facet === 'size') return JSON.parse(card.dataset.productSizes || '[]').includes(input.value);
-      if (facet === 'product type') return card.dataset.productType === input.value;
-      if (facet === 'availability') return card.dataset.productAvailability === input.value.replace(' ', '-');
-      return haystack.includes(input.value);
-    }));
-    const price = Number(card.dataset.productPrice);
-    const shown = matchesFacets && price >= minimumPrice && price <= maximumPrice;
-    card.hidden = !shown;
-    if (shown) visible += 1;
-  });
-  const count = document.querySelector('[data-filter-count]');
-  const empty = document.querySelector('[data-filter-empty]');
-  if (count) count.textContent = String(visible);
-  if (empty) empty.hidden = visible !== 0;
+const mobileFilterButton = document.querySelector('[data-mobile-filter]');
+const mobileFilterViewport = matchMedia('(max-width: 900px)');
+const setFilters = (open) => {
+  if (!filters) return;
+  filters.classList.toggle('is-open', open);
+  filters.inert = mobileFilterViewport.matches && !open;
+  filters.setAttribute('aria-hidden', String(filters.inert));
+  mobileFilterButton?.setAttribute('aria-expanded', String(open));
 };
-filters?.addEventListener('input', applyFilters);
-filters?.querySelector('[data-clear-filters]')?.addEventListener('click', () => {
-  filters.querySelectorAll('[data-facet]').forEach((input) => { input.checked = false; });
-  const minimum = filters.querySelector('[data-price-min]');
-  if (minimum) minimum.value = minimum.min || '0';
-  const range = filters.querySelector('[data-price-filter]');
-  if (range) range.value = range.max;
-  applyFilters();
+mobileFilterButton?.addEventListener('click', () => setFilters(!filters?.classList.contains('is-open')));
+filters?.querySelector('[data-close-filters]')?.addEventListener('click', () => { setFilters(false); mobileFilterButton?.focus(); });
+mobileFilterViewport.addEventListener('change', () => setFilters(false));
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && mobileFilterViewport.matches && filters?.classList.contains('is-open')) {
+    setFilters(false);
+    mobileFilterButton?.focus();
+  }
 });
-document.querySelector('[data-mobile-filter]')?.addEventListener('click', () => filters?.classList.toggle('is-open'));
-filters?.querySelector('[data-close-filters]')?.addEventListener('click', () => filters.classList.remove('is-open'));
+setFilters(false);
 updateCount();
 renderCart();
 renderDrawerCart();

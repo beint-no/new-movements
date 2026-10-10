@@ -4,11 +4,12 @@ import { FEATURED_REVIEWS, GOOGLE_REVIEW_COUNT, GOOGLE_REVIEWS_URL } from "./rev
 import { isFootwearProduct, productMetaTitle, collectionMetaTitle, metaDescription } from "./metadata.mjs";
 import { canonicalPath } from "./routes.mjs";
 import { renderCompactLegalFooter } from "../../packages/reai-cloudflare-storefront/footer.mjs";
+import { filterCollection, parseCollectionFilters } from "../../packages/reai-site-client/filtering.mjs";
 
 export const SITE_ORIGIN = "https://newmovements.com";
 export const HANDLE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-export const STORE_SCRIPT = "/assets/store.js?v=19";
-export const STORE_STYLE = "/assets/store.css?v=50";
+export const STORE_SCRIPT = "/assets/store.js?v=21";
+export const STORE_STYLE = "/assets/store.css?v=52";
 const BRAND_LOGO = "/brand-assets/logo.png";
 const HOME_HERO_IMAGES = [
   "/brand-assets/hero-women.jpg",
@@ -209,7 +210,7 @@ function productCard(product, currency = "NOK", priority = false, includeCurrenc
   const minimumPrice = Math.min(...(product.variants || []).map((variant) => Number(variant.price)).filter(Number.isFinite));
   const optionValues = (product.variants || []).flatMap((variant) => variant.options || []).map((option) => option.value).join(" ").toLowerCase();
   const searchText = `${product.title} ${product.brand || ""} ${product.description || ""} ${optionValues}`.toLowerCase();
-  const type = productType(product.title).toLowerCase();
+  const type = (product.productType || "").toLowerCase();
   const availability = (product.variants || []).some((variant) => variant.available === true || variant.available === undefined || Number(variant.inventoryQuantity) > 0) ? "in-stock" : "out-of-stock";
   const slides = images.map((entry, index) => `<span class="product-slide${isProductShot(entry) ? " product-shot" : ""}${index === 0 ? " is-active" : ""}" data-card-slide aria-hidden="${index === 0 ? "false" : "true"}">${responsiveImage(entry, { alt: entry.alt || product.title, width: 640, sizes: "(max-width: 700px) 50vw, 25vw", loading: priority || index === 0 ? undefined : "lazy", priority: priority && index === 0 })}</span>`).join("");
   const hasCarousel = images.length > 1;
@@ -236,19 +237,6 @@ function productCard(product, currency = "NOK", priority = false, includeCurrenc
   return `<article class="product-card" data-product-title="${escapeHtml(product.title.toLowerCase())}" data-product-price="${Number.isFinite(minimumPrice) ? minimumPrice : 0}" data-product-options="${escapeHtml(optionValues)}" data-product-sizes="${escapeHtml(JSON.stringify(facetValues([product], "size").map((size) => size.toLowerCase())))}" data-product-search="${escapeHtml(searchText)}" data-product-type="${escapeHtml(type)}" data-product-availability="${availability}"><div class="product-media" data-card-carousel><a class="product-slides" href="${escapeHtml(productUrl)}" aria-label="${escapeHtml(product.title)}">${slides}</a>${carouselControls}<button class="card-quick-add" type="button" aria-label="${actionLabel} ${escapeHtml(product.title)}" data-card-quick-add><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8h12l-1 12H7L6 8Z"></path><path d="M9 8V6a3 3 0 0 1 6 0v2"></path><path d="M12 11v6M9 14h6"></path></svg><span>${actionLabel}</span></button></div><div class="product-card-copy"><h3><a href="${escapeHtml(productUrl)}">${escapeHtml(product.title)}</a></h3><p>${priceRange(product.variants, currency, includeCurrency)}</p></div><script type="application/json" data-card-product>${productJson}</script></article>`;
 }
 
-function productType(title) {
-  const name = title.replace(/\s*\([^)]*\)\s*$/, "").trim();
-  const families = [
-    "High Flow Boot", "High Space Boot", "Low Cloud Boot", "Norwegian Sneaker",
-    "Original Nubuck", "Allrounder E", "Allrounder S", "Allrounder Y",
-    "Cloud Boot", "Flow Boot", "Space Boot", "Zipper Boot", "Allrounder",
-    "Classic", "Loafer", "Moss", "Original", "Zen",
-  ];
-  if (/gift card/i.test(name)) return "Gift Cards";
-  if (/spray|cleaner|wax|waterproof|insole/i.test(name)) return "Shoe Accessories";
-  return families.find((family) => name.toLowerCase().startsWith(family.toLowerCase())) || name;
-}
-
 function productGrid(products, currency, limit, className = "", includeCurrency = true) {
   const entries = typeof limit === "number" ? products.slice(0, limit) : products;
   if (!entries.length) return '<p class="empty-state">No published products are available yet.</p>';
@@ -266,36 +254,12 @@ function facetValues(products, optionName) {
     .sort((left, right) => left.localeCompare(right, undefined, { numeric: true }));
 }
 
-function filterGroup(name, values) {
-  if (!values.length) return "";
-  return `<details name="collection-facet"><summary>${escapeHtml(name)}</summary><div class="facet-options">${values.map((value) => `<label><input type="checkbox" value="${escapeHtml(value.toLowerCase())}" data-facet="${escapeHtml(name.toLowerCase())}"><span>${escapeHtml(value)}</span></label>`).join("")}</div></details>`;
-}
-
 const COLOR_SWATCHES = {
   beige: "#ead8ab", black: "#000000", blue: "#0d5dcc", brown: "#955731",
   gray: "#8e8e8e", grey: "#8e8e8e", green: "#08a73d", navy: "#30238f",
   olive: "#6f7040", orange: "#ff8200", pink: "#f6b8c6", turquoise: "#43a9aa",
   white: "#ffffff",
 };
-const COLOR_ORDER = ["beige", "black", "blue", "brown", "gray", "grey", "green", "navy", "orange", "olive", "pink", "turquoise", "white"];
-
-function colorFilterGroup(values) {
-  if (!values.length) return "";
-  const order = new Map(COLOR_ORDER.map((value, index) => [value, index]));
-  const sorted = [...values].sort((left, right) => {
-    const leftRank = order.get(left.toLowerCase()) ?? COLOR_ORDER.length;
-    const rightRank = order.get(right.toLowerCase()) ?? COLOR_ORDER.length;
-    return leftRank - rightRank || left.localeCompare(right);
-  });
-  const options = sorted.map((value) => {
-    const key = value.toLowerCase();
-    const label = key === "grey" ? "Gray" : value;
-    const swatch = COLOR_SWATCHES[key] || "#d8d8d8";
-    return `<label class="color-option"><input type="checkbox" value="${escapeHtml(key)}" data-facet="color" aria-label="${escapeHtml(label)}"><span class="color-swatch" style="--swatch-color:${swatch}" aria-hidden="true"></span><span>${escapeHtml(label)}</span></label>`;
-  }).join("");
-  return `<details class="color-facet" name="collection-facet"><summary>Color</summary><div class="facet-options color-options">${options}</div></details>`;
-}
-
 function renderReviews() {
   const stars = '<span class="review-stars" aria-label="5 out of 5 stars"><span aria-hidden="true">★★★★★</span></span>';
   const cards = FEATURED_REVIEWS.map((review) => `<li><a class="review-card" href="${GOOGLE_REVIEWS_URL}" target="_blank" rel="noopener noreferrer external" aria-label="Read ${escapeHtml(review.name)}’s review and all reviews on Google (opens in a new tab)"><header><div><strong>${escapeHtml(review.name)}</strong><time datetime="${review.date}">${review.label}</time></div><svg class="review-google" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M22.56 12.25c0-.73-.06-1.42-.19-2.09H12v3.96h5.92c-.26 1.28-1.03 2.37-2.17 3.1v2.58h3.52c2.06-1.9 3.29-4.7 3.29-7.55Z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.52-2.58c-.98.66-2.23 1.06-3.76 1.06-2.87 0-5.3-1.94-6.17-4.54H2.2v2.66A11 11 0 0 0 12 23Z"/><path fill="#FBBC05" d="M5.83 14.28A6.6 6.6 0 0 1 5.48 12c0-.79.14-1.55.35-2.28V7.06H2.2A11 11 0 0 0 1 12c0 1.78.43 3.46 1.2 4.94l3.63-2.66Z"/><path fill="#EA4335" d="M12 5.18c1.62 0 3.07.56 4.21 1.65l3.16-3.16C17.46 1.89 14.97 1 12 1a11 11 0 0 0-9.8 6.06l3.63 2.66C6.7 7.12 9.13 5.18 12 5.18Z"/></svg></header>${stars}<blockquote>${escapeHtml(review.excerpt)}</blockquote></a></li>`).join("");
@@ -493,31 +457,63 @@ function viewSelector(path, view, { collection = false, query = "" } = {}) {
   return `<nav class="merchandising-views" aria-label="Shop by size"><a href="${href("")}"${!view ? ' aria-current="page"' : ""}>All sizes</a>${Object.entries(VIEWS).map(([key, entry]) => `<a href="${href(key)}"${view === key ? ' aria-current="page"' : ""}>${entry.label}</a>`).join("")}</nav>`;
 }
 
+const COLLECTION_FACETS = [
+  { key: "availability", label: "Availability", parameter: "filter.v.availability", kind: "availability" },
+  { key: "size", label: "Size", parameter: "filter.v.option.size", kind: "option", optionName: "Size" },
+  { key: "product-type", label: "Product type", parameter: "filter.p.product_type", kind: "product", productField: "productType" },
+  { key: "color", label: "Color", parameter: "filter.v.t.shopify.color-pattern", kind: "attribute", attributeKey: "color" },
+  { key: "footwear-material", label: "Material", parameter: "filter.v.t.shopify.footwear-material", kind: "attribute", attributeKey: "footwear-material" },
+  { key: "shoe-features", label: "Shoe features", parameter: "filter.v.t.shopify.shoe-features", kind: "attribute", attributeKey: "shoe-features" },
+];
+
+function collectionSourceProducts(store, handle, context) {
+  const view = selectedView(context, Object.hasOwn(VIEWS, handle) ? handle : "");
+  const collection = handle === "all" ? null : collectionByHandle(store, handle);
+  const source = handle === "all" ? store.products || [] : collectionProducts(store, collection);
+  return productsForView(source, view);
+}
+
+export function collectionAvailabilityVariants(store, handle, context = {}) {
+  if (!context.url?.searchParams.has("filter.v.availability")) return [];
+  const variants = collectionSourceProducts(store, handle, context).flatMap((product) => product.variants || []);
+  return [...new Map(variants.map((variant) => [variant.id, variant])).values()];
+}
+
+function structuredFilterGroup(facet) {
+  const colors = facet.key === "color";
+  const options = facet.values.map((value) => {
+    const count = value.count === null ? "" : `<small class="facet-count">${value.count}</small>`;
+    const swatchColor = COLOR_SWATCHES[value.label.toLowerCase()] || value.colors.find((color) => /^#[0-9a-f]{6}([0-9a-f]{2})?$/i.test(color)) || "#ddd";
+    const swatch = colors ? `<span class="color-swatch" style="--swatch:${swatchColor}" aria-hidden="true"></span>` : "";
+    return `<label${colors ? ' class="color-option"' : ""}><input type="checkbox" name="${escapeHtml(facet.parameter)}" value="${escapeHtml(value.inputValue)}"${value.selected ? " checked" : ""}${value.count === 0 && !value.selected ? " disabled" : ""}>${swatch}<span>${escapeHtml(value.label)}</span>${count}</label>`;
+  }).join("");
+  return `<details name="collection-facet"${facet.values.some((value) => value.selected) ? " open" : ""}><summary>${escapeHtml(facet.label)}</summary><div class="facet-options${colors ? " color-options" : ""}">${options}</div></details>`;
+}
+
 export function renderCollectionPage(store, handle, context = {}) {
   const view = selectedView(context, Object.hasOwn(VIEWS, handle) ? handle : "");
   const collection = handle === "all" ? null : collectionByHandle(store, handle);
   if (handle !== "all" && !collection) return null;
-  const sourceProducts = handle === "all" ? (store.products || []) : collectionProducts(store, collection);
-  const products = productsForView(sourceProducts, view);
+  const sourceProducts = collectionSourceProducts(store, handle, context);
+  const parameters = context.url?.searchParams || new URLSearchParams();
+  const request = parseCollectionFilters(parameters, COLLECTION_FACETS);
+  const { products, facets, warnings } = filterCollection(sourceProducts, COLLECTION_FACETS, request, context.availability || {});
   const title = collectionMetaTitle(collection?.title || "All Shoes", view);
   const description = view ? `Shop ${title.toLowerCase()} in EU sizes ${VIEWS[view].minSize}–${VIEWS[view].maxSize}. Unisex styles designed in Oslo and handcrafted in Portugal.` : stripHtml(collection?.description || collection?.seoDescription || "Shop unisex shoes designed in Oslo and handcrafted in Portugal. Explore sneakers, boots and loafers from New Movements.");
-  const sizes = facetValues(products, "size");
-  const publishedColors = facetValues(products, "color");
-  const productText = products.map((product) => `${product.title} ${stripHtml(product.description || "")}`).join(" ").toLowerCase();
-  const colors = publishedColors.length ? publishedColors : [
-    "Black", "White", "Beige", "Brown", "Grey", "Blue", "Green", "Olive", "Orange", "Pink", "Turquoise",
-  ].filter((color) => productText.includes(color.toLowerCase()));
-  const types = [...new Set(products.map((product) => productType(product.title)))].sort();
-  const maxPrice = Math.ceil(Math.max(0, ...products.flatMap((product) => (product.variants || []).map((variant) => Number(variant.price) || 0))));
+  const maxPrice = Math.ceil(Math.max(0, ...sourceProducts.flatMap((product) => (product.variants || []).map((variant) => Number(variant.price) || 0))));
   const highestPrice = new Intl.NumberFormat("nb-NO", { maximumFractionDigits: 0 }).format(maxPrice);
-  const priceFacet = maxPrice ? `<details name="collection-facet"><summary>Price</summary><div class="price-filter"><div class="price-fields"><label><span>kr</span><input type="number" min="0" max="${maxPrice}" value="0" step="50" inputmode="numeric" aria-label="Minimum price" data-price-min></label><span>to</span><label><span>kr</span><input type="number" min="0" max="${maxPrice}" value="${maxPrice}" step="50" inputmode="numeric" aria-label="Maximum price" data-price-filter></label></div><p>The highest price is ${highestPrice}</p></div></details>` : "";
+  const priceFacet = maxPrice ? `<details name="collection-facet"><summary>Price</summary><div class="price-filter"><div class="price-fields"><label><span>kr</span><input type="number" min="0" value="${request.minimum ?? ""}" step="any" inputmode="decimal" aria-label="Minimum price" name="filter.v.price.gte" placeholder="0"></label><span>to</span><label><span>kr</span><input type="number" min="0" value="${request.maximum ?? ""}" step="any" inputmode="decimal" aria-label="Maximum price" name="filter.v.price.lte" placeholder="${maxPrice}"></label></div><p>The highest price is ${highestPrice}</p></div></details>` : "";
   const sortOptions = [
-    ["manual", "Featured"],
-    ["title-ascending", "Alphabetically, A-Z"], ["title-descending", "Alphabetically, Z-A"],
+    ["manual", "Featured"], ["title-ascending", "Alphabetically, A-Z"], ["title-descending", "Alphabetically, Z-A"],
     ["price-ascending", "Price, low to high"], ["price-descending", "Price, high to low"],
   ];
-  const sortMenu = `<details class="catalog-sort" data-sort-menu><summary>Sort</summary><div class="catalog-sort-options" role="listbox" aria-label="Sort products">${sortOptions.map(([value, label], index) => `<button type="button" role="option" aria-selected="${index === 0 ? "true" : "false"}" data-sort-value="${value}"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4.75 10.75 2.94 3.84L15.25 5.75"></path></svg><span>${label}</span></button>`).join("")}</div></details>`;
-  const body = `<header class="collection-header"><h1>${escapeHtml(title)}</h1>${viewSelector(`/collections/${handle}`, view, { collection: true })}${view ? `<p class="size-view-note">EU ${VIEWS[view].minSize}–${VIEWS[view].maxSize} · Same unisex fit.</p>` : ""}</header><section class="collection-layout"><div class="catalog-toolbar"><button type="button" data-mobile-filter>Filter</button><aside class="collection-filters" data-filters><div class="filter-heading"><strong>Filters</strong><span><button type="button" data-clear-filters>Clear all</button><button type="button" data-close-filters>Close</button></span></div>${priceFacet}${filterGroup("Size", sizes)}${filterGroup("Product type", types)}${colorFilterGroup(colors)}${filterGroup("Material", ["Leather", "Suede", "Wool", "Recycled", "Rubber"])}${filterGroup("Shoe features", ["Water resistant", "Wool lined", "Lightweight"])}</aside><span class="catalog-count"><b data-filter-count>${products.length}</b> items</span>${sortMenu}</div><div data-collection-grid>${productGrid(products, store.currency || "NOK")}</div><p class="empty-state" data-filter-empty hidden>No products match those filters.</p></section>`;
+  const sort = sortOptions.some(([value]) => value === request.sort) ? request.sort : "manual";
+  const sortMenu = `<details class="catalog-sort" data-sort-menu><summary>Sort</summary><div class="catalog-sort-options" role="listbox" aria-label="Sort products">${sortOptions.map(([value, label]) => `<button type="submit" form="collection-filter-form" name="sort_by" value="${value}" role="option" aria-selected="${value === sort}" data-collection-sort><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4.75 10.75 2.94 3.84L15.25 5.75"></path></svg><span>${label}</span></button>`).join("")}</div></details>`;
+  const clearUrl = viewUrl(`/collections/${handle}`, Object.hasOwn(VIEWS, handle) ? "" : view);
+  const hasFilters = [...parameters.keys()].some((key) => key.startsWith("filter."));
+  const notices = warnings.map((warning) => `<p class="collection-filter-notice" role="status">${escapeHtml(warning)} <a href="${escapeHtml(clearUrl)}">Clear filters</a></p>`).join("");
+  const active = hasFilters ? `<p class="active-filter-summary">${products.length} matching ${products.length === 1 ? "product" : "products"} <a href="${escapeHtml(clearUrl)}">Clear filters</a></p>` : "";
+  const body = `<header class="collection-header"><h1>${escapeHtml(title)}</h1>${viewSelector(`/collections/${handle}`, view, { collection: true })}${view ? `<p class="size-view-note">EU ${VIEWS[view].minSize}–${VIEWS[view].maxSize} · Same unisex fit.</p>` : ""}</header><section class="collection-layout"><div class="catalog-toolbar"><button type="button" data-mobile-filter aria-expanded="false" aria-controls="collection-filters">Filter</button><aside id="collection-filters" class="collection-filters" data-filters><form id="collection-filter-form" method="get" action="/collections/${handle}" data-collection-filter-form>${view && !Object.hasOwn(VIEWS, handle) ? `<input type="hidden" name="view" value="${view}">` : ""}<input type="hidden" name="sort_by" value="${sort}"><div class="filter-heading"><strong>Filters</strong><span><a href="${escapeHtml(clearUrl)}">Clear all</a><button type="button" data-close-filters>Close</button></span></div>${facets.filter((facet) => facet.key === "availability").map(structuredFilterGroup).join("")}${priceFacet}${facets.filter((facet) => facet.key !== "availability").map(structuredFilterGroup).join("")}<button class="apply-collection-filters" type="submit">Apply filters</button></form></aside><span class="catalog-count"><b data-filter-count>${products.length}</b> items</span>${sortMenu}</div>${notices}${active}<div data-collection-grid>${products.length ? productGrid(products, store.currency || "NOK") : '<p class="empty-state" data-filter-empty>No products match those filters. Try another size or clear the filters.</p>'}</div></section>`;
   return documentHtml({ title, description, path: `/collections/${handle}`, body, store, view, image: products[0]?.images?.[0]?.url || "" });
 }
 
