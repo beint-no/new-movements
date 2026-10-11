@@ -1,5 +1,5 @@
 import { renderPaymentMarks, renderSocialLinks } from "./footer-icons.mjs";
-import { CART_UPSELL_HANDLES, VIEWS, selectedView, productView, productsForView, isProductShot, viewUrl } from "./merchandising.mjs";
+import { CART_UPSELL_HANDLES, sortProductSizes, VIEWS, selectedView, productView, productsForView, isProductShot, viewUrl } from "./merchandising.mjs";
 import { FEATURED_REVIEWS, GOOGLE_REVIEW_COUNT, GOOGLE_REVIEWS_URL } from "./reviews.mjs";
 import { isFootwearProduct, productMetaTitle, collectionMetaTitle, metaDescription } from "./metadata.mjs";
 import { canonicalPath } from "./routes.mjs";
@@ -8,8 +8,8 @@ import { filterCollection, parseCollectionFilters } from "../../packages/reai-si
 
 export const SITE_ORIGIN = "https://newmovements.com";
 export const HANDLE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-export const STORE_SCRIPT = "/assets/store.js?v=22";
-export const STORE_STYLE = "/assets/store.css?v=53";
+export const STORE_SCRIPT = "/assets/store.js?v=23";
+export const STORE_STYLE = "/assets/store.css?v=54";
 const BRAND_LOGO = "/brand-assets/logo.png";
 const HOME_HERO_IMAGES = [
   "/brand-assets/hero-women.jpg",
@@ -180,6 +180,7 @@ function cartUpsells(store) {
 }
 
 function chrome(store, active = "") {
+  store ||= {};
   const shopUrl = (handle) => viewUrl(`/collections/${handle}`, ["women", "men", "gift-card", "shoe-care"].includes(handle) ? "" : active);
   const legal = renderCompactLegalFooter({
     owner: "New Movements – Oslo",
@@ -204,6 +205,7 @@ function documentHtml({ title, description, path, body, store, schema = "", imag
 }
 
 function productCard(product, currency = "NOK", priority = false, includeCurrency = true) {
+  product = sortProductSizes(product);
   const productUrl = viewUrl(`/products/${product.handle}`, product.view);
   const images = (product.images || []).filter((image) => image?.url).slice(0, 3);
   const image = images[0];
@@ -266,15 +268,21 @@ function renderReviews() {
   return `<section class="review-strip" id="reviews" aria-label="Featured Google reviews"><a class="review-summary" href="${GOOGLE_REVIEWS_URL}" target="_blank" rel="noopener noreferrer external" aria-label="Read all New Movements reviews on Google (opens in a new tab)"><strong>New Movements</strong>${stars}<span>${GOOGLE_REVIEW_COUNT} Google Reviews</span><small>Read all reviews ↗</small></a><ul class="review-cards" tabindex="0" aria-label="Featured reviews; scroll to see more">${cards}</ul></section>`;
 }
 
-export function renderHomePage(store) {
+const AUTUMN_WINTER_HANDLES = ["cloud-boot-macchiato-brown", "cloud-boot-black", "cloud-boot-camel-brown", "flow-boot-macchiato-brown", "space-boot-macchiato-brown", "low-cloud-macchiato-brown", "norwegian-sneaker-leather-forest-green", "norwegian-sneaker-leather-full-black", "norwegian-sneaker-technical-smooth-forest-wool", "zipper-boot-black"];
+const seasonalProducts = (store) => AUTUMN_WINTER_HANDLES.map((handle) => productByHandle(store, handle)).filter(Boolean);
+export const homeAvailabilityVariants = (store) => seasonalProducts(store).flatMap((product) => product.variants || []);
+
+export function renderHomePage(store, context = {}) {
   const currency = store.currency || "NOK";
-  const arrivals = findCollection(store, ["new-arrival", "new"]);
-  const preferredHandles = ["allrounder-y-white", "allrounder-y-full-black", "allrounder-y-black-nordic-grey", "allrounder-y-smooth-forest", "allrounder-y-beige-smooth-forest", "allrounder-y-beige-sand"];
-  const preferredProducts = preferredHandles.map((handle) => productByHandle(store, handle)).filter(Boolean);
-  const products = preferredProducts.length >= 5 ? preferredProducts : (collectionProducts(store, arrivals).length ? collectionProducts(store, arrivals) : (store.products || []));
+  const stock = context.availability || {};
+  const products = seasonalProducts(store).filter((product) => product.variants.some((variant) => stock[variant.id] === true)).map((product, index) => {
+    const preferredView = index % 2 ? "men" : "women";
+    const composed = productView(product, preferredView);
+    return composed?.variants.some((variant) => stock[variant.id] === true) ? { ...composed, view: preferredView } : product;
+  });
   const sneakers = collectionByHandle(store, "sneakers") || findCollection(store, ["sneaker"]);
   const loafers = collectionByHandle(store, "loafers-low-tops") || findCollection(store, ["loafer", "low-hiker"]);
-  const hero = `<section class="home-hero"><a class="home-hero-panel" href="/collections/women"><img src="${HOME_HERO_IMAGES[0]}" alt="New Movements brown footwear styled in Oslo" width="1920" height="1800" fetchpriority="high"><span>Shop women's</span></a><a class="home-hero-panel" href="/collections/men"><img src="${HOME_HERO_IMAGES[1]}" alt="Brown New Movements shoe worn outdoors" width="1920" height="1800" fetchpriority="high"><span>Shop men's</span></a></section>`;
+  const hero = `<section class="home-hero"><div class="season-hero-copy"><h1>Crafted through generations</h1><p>Oslo 1916</p></div><a class="home-hero-panel" href="/collections/women"><img src="${HOME_HERO_IMAGES[0]}" alt="New Movements brown footwear styled in Oslo" width="1920" height="1800" fetchpriority="high"><span>Shop women's</span></a><a class="home-hero-panel" href="/collections/men"><img src="${HOME_HERO_IMAGES[1]}" alt="Brown New Movements shoe worn outdoors" width="1920" height="1800" fetchpriority="high"><span>Shop men's</span></a></section>`;
   const promises = `<section class="promise-grid"><a href="/pages/evensen-story"><strong>Fourth generation shoemaker</strong><span>Read the Evensen story</span></a><a href="/pages/our-philosophy"><strong>Designed in Oslo</strong><span>Handcrafted in Portugal</span></a><a href="/pages/materials"><strong>Premium materials</strong><span>Built to last, and to be recycled</span></a></section>`;
   const categoryCards = [[sneakers, "Sneakers"], [loafers, "Low Hikers & Loafers"]].filter(([collection]) => Boolean(collection)).map(([collection, label]) => {
     const product = collectionProducts(store, collection).find((item) => item.images?.[0]);
@@ -283,7 +291,7 @@ export function renderHomePage(store) {
     return `<a class="category-card" href="/collections/${escapeHtml(collection.handle)}">${product ? responsiveImage(product.images[0], { alt: product.images[0].alt || label, width: 960, sizes: "(max-width: 760px) 100vw, 50vw", loading: "lazy" }) : ""}<span>${sizeLabel}<strong>${escapeHtml(label)}</strong><em>Shop now</em></span></a>`;
   }).join("");
   const community = `<section class="community"><img src="${COMMUNITY_IMAGE}" alt="New Movements Community Center storefront at Steen & Strøm in Oslo" width="1440" height="1000" loading="lazy"><div><p class="eyebrow">NM Community Center</p><h2>Flagship store in Oslo</h2><p>Visit our NM Community Center in Steen & Strøm, Scandinavia's oldest department store, to experience our products and be part of the journey towards a circular future.</p><p>We're looking forward to welcoming you!</p><nav><a href="${DIRECTIONS_URL}" rel="external">⌖ Get directions</a><a href="/pages/contact-us">◌ Get in touch</a></nav></div></section>${renderReviews()}`;
-  const body = `${hero}${promises}<section class="catalog-section"><header><h1>New Arrivals: Women’s &amp; Men’s Shoes</h1><a href="${arrivals ? `/collections/${arrivals.handle}` : "/collections/all"}">View all</a></header>${productGrid(products, currency, 6, "home-product-strip")}</section>${categoryCards ? `<section class="category-grid">${categoryCards}</section>` : ""}${community}`;
+  const body = `${hero}${promises}${products.length ? `<section class="catalog-section"><header><div><p class="eyebrow">Autumn / Winter</p><h2>Made for colder days</h2></div><a href="/collections/boots">Explore boots</a></header>${productGrid(products, currency, 6, "home-product-strip")}</section>` : `<section class="season-shop-links"><h2>Shoes for every season</h2><a href="/collections/women">Explore women’s shoes</a><a href="/collections/men">Explore men’s shoes</a></section>`}${categoryCards ? `<section class="category-grid">${categoryCards}</section>` : ""}${community}`;
   return documentHtml({ title: "Women’s & Men’s Shoes", description: "Unisex shoes designed in Oslo and handcrafted in Portugal for a circular future.", path: "/", body, store, image: HOME_HERO_IMAGES[0] });
 }
 
@@ -559,12 +567,14 @@ export function renderProductPage(store, product, availability = {}, context = {
   const variants = product.variants || [];
   const images = product.images || [];
   const first = variants[0];
-  const initialVariant = variants.find((variant) => availability[variant.id] === true) || first;
+  const initialVariant = variants.find((variant) => variant.id === context.url?.searchParams.get("variant")) || variants.find((variant) => availability[variant.id] === true) || first;
   const available = variants.some((variant) => availability[variant.id] === true);
   const options = variants.map((variant) => {
     const label = variant.options?.map((item) => item.value).filter(Boolean).join(" / ") || variant.sku || "Default";
     return `<option value="${escapeHtml(variant.id)}" data-label="${escapeHtml(label)}" data-price="${escapeHtml(variant.price)}" data-available="${availability[variant.id] === true}"${variant.id === initialVariant?.id ? " selected" : ""}>${escapeHtml(label)}${availability[variant.id] === true ? "" : " — Sold out"}</option>`;
   }).join("");
+  const unavailableVariants = variants.filter((variant) => availability[variant.id] === false);
+  const notifyForm = unavailableVariants.length ? `<details class="stock-notification" data-stock-notification${availability[initialVariant?.id] === false ? " open" : ""}><summary>Notify me when my size is back</summary><form method="post" action="/reai/stock/subscribe" data-stock-form><label>Size<select name="variantId" required>${unavailableVariants.map((variant) => `<option value="${escapeHtml(variant.id)}"${variant.id === initialVariant?.id ? " selected" : ""}>${escapeHtml(variant.options?.map((option) => option.value).join(" / ") || variant.sku)}</option>`).join("")}</select></label><label>Email address<input type="email" name="email" autocomplete="email" maxlength="254" required></label><label class="stock-consent"><input type="checkbox" name="consent" value="true" required><span>Email me once when this size is back in stock. This doesn’t sign me up for the newsletter.</span></label><input type="hidden" name="returnTo" value="${escapeHtml(productUrl)}"><button type="submit">Notify me</button><p class="stock-status" data-stock-status role="status" aria-live="polite">${context.url?.searchParams.get("notification") === "requested" ? "You’re on the list. We’ll email you once when this size is available." : ""}</p><small>One notification for this item and size. Requests expire after 180 days. <a href="/policies/privacy-policy">Privacy policy</a></small></form></details>` : "";
   const gallery = images.length ? `<section class="product-gallery${images.length > 1 ? " has-thumbs" : ""}"><div class="product-main" data-gallery-main>${responsiveImage(images[0], { alt: images[0].alt || product.title, width: 1280, sizes: "(max-width: 860px) 100vw, 62vw", priority: true })}</div>${images.length > 1 ? `<div class="product-thumbs">${images.map((image, index) => `<button type="button" data-gallery-url="${escapeHtml(imageUrl(image, 1280))}" data-gallery-srcset="${escapeHtml(imageSrcset(image))}" data-gallery-alt="${escapeHtml(image.alt || `${product.title} – view ${index + 1}`)}" aria-label="Show image ${index + 1}" aria-current="${index === 0}">${responsiveImage(image, { alt: "", width: 320, sizes: "96px", loading: "lazy" })}</button>`).join("")}</div>` : ""}</section>` : '<section class="product-gallery product-placeholder">New Movements</section>';
   const family = product.title.replace(/\s*\([^)]*\)\s*$/, "").trim().toLowerCase();
   const colorProducts = (store.products || []).filter((item) => item.handle !== product.handle && item.title.toLowerCase().startsWith(family)).slice(0, 7);
@@ -576,7 +586,7 @@ export function renderProductPage(store, product, availability = {}, context = {
   }).join("");
   const recommendations = (store.products || []).map((item) => { const composed = productView(item, view); return composed ? { ...composed, view } : null; }).filter(Boolean).filter((item) => item.handle !== product.handle).sort((left, right) => Number(right.title.toLowerCase().startsWith(family)) - Number(left.title.toLowerCase().startsWith(family))).slice(0, 4);
   const promises = footwear ? `<section class="product-promises"><div><strong>Four generations of shoemakers</strong><span>since 1916</span></div><div><strong>Designed in Norway</strong><span>Handcrafted in Portugal</span></div><div><strong>Premium Materials</strong><span>Built to last, and to be recycled</span></div></section>` : "";
-  const body = `<section class="product-layout">${gallery}<div class="product-details"><div class="product-heading"><h1>${escapeHtml(product.title)}</h1><p class="product-price" data-product-price>${priceRange(variants, currency)}</p></div>${viewSelector(`/products/${product.handle}`, view)}${view ? `<p class="size-view-note">EU ${VIEWS[view].minSize}–${VIEWS[view].maxSize} · Same unisex fit.</p>` : ""}${colorSwatches ? `<div class="product-color-picker"><span>Color: ${escapeHtml(product.title)}</span><div class="product-color-grid">${colorSwatches}</div></div>` : ""}<div class="product-size-picker"><span>Size</span><div class="product-size-grid">${sizeButtons}</div><select class="variant-fallback" aria-label="Size / variant" data-product-variant>${options}</select></div><a class="size-guide-link" href="/pages/size-guide">Size guide ↗</a><div class="purchase-row"><label>Quantity<input type="number" value="1" min="1" max="20" inputmode="numeric" data-quantity></label><button type="button" data-add-to-cart data-id="${escapeHtml(product.id)}" data-handle="${escapeHtml(product.handle)}" data-title="${escapeHtml(product.title)}" data-url="${escapeHtml(productUrl)}" data-image="${escapeHtml(imageUrl(images[0], 480))}" data-variant="${escapeHtml(initialVariant?.id || "")}" data-price="${escapeHtml(initialVariant?.price ?? "")}"${available ? "" : " disabled"}>${available ? "Add to cart" : "Sold out"}</button></div><div class="product-accordions"><details open><summary>Details</summary>${safeDescription(product.description || product.seoDescription)}</details>${footwear ? '<details><summary>Features</summary><p>Unisex footwear designed for everyday movement, comfort and long use.</p></details><details><summary>Materials &amp; care</summary><p>See the product details above for materials and finishes. For advice on keeping your shoes in good condition, read our <a href="/pages/shoe-care">shoe care guide</a>.</p></details>' : ""}<details><summary>Shipping &amp; Delivery</summary><p>Delivery is currently available in Norway. Shipping options and prices are confirmed in checkout.</p></details><details><summary>Returns &amp; Exchanges</summary><p><a href="/pages/returns">Read our returns and exchanges information.</a></p></details></div><div class="shop-benefits"><strong>Shop with New Movements</strong><ul><li>Free delivery in Norway on orders over NOK 850</li><li>Prices include VAT</li><li>Secure checkout with ReAI</li></ul></div></div></section>${recommendations.length ? `<section class="recommendations"><header><h2>You may also like</h2></header>${productGrid(recommendations, currency, 4)}</section>` : ""}${promises}`;
+  const body = `<section class="product-layout">${gallery}<div class="product-details"><div class="product-heading"><h1>${escapeHtml(product.title)}</h1><p class="product-price" data-product-price>${priceRange(variants, currency)}</p></div>${viewSelector(`/products/${product.handle}`, view)}${view ? `<p class="size-view-note">EU ${VIEWS[view].minSize}–${VIEWS[view].maxSize} · Same unisex fit.</p>` : ""}${colorSwatches ? `<div class="product-color-picker"><span>Color: ${escapeHtml(product.title)}</span><div class="product-color-grid">${colorSwatches}</div></div>` : ""}<div class="product-size-picker"><span>Size</span><div class="product-size-grid">${sizeButtons}</div><select class="variant-fallback" aria-label="Size / variant" data-product-variant>${options}</select></div><a class="size-guide-link" href="/pages/size-guide">Size guide ↗</a><div class="purchase-row"><label>Quantity<input type="number" value="1" min="1" max="20" inputmode="numeric" data-quantity></label><button type="button" data-add-to-cart data-id="${escapeHtml(product.id)}" data-handle="${escapeHtml(product.handle)}" data-title="${escapeHtml(product.title)}" data-url="${escapeHtml(productUrl)}" data-image="${escapeHtml(imageUrl(images[0], 480))}" data-variant="${escapeHtml(initialVariant?.id || "")}" data-price="${escapeHtml(initialVariant?.price ?? "")}"${available ? "" : " disabled"}>${available ? "Add to cart" : "Sold out"}</button></div>${notifyForm}<div class="product-accordions"><details open><summary>Details</summary>${safeDescription(product.description || product.seoDescription)}</details>${footwear ? '<details><summary>Features</summary><p>Unisex footwear designed for everyday movement, comfort and long use.</p></details><details><summary>Materials &amp; care</summary><p>See the product details above for materials and finishes. For advice on keeping your shoes in good condition, read our <a href="/pages/shoe-care">shoe care guide</a>.</p></details>' : ""}<details><summary>Shipping &amp; Delivery</summary><p>Delivery is currently available in Norway. Shipping options and prices are confirmed in checkout.</p></details><details><summary>Returns &amp; Exchanges</summary><p><a href="/pages/returns">Read our returns and exchanges information.</a></p></details></div><div class="shop-benefits"><strong>Shop with New Movements</strong><ul><li>Free delivery in Norway on orders over NOK 850</li><li>Prices include VAT</li><li>Secure checkout with ReAI</li></ul></div></div></section>${recommendations.length ? `<section class="recommendations"><header><h2>You may also like</h2></header>${productGrid(recommendations, currency, 4)}</section>` : ""}${promises}`;
   return documentHtml({ title: productMetaTitle(product, view), description: stripHtml(product.description || product.seoDescription || product.title), path: `/products/${product.handle}`, body, store, view, schema: productSchema(sourceProduct, availability, currency), image: images[0]?.url || "", type: "product" });
 }
 

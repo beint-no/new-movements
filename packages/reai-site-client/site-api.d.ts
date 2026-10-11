@@ -143,6 +143,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/site/v1/commerce/stock-subscriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request one back-in-stock email for a published variant
+         * @description Requires explicit consent for one notification. Only currently unavailable published variants qualify. Does not grant newsletter consent. Repeated waiting requests are idempotent. Requests expire after 180 days. Requires the configured back-in-stock flow.
+         */
+        post: operations["subscribeStock"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/site/v1/commerce/storefront": {
         parameters: {
             query?: never;
@@ -171,7 +191,7 @@ export interface paths {
         put?: never;
         /**
          * Subscribe to the Site owner's newsletter
-         * @description Accepts an email and optional name with explicit newsletter consent. Reuses the tenant's customer consent records without changing existing customer details. Repeated submissions are idempotent. Returns the same receipt for new and existing contacts; sends no email and creates no discount.
+         * @description Accepts an email and optional name with explicit newsletter consent. Reuses the tenant's customer consent records without changing existing customer details. Repeated submissions are idempotent. Returns the same receipt for new and existing contacts; queues the configured welcome flow only after new consent. Does not create a discount.
          */
         post: operations["subscribeNewsletter"];
         delete?: never;
@@ -356,9 +376,9 @@ export interface components {
             /** Format: int32 */
             catalogVersion: number;
             currency: components["schemas"]["CurrencyCode"];
-            /** @description Plain text for cards and previews, derived from the stored description in the selected locale. HTML markup is removed and HTML entities are decoded. */
+            /** @description Plain text for cards and previews, derived from the stored description in the selected locale. HTML markup is removed. Common HTML entities and numeric character references are decoded; other named entities remain literal text. */
             description?: string | null;
-            /** @description Sanitized HTML body fragment for product or collection content. Plain descriptions are escaped and line breaks are preserved. Supports text formatting, links, images and tables; scripts, styles and event handlers are removed. Insert only into an HTML body container, never an attribute or script. */
+            /** @description Sanitized HTML body fragment for product or collection content. Plain descriptions are escaped and line breaks are preserved. Supports paragraphs, headings, lists, emphasis, links and simple tables; scripts, styles and event handlers are removed. Insert only into an HTML body container, never an attribute or script. */
             descriptionHtml?: string | null;
             handle: string;
             /** Format: uuid */
@@ -382,9 +402,9 @@ export interface components {
             title: string;
         };
         SiteDeliveryCollectionRes: {
-            /** @description Plain text for cards and previews, derived from the stored description in the selected locale. HTML markup is removed and HTML entities are decoded. */
+            /** @description Plain text for cards and previews, derived from the stored description in the selected locale. HTML markup is removed. Common HTML entities and numeric character references are decoded; other named entities remain literal text. */
             description?: string | null;
-            /** @description Sanitized HTML body fragment for product or collection content. Plain descriptions are escaped and line breaks are preserved. Supports text formatting, links, images and tables; scripts, styles and event handlers are removed. Insert only into an HTML body container, never an attribute or script. */
+            /** @description Sanitized HTML body fragment for product or collection content. Plain descriptions are escaped and line breaks are preserved. Supports paragraphs, headings, lists, emphasis, links and simple tables; scripts, styles and event handlers are removed. Insert only into an HTML body container, never an attribute or script. */
             descriptionHtml?: string | null;
             handle: string;
             /** Format: uuid */
@@ -426,9 +446,9 @@ export interface components {
             catalogVersion: number;
             category?: components["schemas"]["SiteProductCategoryRecord"] | null;
             currency: components["schemas"]["CurrencyCode"];
-            /** @description Plain text for cards and previews, derived from the stored description in the selected locale. HTML markup is removed and HTML entities are decoded. */
+            /** @description Plain text for cards and previews, derived from the stored description in the selected locale. HTML markup is removed. Common HTML entities and numeric character references are decoded; other named entities remain literal text. */
             description?: string | null;
-            /** @description Sanitized HTML body fragment for product or collection content. Plain descriptions are escaped and line breaks are preserved. Supports text formatting, links, images and tables; scripts, styles and event handlers are removed. Insert only into an HTML body container, never an attribute or script. */
+            /** @description Sanitized HTML body fragment for product or collection content. Plain descriptions are escaped and line breaks are preserved. Supports paragraphs, headings, lists, emphasis, links and simple tables; scripts, styles and event handlers are removed. Insert only into an HTML body container, never an attribute or script. */
             descriptionHtml?: string | null;
             handle: string;
             /** Format: uuid */
@@ -449,9 +469,9 @@ export interface components {
             attributes: components["schemas"]["ProductAttributeDto"][];
             brand?: string | null;
             category?: components["schemas"]["SiteProductCategoryRecord"] | null;
-            /** @description Plain text for cards and previews, derived from the stored description in the selected locale. HTML markup is removed and HTML entities are decoded. */
+            /** @description Plain text for cards and previews, derived from the stored description in the selected locale. HTML markup is removed. Common HTML entities and numeric character references are decoded; other named entities remain literal text. */
             description?: string | null;
-            /** @description Sanitized HTML body fragment for product or collection content. Plain descriptions are escaped and line breaks are preserved. Supports text formatting, links, images and tables; scripts, styles and event handlers are removed. Insert only into an HTML body container, never an attribute or script. */
+            /** @description Sanitized HTML body fragment for product or collection content. Plain descriptions are escaped and line breaks are preserved. Supports paragraphs, headings, lists, emphasis, links and simple tables; scripts, styles and event handlers are removed. Insert only into an HTML body container, never an attribute or script. */
             descriptionHtml?: string | null;
             handle: string;
             /** Format: uuid */
@@ -490,6 +510,7 @@ export interface components {
             consent: boolean;
             /** Format: email */
             email: string;
+            locale?: string | null;
             name?: string | null;
         };
         SiteNewsletterSubscriptionRes: {
@@ -499,10 +520,22 @@ export interface components {
             id: string;
             name?: string | null;
         };
+        SiteStockSubscriptionReq: {
+            consent: boolean;
+            /** Format: email */
+            email: string;
+            locale?: string | null;
+            name?: string | null;
+            /** Format: uuid */
+            variantId: string;
+        };
+        SiteStockSubscriptionRes: {
+            accepted: boolean;
+        };
         SiteStorefrontCollectionRes: {
-            /** @description Plain text for cards and previews, derived from the stored description in the selected locale. HTML markup is removed and HTML entities are decoded. */
+            /** @description Plain text for cards and previews, derived from the stored description in the selected locale. HTML markup is removed. Common HTML entities and numeric character references are decoded; other named entities remain literal text. */
             description?: string | null;
-            /** @description Sanitized HTML body fragment for product or collection content. Plain descriptions are escaped and line breaks are preserved. Supports text formatting, links, images and tables; scripts, styles and event handlers are removed. Insert only into an HTML body container, never an attribute or script. */
+            /** @description Sanitized HTML body fragment for product or collection content. Plain descriptions are escaped and line breaks are preserved. Supports paragraphs, headings, lists, emphasis, links and simple tables; scripts, styles and event handlers are removed. Insert only into an HTML body container, never an attribute or script. */
             descriptionHtml?: string | null;
             handle: string;
             /** Format: uuid */
@@ -1211,6 +1244,82 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    subscribeStock: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SiteStockSubscriptionReq"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteStockSubscriptionRes"];
+                };
             };
             /** @description Bad request */
             400: {

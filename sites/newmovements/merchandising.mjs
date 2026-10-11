@@ -20,7 +20,16 @@ export const selectedView = (context, fallback = "") => {
   return value === "all" ? "" : Object.hasOwn(VIEWS, value || "") ? value : fallback;
 };
 
+export const sizeValue = (variant) => (variant.options || []).find((option) => option.name.toLowerCase() === "size")?.value || "";
+export const sortProductSizes = (product) => ({ ...product, variants: [...(product.variants || [])].sort((left, right) => {
+  const a = sizeValue(left), b = sizeValue(right);
+  const numeric = (value) => Number(String(value).replace(",", ".").replace("½", ".5").replace("⅓", ".333").replace("⅔", ".667"));
+  const an = numeric(a), bn = numeric(b);
+  return a && b && Number.isFinite(an) && Number.isFinite(bn) ? an - bn : String(a).localeCompare(String(b), "en", { numeric: true });
+}) });
+
 export function productView(product, view) {
+  product = sortProductSizes(product);
   const configuration = VIEWS[view];
   if (!configuration) return product;
   return composeProductView(product, {
