@@ -465,7 +465,7 @@ export function createReaiStorefrontWorker({
       if (!VARIANT_ID.test(variantId)) return jsonResponse({ error: messages.invalidVariantId }, 400, env);
       upstreamResult = client.availability(variantId, deliveryContext);
       cacheControl = "no-store";
-    } else if (request.method === "POST" && route === "/reai/newsletter/subscribe") {
+    } else if (request.method === "POST" && ["/reai/newsletter/subscribe", "/reai/stock/subscribe"].includes(route)) {
       const origin = request.headers.get("Origin");
       if (origin && origin !== url.origin) return jsonResponse({ error: messages.invalidNewsletter }, 403, env);
       if (env.NEWSLETTER_RATE_LIMIT) {
@@ -476,14 +476,27 @@ export function createReaiStorefrontWorker({
       try {
         const text = await request.text();
         if (text.length > 1024) return jsonResponse({ error: messages.invalidNewsletter }, 400, env);
-        body = JSON.parse(text);
+        if (request.headers.get("Content-Type")?.includes("application/x-www-form-urlencoded")) {
+          const form = new URLSearchParams(text);
+          body = Object.fromEntries(form);
+          body.consent = body.consent === "true";
+        } else body = JSON.parse(text);
       } catch { return jsonResponse({ error: messages.invalidJson }, 400, env); }
       const email = typeof body?.email === "string" ? body.email.trim() : "";
       const name = typeof body?.name === "string" ? body.name.trim() : body?.name;
       if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || body.consent !== true || (name != null && (typeof name !== "string" || name.length > 75))) {
         return jsonResponse({ error: messages.invalidNewsletter }, 400, env);
       }
-      upstreamResult = client.subscribeNewsletter({ email, consent: true, ...(name ? { name } : {}) });
+      if (route === "/reai/stock/subscribe") {
+        if (!VARIANT_ID.test(body.variantId)) return jsonResponse({ error: messages.invalidVariantId }, 400, env);
+        upstreamResult = client.subscribeStock({ variantId: body.variantId, email, consent: true, locale: canonicalLocale, ...(name ? { name } : {}) });
+        if (request.headers.get("Content-Type")?.includes("application/x-www-form-urlencoded")) {
+          const upstream = (await upstreamResult).response;
+          if (!upstream.ok) return htmlResponse(storefront.renderMessagePage(null, { title: "Stock notification", heading: "Please try again", text: "We could not save your request. Go back, refresh the product page and try again." }), env, upstream.status);
+          const returnTo = typeof body.returnTo === "string" && /^\/products\/[a-z0-9-]+(?:\?view=(?:men|women))?$/.test(body.returnTo) ? body.returnTo : "/collections/all";
+          return Response.redirect(new URL(`${returnTo}${returnTo.includes("?") ? "&" : "?"}notification=requested`,url.origin).href,303);
+        }
+      } else upstreamResult = client.subscribeNewsletter({ email, consent: true, ...(name ? { name } : {}) });
       cacheControl = "no-store";
     } else if (request.method === "POST" && route === "/reai/checkout/start") {
       const checkout = await checkoutRequest(request, url, env);
@@ -549,7 +562,10 @@ export function createReaiStorefrontWorker({
     }
 
     if (route.type === "home") {
-      const response = htmlResponse(storefront.renderHomePage(store, pageContext), env);
+      const variants = storefront.homeAvailabilityVariants?.(store, pageContext) || [];
+      const availability = variants.length ? await variantAvailability(env, variants) : {};
+      const response = htmlResponse(storefront.renderHomePage(store, { ...pageContext, availability }), env);
+      if (variants.length) response.headers.set("Cache-Control", "no-store");
       response.headers.set("X-ReAI-Storefront-Cache", cacheStatus);
       return response;
     }

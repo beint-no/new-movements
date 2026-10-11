@@ -246,6 +246,12 @@ const syncVariant = () => {
   add.dataset.price = option?.dataset.price || '';
   add.disabled = option?.dataset.available !== 'true' || !UUID.test(add.dataset.variant);
   add.textContent = add.disabled ? 'Sold out' : 'Add to cart';
+  const notify = document.querySelector('[data-stock-notification]');
+  const notifySize = notify?.querySelector('select[name="variantId"]');
+  if (option?.dataset.available === 'false' && notifySize?.querySelector(`option[value="${add.dataset.variant}"]`)) {
+    notify.open = true;
+    notifySize.value = add.dataset.variant;
+  }
   if (productPrice && add.dataset.price) productPrice.textContent = money(add.dataset.price);
   document.querySelectorAll('[data-variant-choice]').forEach((button) => {
     const selected = button.dataset.variantChoice === add.dataset.variant;
@@ -670,4 +676,23 @@ document.querySelectorAll('[data-newsletter-form]').forEach((newsletterForm) => 
     button.disabled = false;
     button.textContent = 'Sign up';
   }
+}));
+
+// Stock requests have their own explicit, item-scoped consent.
+document.querySelectorAll('[data-stock-form]').forEach((form) => form.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  if (!form.reportValidity()) return;
+  const button = form.querySelector('button[type="submit"]');
+  const status = form.querySelector('[data-stock-status]');
+  const data = new FormData(form);
+  button.disabled = true;
+  status.textContent = 'Saving your request…';
+  try {
+    const response = await fetch('/reai/stock/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ variantId: data.get('variantId'), email: data.get('email'), consent: data.get('consent') === 'true' }) });
+    if (!response.ok) throw new Error(response.status === 429 ? 'Please wait a minute before trying again.' : 'We could not save your request. Refresh the page and try again.');
+    status.textContent = 'You’re on the list. We’ll email you once when this size is available.';
+    form.elements.email.value = '';
+    form.elements.consent.checked = false;
+  } catch (error) { status.textContent = error.message; }
+  finally { button.disabled = false; }
 }));

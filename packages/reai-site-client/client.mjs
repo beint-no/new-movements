@@ -22,6 +22,8 @@ const SITE_PATH = "/site/v1/site";
 /** @type {keyof SiteApiPaths} */
 const NEWSLETTER_PATH = "/site/v1/newsletter/subscriptions";
 /** @type {keyof SiteApiPaths} */
+const STOCK_SUBSCRIPTION_PATH = "/site/v1/commerce/stock-subscriptions";
+/** @type {keyof SiteApiPaths} */
 const STOREFRONT_PATH = "/site/v1/commerce/storefront";
 /** @type {keyof SiteApiPaths} */
 const CATALOG_PATH = "/site/v1/commerce/catalog";
@@ -105,6 +107,12 @@ export class ReaiSiteClient {
     headers.set("Accept", "application/json");
     headers.set("Authorization", `Bearer ${this.#token}`);
     return this.#fetch(url.href, { ...init, headers });
+  }
+
+  /** @param {import("./site-api.d.ts").components["schemas"]["SiteStockSubscriptionReq"]} body
+   * @returns {Promise<SiteApiResponse<import("./site-api.d.ts").components["schemas"]["SiteStockSubscriptionRes"]>>} */
+  async subscribeStock(body) {
+    return new SiteApiResponse(await this.#request(STOCK_SUBSCRIPTION_PATH, undefined, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }));
   }
 
   /**

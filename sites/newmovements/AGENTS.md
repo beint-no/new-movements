@@ -129,7 +129,7 @@ a controlled payment end to end. The footer supports newsletter signup with expl
 method rendering have been checked; no payment was submitted. The production
 hostname remains on its original storefront during review.
 
-The cart drawer's Check out button shares the full-cart checkout action and validation. Footer newsletter signup posts email and explicit consent through the shared Worker/client endpoint; the API also accepts an optional name. Consent uses ReAI customer records; no welcome email or discount is generated. NEWSLETTER_RATE_LIMIT limits repeated public submissions. Payment/social marks are inline SVGs from the reference store optimized with SVGO; show supported checkout brands and verified New Movements social destinations. Contact details and the store photo match the original contact page.
+The cart drawer's Check out button shares the full-cart checkout action and validation. Footer newsletter signup posts email and explicit consent through the shared Worker/client endpoint; the API also accepts an optional name. Consent uses ReAI customer records; an enabled ReAI welcome flow sends a branded email. No discount is generated. NEWSLETTER_RATE_LIMIT limits repeated public submissions. Payment/social marks are inline SVGs from the reference store optimized with SVGO; show supported checkout brands and verified New Movements social destinations. Contact details and the store photo match the original contact page.
 
 Collection filters are server-rendered GET forms over ReAI catalog data: availability,
 price, exact Size options, merchant product type, color, footwear material and shoe
@@ -140,3 +140,9 @@ legacy presentation fallbacks. Product type preserves a source merchant label fo
 sizes and the same opaque variant IDs. Do not infer attribute choices from titles.
 
 Collection controls progressively enhance the GET form: checkboxes update immediately; price input is debounced; sort, individual removal and Clear all use the same server-rendered collection. Keep URL/history, focus and the mobile drawer intact, abort superseded requests, and retain native navigation/no-JS submission as fallback. No client-side filtering or second catalog. Checkout inherits this English storefront's configured Site delivery locale; the session carries it through hosted checkout and payment widgets.
+
+## Built-in email flows
+
+Sold-out sizes offer an explicit one-time notification form posting exact opaque variant ID, email and consent through `/reai/stock/subscribe`. It shares the server-side signup rate limit and never implies newsletter consent. ReAI owns subscriptions, templates and sending; the Worker only renders the form. Size sorting is numeric, including fractional sizes; notification links select the exact variant.
+
+The seasonal homepage uses curated product handles with live batch availability, alternating women's and men's views. Only stocked variants in the relevant size range qualify. Approved hero photos accompany “Crafted through generations / Oslo 1916”. Keep curated handles as presentation data; inventory, variant identities, imagery and product content stay in ReAI.

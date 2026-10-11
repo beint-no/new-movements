@@ -57,7 +57,8 @@ assert.match(imageUrl(image, 600), /960\.avif$/);
 assert.match(priceRange(product.variants, "NOK"), /2\D595/);
 
 const home = renderHomePage(store);
-assert.match(home, /New Arrivals: Women’s &amp; Men’s Shoes/);
+assert.match(home, /Crafted through generations/);
+assert.match(home, /Oslo 1916/);
 assert.match(home, /<title>Women’s &amp; Men’s Shoes \| New Movements<\/title>/);
 assert.match(home, /srcset=/);
 assert.match(home, /width="1600" height="2000"/);
