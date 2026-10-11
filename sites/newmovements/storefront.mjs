@@ -8,8 +8,8 @@ import { filterCollection, parseCollectionFilters } from "../../packages/reai-si
 
 export const SITE_ORIGIN = "https://newmovements.com";
 export const HANDLE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-export const STORE_SCRIPT = "/assets/store.js?v=23";
-export const STORE_STYLE = "/assets/store.css?v=55";
+export const STORE_SCRIPT = "/assets/store.js?v=24";
+export const STORE_STYLE = "/assets/store.css?v=56";
 const BRAND_LOGO = "/brand-assets/logo.png";
 const HOME_HERO_IMAGES = [
   "/brand-assets/hero-women.jpg",
