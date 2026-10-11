@@ -155,4 +155,4 @@ limits because shared stock can change; every checkout attempt revalidates. Igno
 responses for a cart changed while checkout was pending. Never infer stock from
 the cached catalog or silently discard a cart line.
 
-Increment STORE_SCRIPT and STORE_STYLE in storefront.mjs when their assets change so returning browsers load the release.
+Asset URLs are derived from SHA-256 content hashes by tools/build-assets.mjs. Wrangler builds them automatically for development, dry runs and deployment; npm checks build them before importing the renderer. The generated manifest and public assets live in ignored dist/. Static fallback pages receive the same stylesheet URL. Never edit generated output or add manual version counters. One-time stock notification consent starts checked; submitting Notify me requests that notification only and does not subscribe to the newsletter.
