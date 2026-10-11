@@ -278,7 +278,7 @@ const setCardSlide = (card, requestedIndex) => {
     slide.setAttribute('aria-hidden', String(!active));
   });
 };
-document.querySelectorAll('[data-card-carousel]').forEach((carousel) => {
+const initializeCardCarousels = (root = document) => root.querySelectorAll('[data-card-carousel]').forEach((carousel) => {
   const card = carousel.closest('.product-card');
   const slides = card?.querySelectorAll('[data-card-slide]') || [];
   if (!card || slides.length < 2) return;
@@ -288,6 +288,7 @@ document.querySelectorAll('[data-card-carousel]').forEach((carousel) => {
   });
   card.addEventListener('pointerleave', () => setCardSlide(card, 0));
 });
+initializeCardCarousels();
 document.addEventListener('click', (event) => {
   const control = event.target.closest('[data-card-previous],[data-card-next]');
   if (!control) return;
@@ -516,13 +517,9 @@ predictiveForm?.addEventListener('submit', (event) => {
 });
 
 document.querySelector('[data-order-complete]') && localStorage.removeItem(CART_KEY);
-const sortMenu = document.querySelector('[data-sort-menu]');
-const filters = document.querySelector('[data-filters]');
-const facetDetails = filters ? [...filters.querySelectorAll('details')] : [];
-facetDetails.forEach((detail) => detail.addEventListener('toggle', () => {
-  if (!detail.open) return;
-  facetDetails.forEach((other) => { if (other !== detail) other.open = false; });
-}));
+let sortMenu = document.querySelector('[data-sort-menu]');
+let filters = document.querySelector('[data-filters]');
+let facetDetails = [];
 document.addEventListener('pointerdown', (event) => {
   if (filters && !event.target.closest('[data-filters]')) facetDetails.forEach((detail) => { detail.open = false; });
   if (sortMenu && !event.target.closest('[data-sort-menu]')) sortMenu.open = false;
@@ -535,7 +532,7 @@ document.addEventListener('keydown', (event) => {
     sortMenu.querySelector('summary')?.focus();
   }
 });
-const mobileFilterButton = document.querySelector('[data-mobile-filter]');
+let mobileFilterButton = document.querySelector('[data-mobile-filter]');
 const mobileFilterViewport = matchMedia('(max-width: 900px)');
 const setFilters = (open) => {
   if (!filters) return;
@@ -544,8 +541,97 @@ const setFilters = (open) => {
   filters.setAttribute('aria-hidden', String(filters.inert));
   mobileFilterButton?.setAttribute('aria-expanded', String(open));
 };
-mobileFilterButton?.addEventListener('click', () => setFilters(!filters?.classList.contains('is-open')));
-filters?.querySelector('[data-close-filters]')?.addEventListener('click', () => { setFilters(false); mobileFilterButton?.focus(); });
+const bindCollectionControls = () => {
+  filters = document.querySelector('[data-filters]');
+  sortMenu = document.querySelector('[data-sort-menu]');
+  mobileFilterButton = document.querySelector('[data-mobile-filter]');
+  facetDetails = filters ? [...filters.querySelectorAll('details')] : [];
+  facetDetails.forEach((detail) => detail.addEventListener('toggle', () => {
+    if (detail.open) facetDetails.forEach((other) => { if (other !== detail) other.open = false; });
+  }));
+  mobileFilterButton?.addEventListener('click', () => setFilters(!filters?.classList.contains('is-open')));
+  filters?.querySelector('[data-close-filters]')?.addEventListener('click', () => { setFilters(false); mobileFilterButton?.focus(); });
+  setFilters(false);
+};
+bindCollectionControls();
+let collectionRequest;
+let priceFilterTimer;
+const updateCollection = async (url, pushHistory = true) => {
+  clearTimeout(priceFilterTimer);
+  collectionRequest?.abort();
+  const controller = new AbortController();
+  collectionRequest = controller;
+  const section = document.querySelector('.collection-layout');
+  if (!section) { location.assign(url); return; }
+  section.setAttribute('aria-busy', 'true');
+  const status = document.querySelector('[data-filter-status]');
+  if (status) status.textContent = 'Updating products…';
+  try {
+    const response = await fetch(url, { signal: controller.signal, headers: { Accept: 'text/html' } });
+    if (!response.ok) throw new Error('Collection unavailable');
+    const page = new DOMParser().parseFromString(await response.text(), 'text/html');
+    const next = page.querySelector('.collection-layout');
+    if (!next) throw new Error('Collection unavailable');
+    if (controller.signal.aborted) return;
+    const drawerOpen = filters?.classList.contains('is-open');
+    const drawerScroll = filters?.scrollTop || 0;
+    const openFacet = facetDetails.find((detail) => detail.open)?.querySelector('summary')?.textContent;
+    const focused = document.activeElement;
+    const focusName = focused?.getAttribute('name');
+    const focusValue = focused?.getAttribute('value');
+    section.replaceWith(next);
+    bindCollectionControls();
+    facetDetails.forEach((detail) => { detail.open = detail.querySelector('summary')?.textContent === openFacet; });
+    setFilters(Boolean(drawerOpen));
+    if (filters) filters.scrollTop = drawerScroll;
+    if (focusName) {
+      const match = [...next.querySelectorAll('[name]')].find((node) => node.getAttribute('name') === focusName && (!focusValue || node.getAttribute('value') === focusValue));
+      match?.focus({ preventScroll: true });
+    }
+    initializeCardCarousels(next);
+    if (pushHistory) history.pushState(null, '', url);
+    if (status) status.textContent = `${next.querySelector('[data-filter-count]')?.textContent || 0} matching products.`;
+  } catch (error) {
+    if (error.name !== 'AbortError') location.assign(url);
+  } finally {
+    if (collectionRequest === controller) {
+      section.removeAttribute('aria-busy');
+      if (controller.signal.aborted && status) status.textContent = '';
+    }
+  }
+};
+const submitCollectionFilters = (form, submitter) => {
+  if (!form.reportValidity()) return;
+  const url = new URL(form.action);
+  const parameters = new URLSearchParams(new FormData(form));
+  if (submitter?.name) parameters.set(submitter.name, submitter.value);
+  [...parameters.keys()].forEach((key) => { if (!parameters.get(key)?.trim()) parameters.delete(key); });
+  url.search = parameters.toString();
+  updateCollection(url);
+};
+document.addEventListener('change', (event) => {
+  const form = event.target.closest('[data-collection-filter-form]');
+  if (form && event.target.matches('input')) { clearTimeout(priceFilterTimer); submitCollectionFilters(form); }
+});
+document.addEventListener('input', (event) => {
+  const form = event.target.closest('[data-collection-filter-form]');
+  if (form && event.target.matches('input[type="number"]')) {
+    clearTimeout(priceFilterTimer);
+    collectionRequest?.abort();
+    priceFilterTimer = setTimeout(() => submitCollectionFilters(form), 600);
+  }
+});
+document.addEventListener('submit', (event) => {
+  if (!event.target.matches('[data-collection-filter-form]')) return;
+  event.preventDefault(); clearTimeout(priceFilterTimer);
+  submitCollectionFilters(event.target, event.submitter);
+});
+document.addEventListener('click', (event) => {
+  const link = event.target.closest('[data-clear-filters],[data-remove-filter]');
+  if (!link || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+  event.preventDefault(); clearTimeout(priceFilterTimer); updateCollection(link.href);
+});
+window.addEventListener('popstate', () => { if (document.querySelector('.collection-layout')) updateCollection(location.href, false); });
 mobileFilterViewport.addEventListener('change', () => setFilters(false));
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape' && mobileFilterViewport.matches && filters?.classList.contains('is-open')) {

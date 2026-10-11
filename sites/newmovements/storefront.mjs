@@ -8,8 +8,8 @@ import { filterCollection, parseCollectionFilters } from "../../packages/reai-si
 
 export const SITE_ORIGIN = "https://newmovements.com";
 export const HANDLE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-export const STORE_SCRIPT = "/assets/store.js?v=21";
-export const STORE_STYLE = "/assets/store.css?v=52";
+export const STORE_SCRIPT = "/assets/store.js?v=22";
+export const STORE_STYLE = "/assets/store.css?v=53";
 const BRAND_LOGO = "/brand-assets/logo.png";
 const HOME_HERO_IMAGES = [
   "/brand-assets/hero-women.jpg",
@@ -509,11 +509,27 @@ export function renderCollectionPage(store, handle, context = {}) {
   ];
   const sort = sortOptions.some(([value]) => value === request.sort) ? request.sort : "manual";
   const sortMenu = `<details class="catalog-sort" data-sort-menu><summary>Sort</summary><div class="catalog-sort-options" role="listbox" aria-label="Sort products">${sortOptions.map(([value, label]) => `<button type="submit" form="collection-filter-form" name="sort_by" value="${value}" role="option" aria-selected="${value === sort}" data-collection-sort><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4.75 10.75 2.94 3.84L15.25 5.75"></path></svg><span>${label}</span></button>`).join("")}</div></details>`;
-  const clearUrl = viewUrl(`/collections/${handle}`, Object.hasOwn(VIEWS, handle) ? "" : view);
-  const hasFilters = [...parameters.keys()].some((key) => key.startsWith("filter."));
-  const notices = warnings.map((warning) => `<p class="collection-filter-notice" role="status">${escapeHtml(warning)} <a href="${escapeHtml(clearUrl)}">Clear filters</a></p>`).join("");
-  const active = hasFilters ? `<p class="active-filter-summary">${products.length} matching ${products.length === 1 ? "product" : "products"} <a href="${escapeHtml(clearUrl)}">Clear filters</a></p>` : "";
-  const body = `<header class="collection-header"><h1>${escapeHtml(title)}</h1>${viewSelector(`/collections/${handle}`, view, { collection: true })}${view ? `<p class="size-view-note">EU ${VIEWS[view].minSize}–${VIEWS[view].maxSize} · Same unisex fit.</p>` : ""}</header><section class="collection-layout"><div class="catalog-toolbar"><button type="button" data-mobile-filter aria-expanded="false" aria-controls="collection-filters">Filter</button><aside id="collection-filters" class="collection-filters" data-filters><form id="collection-filter-form" method="get" action="/collections/${handle}" data-collection-filter-form>${view && !Object.hasOwn(VIEWS, handle) ? `<input type="hidden" name="view" value="${view}">` : ""}<input type="hidden" name="sort_by" value="${sort}"><div class="filter-heading"><strong>Filters</strong><span><a href="${escapeHtml(clearUrl)}">Clear all</a><button type="button" data-close-filters>Close</button></span></div>${facets.filter((facet) => facet.key === "availability").map(structuredFilterGroup).join("")}${priceFacet}${facets.filter((facet) => facet.key !== "availability").map(structuredFilterGroup).join("")}<button class="apply-collection-filters" type="submit">Apply filters</button></form></aside><span class="catalog-count"><b data-filter-count>${products.length}</b> items</span>${sortMenu}</div>${notices}${active}<div data-collection-grid>${products.length ? productGrid(products, store.currency || "NOK") : '<p class="empty-state" data-filter-empty>No products match those filters. Try another size or clear the filters.</p>'}</div></section>`;
+  const linkForParameters = (query) => `/collections/${handle}${query.size ? `?${query}` : ""}`;
+  const clearParameters = new URLSearchParams(parameters);
+  [...clearParameters.keys()].filter((key) => key.startsWith("filter.")).forEach((key) => clearParameters.delete(key));
+  const clearUrl = linkForParameters(clearParameters);
+  const chips = facets.flatMap((facet) => facet.values.filter((value) => value.selected).map((value) => {
+    const query = new URLSearchParams(parameters);
+    const removed = value.inputValue.split(",");
+    const remaining = query.getAll(facet.parameter).flatMap((item) => item.split(",")).filter((item) => !removed.includes(item));
+    query.delete(facet.parameter);
+    remaining.forEach((item) => query.append(facet.parameter, item));
+    return `<a class="active-filter-chip" data-remove-filter href="${escapeHtml(linkForParameters(query))}" aria-label="Remove ${escapeHtml(facet.label)}: ${escapeHtml(value.label)}">${escapeHtml(value.label)} <span aria-hidden="true">×</span></a>`;
+  }));
+  if (request.minimum !== undefined || request.maximum !== undefined) {
+    const query = new URLSearchParams(parameters);
+    query.delete("filter.v.price.gte"); query.delete("filter.v.price.lte");
+    chips.push(`<a class="active-filter-chip" data-remove-filter href="${escapeHtml(linkForParameters(query))}" aria-label="Remove price filter">${escapeHtml(request.minimum ?? 0)}–${escapeHtml(request.maximum ?? maxPrice)} NOK <span aria-hidden="true">×</span></a>`);
+  }
+  const hasFilters = chips.length > 0;
+  const notices = warnings.map((warning) => `<p class="collection-filter-notice" role="status">${escapeHtml(warning)} <a data-clear-filters href="${escapeHtml(clearUrl)}">Clear filters</a></p>`).join("");
+  const active = hasFilters ? `<div class="active-filter-summary">${chips.join("")}<a data-clear-filters href="${escapeHtml(clearUrl)}">Clear all</a></div>` : "";
+  const body = `<header class="collection-header"><h1>${escapeHtml(title)}</h1>${viewSelector(`/collections/${handle}`, view, { collection: true })}${view ? `<p class="size-view-note">EU ${VIEWS[view].minSize}–${VIEWS[view].maxSize} · Same unisex fit.</p>` : ""}</header><p class="sr-only" data-filter-status role="status" aria-live="polite"></p><section class="collection-layout"><div class="catalog-toolbar"><button type="button" data-mobile-filter aria-expanded="false" aria-controls="collection-filters">Filter</button><aside id="collection-filters" class="collection-filters" data-filters><form id="collection-filter-form" method="get" action="/collections/${handle}" data-collection-filter-form>${view && !Object.hasOwn(VIEWS, handle) ? `<input type="hidden" name="view" value="${view}">` : ""}<input type="hidden" name="sort_by" value="${sort}"><div class="filter-heading"><strong>Filters</strong><span><a data-clear-filters href="${escapeHtml(clearUrl)}">Clear all</a><button type="button" data-close-filters>Close</button></span></div>${facets.filter((facet) => facet.key === "availability").map(structuredFilterGroup).join("")}${priceFacet}${facets.filter((facet) => facet.key !== "availability").map(structuredFilterGroup).join("")}<noscript><button class="apply-collection-filters" type="submit">Apply filters</button></noscript></form></aside><span class="catalog-count"><b data-filter-count>${products.length}</b> items</span>${sortMenu}</div>${notices}${active}<div data-collection-grid>${products.length ? productGrid(products, store.currency || "NOK") : '<p class="empty-state" data-filter-empty>No products match those filters. Try another size or clear the filters.</p>'}</div></section>`;
   return documentHtml({ title, description, path: `/collections/${handle}`, body, store, view, image: products[0]?.images?.[0]?.url || "" });
 }
 
