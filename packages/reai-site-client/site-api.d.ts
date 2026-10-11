@@ -221,12 +221,15 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** @description A cart line exceeding the currently purchasable quantity. maximumQuantity keeps the other requested lines unchanged and accounts for shared bundle components. These per-line limits are not independent; recheck the adjusted cart on every checkout attempt. */
+        /** @description A requested cart line exceeding the currently purchasable quantity. title and options identify the item in the resolved delivery locale. maximumQuantity is zero for an unavailable line, or the permitted cart quantity when only part of the request can be fulfilled. It keeps the other requested lines unchanged and accounts for shared bundle components. These per-line limits are not independent; recheck the adjusted cart on every checkout attempt. */
         CheckoutStockIssue: {
             /** Format: int32 */
             maximumQuantity?: number;
+            options?: components["schemas"]["SiteDeliveryOptionRes"][];
             /** Format: int32 */
             requestedQuantity?: number;
+            /** @example Allrounder Y (White Leather) */
+            title?: string;
             /** Format: uuid */
             variantId?: string;
         };

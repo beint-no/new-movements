@@ -231,7 +231,7 @@ export class ReaiSiteClient {
     const query = context;
     /** @type {SiteApiOperations["createCheckoutSession"]["parameters"]["header"]} */
     const operationHeaders = { "Idempotency-Key": idempotencyKey };
-    const headers = new Headers({ ...operationHeaders, "Content-Type": "application/json" });
+    const headers = new Headers({ ...operationHeaders, "Content-Type": "application/json", "Accept-Language": context.locale });
     return new SiteApiResponse(await this.#request(CHECKOUT_PATH, query, {
       method: "POST",
       headers,
