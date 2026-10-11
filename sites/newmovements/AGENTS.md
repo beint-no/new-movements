@@ -154,3 +154,5 @@ reduction for limited stock. Keep the rest of the bag. Cart edits clear the old
 limits because shared stock can change; every checkout attempt revalidates. Ignore
 responses for a cart changed while checkout was pending. Never infer stock from
 the cached catalog or silently discard a cart line.
+
+Increment STORE_SCRIPT and STORE_STYLE in storefront.mjs when their assets change so returning browsers load the release.
