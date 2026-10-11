@@ -18,14 +18,18 @@
     "deploy": "npm run check && wrangler deploy --cwd sites/newmovements",
     "secret": "wrangler secret put REAI_SITE_TOKEN --cwd sites/newmovements",
     "generate:site-api": "node tools/generate-site-api.mjs",
-    "test": "node --test packages/reai-cloudflare-storefront/*.test.mjs packages/reai-site-client/*.test.mjs sites/newmovements/tools/routes.test.mjs",
+    "test": "node --test packages/reai-cloudflare-storefront/*.test.mjs packages/reai-site-client/*.test.mjs sites/newmovements/tools/routes.test.mjs tools/*.test.mjs",
     "check:client-boundary": "node tools/check-site-api-boundary.mjs",
     "check:contract": "node tools/check-openapi.mjs",
     "check:dependencies": "npm audit --audit-level=high",
     "check:storefront": "node sites/newmovements/tools/check-storefront.mjs",
     "check:worker": "wrangler deploy --dry-run --cwd sites/newmovements",
     "typecheck": "tsc --project tsconfig.json",
-    "check": "npm run typecheck && npm run check:client-boundary && npm test && npm run check:storefront && npm run check:worker && npm run check:dependencies"
+    "check": "npm run typecheck && npm run check:client-boundary && npm test && npm run check:storefront && npm run check:worker && npm run check:dependencies",
+    "build:assets": "node tools/build-assets.mjs",
+    "pretypecheck": "npm run build:assets",
+    "pretest": "npm run build:assets",
+    "precheck:storefront": "npm run build:assets"
   },
   "browserslist": [
     "baseline 2025 with downstream"
