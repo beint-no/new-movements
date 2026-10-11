@@ -52,6 +52,7 @@ test("builds every Site API operation from the generated contract", async () => 
   assert.equal(requests[2].headers.get("If-None-Match"), 'W/"catalog"');
   assert.deepEqual(new URL(requests[6].url).searchParams.getAll("variantId"), ["variant-1", "variant-2"]);
   assert.equal(requests[8].headers.get("Idempotency-Key"), "checkout-key");
+  assert.equal(requests[8].headers.get("Accept-Language"), "nb-NO");
   assert.deepEqual(await requests[8].json(), {
     lines: [{ variantId: "018f3c2e-8b1a-4d3e-9c4f-5a6b7c8d9e0f", quantity: 2 }],
     returnUrl: "https://shop.example/complete/",

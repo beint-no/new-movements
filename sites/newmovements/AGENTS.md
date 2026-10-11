@@ -146,3 +146,11 @@ Collection controls progressively enhance the GET form: checkboxes update immedi
 Sold-out sizes offer an explicit one-time notification form posting exact opaque variant ID, email and consent through `/reai/stock/subscribe`. It shares the server-side signup rate limit and never implies newsletter consent. ReAI owns subscriptions, templates and sending; the Worker only renders the form. Size sorting is numeric, including fractional sizes; notification links select the exact variant.
 
 The seasonal homepage uses curated product handles with live batch availability, alternating women's and men's views. Only stocked variants in the relevant size range qualify. Approved hero photos accompany “Crafted through generations / Oslo 1916”. Keep curated handles as presentation data; inventory, variant identities, imagery and product content stay in ReAI.
+
+Checkout stock conflicts use the API's `INSUFFICIENT_STOCK` code and per-variant
+`stockIssues`. Highlight only affected cart lines, show their localized title and
+selected options, and offer removal/another size for sold-out items or a quantity
+reduction for limited stock. Keep the rest of the bag. Cart edits clear the old
+limits because shared stock can change; every checkout attempt revalidates. Ignore
+responses for a cart changed while checkout was pending. Never infer stock from
+the cached catalog or silently discard a cart line.

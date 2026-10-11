@@ -465,3 +465,25 @@ test("a stalled catalog refresh does not block another request", { timeout: 2000
     await first;
   }
 });
+
+test("preserves actionable checkout stock conflicts without caching them", async (context) => {
+  const originalFetch = globalThis.fetch;
+  context.after(() => { globalThis.fetch = originalFetch; });
+  const variantId = "018f3c2e-8b1a-4d3e-9c4f-5a6b7c8d9e0f";
+  const problem = {
+    status: 409, code: "INSUFFICIENT_STOCK", detail: "One or more items are out of stock.",
+    stockIssues: [{ variantId, title: "Shoe", options: [{ name: "Size", value: "35" }], requestedQuantity: 1, maximumQuantity: 0 }],
+  };
+  globalThis.fetch = async (input, init) => {
+    assert.equal(init.headers.get("Accept-Language"), "en");
+    return Response.json(problem, { status: 409, headers: { "Content-Type": "application/problem+json" } });
+  };
+  const worker = createReaiStorefrontWorker({ cacheKey: "stock-conflict", storefront, market: "default", locale: "en" });
+  const response = await worker.fetch(new Request("https://shop.example/reai/checkout/start", {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lines: [{ variantId, quantity: 1 }] }),
+  }), { REAI_SITE_TOKEN: "test-token" });
+  assert.equal(response.status, 409);
+  assert.equal(response.headers.get("Cache-Control"), "no-store");
+  assert.equal(response.headers.get("Content-Language"), "en");
+  assert.deepEqual(await response.json(), problem);
+});

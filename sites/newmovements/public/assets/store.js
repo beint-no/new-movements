@@ -1,12 +1,17 @@
 document.documentElement.classList.add('has-store-js');
 const CART_KEY = 'newmovements-cart-v1';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+let checkoutStockIssues = new Map();
+let cartRevision = 0;
 
 const readCart = () => {
   try { return JSON.parse(localStorage.getItem(CART_KEY) || '[]'); } catch { return []; }
 };
 const writeCart = (items) => {
   localStorage.setItem(CART_KEY, JSON.stringify(items));
+  cartRevision += 1;
+  checkoutStockIssues.clear();
+  document.querySelectorAll('[data-checkout-error]').forEach((node) => { node.hidden = true; });
   updateCount();
   renderDrawerCart();
 };
@@ -22,6 +27,16 @@ const money = (value, currency = 'NOK') => new Intl.NumberFormat('en-NO', {
 }).format(Number(value));
 const plainMoney = (value) => new Intl.NumberFormat('nb-NO', { maximumFractionDigits: Number(value) % 1 ? 2 : 0 }).format(Number(value));
 const escapeHtml = (value) => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+const cartOptions = (item) => Array.isArray(item.options)
+  ? item.options.filter((option) => option.name && option.value && option.value !== 'Default Title').map((option) => `${option.name}: ${option.value}`).join(' · ')
+  : item.label ? `Size ${item.label}` : '';
+const cartStockMessage = (issue) => issue.maximumQuantity === 0 ? 'Sold out — remove this item to continue.' : `Only ${issue.maximumQuantity} available for this bag. Reduce the quantity to continue.`;
+const cartStockNotice = (item) => {
+  const issue = checkoutStockIssues.get(item.variant);
+  if (!issue) return '';
+  const hasSize = item.options?.some((option) => /^(size|størrelse)$/i.test(option.name)) || item.label;
+  return `<p class="cart-stock-notice">${escapeHtml(cartStockMessage(issue))}</p>${issue.maximumQuantity > 0 ? `<button type="button" data-cart-stock-adjust="${escapeHtml(item.variant)}">Change quantity to ${issue.maximumQuantity}</button>` : `<a class="cart-stock-action" href="${escapeHtml(item.url || `/products/${item.handle}`)}">${hasSize ? 'Choose another size' : 'View product'}</a>`}`;
+};
 if (!document.querySelector('[data-drawer-backdrop]')) {
   document.querySelector('.site-header')?.insertAdjacentHTML('afterend', '<div class="drawer-backdrop" data-drawer-backdrop hidden></div><aside class="store-drawer search-drawer" aria-label="Search" aria-hidden="true" data-search-drawer><header><h2>Search</h2><button type="button" data-drawer-close>Close</button></header><form role="search" data-predictive-search><label class="sr-only" for="predictive-query">Search products</label><input id="predictive-query" name="q" type="search" autocomplete="off" placeholder="Search shoes, styles, materials"><button type="submit">View all</button></form><p data-predictive-status>Start typing to search the live catalog.</p><div class="predictive-results" data-predictive-results></div></aside><aside class="store-drawer cart-drawer" aria-label="Shopping bag" aria-hidden="true" data-cart-drawer><header><h2>Your bag</h2><button type="button" data-drawer-close>Close</button></header><div data-drawer-cart-items></div><footer><p><span>Subtotal</span><strong data-drawer-subtotal>NOK 0</strong></p><a href="/cart">View bag</a></footer></aside>');
 }
@@ -172,7 +187,7 @@ function renderDrawerCart() {
   const subtotal = document.querySelector('[data-drawer-subtotal]');
   if (!list) return;
   const items = readCart();
-  list.innerHTML = items.length ? items.map((item, index) => `<article class="drawer-cart-line" data-drawer-cart-index="${index}">${item.image ? `<img src="${escapeHtml(item.image)}" alt="">` : '<div class="drawer-cart-placeholder"></div>'}<div><a href="${escapeHtml(item.url || `/products/${item.handle}`)}">${escapeHtml(item.title)}</a><span>${item.label ? `Size ${escapeHtml(item.label)} · ` : ''}${item.quantity} × ${money(item.price)}</span><button type="button" data-drawer-remove>Remove</button></div></article>`).join('') : '<div class="drawer-empty"><p>Your bag is empty.</p><a href="/collections/all">Continue shopping</a></div>';
+  list.innerHTML = items.length ? items.map((item, index) => `<article class="drawer-cart-line${checkoutStockIssues.has(item.variant) ? ' has-stock-issue' : ''}" data-drawer-cart-index="${index}">${item.image ? `<img src="${escapeHtml(item.image)}" alt="">` : '<div class="drawer-cart-placeholder"></div>'}<div><a href="${escapeHtml(item.url || `/products/${item.handle}`)}">${escapeHtml(item.title)}</a><span>${cartOptions(item) ? `${escapeHtml(cartOptions(item))} · ` : ''}${item.quantity} × ${money(item.price)}</span>${cartStockNotice(item)}<button type="button" data-drawer-remove>Remove</button></div></article>`).join('') : '<div class="drawer-empty"><p>Your bag is empty.</p><a href="/collections/all">Continue shopping</a></div>';
   if (subtotal) subtotal.textContent = money(items.reduce((sum, item) => sum + item.price * item.quantity, 0));
   syncCartUpsells(items);
   cartDrawer.querySelectorAll('[data-checkout-start]').forEach((button) => { button.disabled = !items.length || checkoutPending; });
@@ -434,7 +449,7 @@ const renderCart = () => {
   if (!items.length) {
     list.innerHTML = '<div class="message-page"><h2>Your bag is empty</h2><p><a href="/collections/all">Continue shopping</a></p></div>';
   } else {
-    list.innerHTML = items.map((item, index) => `<article class="cart-line" data-cart-index="${index}">${item.image ? `<img src="${escapeHtml(item.image)}" alt="">` : '<div></div>'}<div><h2><a href="${escapeHtml(item.url || `/products/${item.handle}`)}">${escapeHtml(item.title)}</a></h2>${item.label ? `<p>Size ${escapeHtml(item.label)}</p>` : ''}<p>${money(item.price)}</p><label>Qty <input type="number" min="1" max="20" value="${item.quantity}" data-cart-quantity></label><button type="button" data-cart-remove>Remove</button></div><strong>${money(item.price * item.quantity)}</strong></article>`).join('');
+    list.innerHTML = items.map((item, index) => `<article class="cart-line${checkoutStockIssues.has(item.variant) ? ' has-stock-issue' : ''}" data-cart-index="${index}">${item.image ? `<img src="${escapeHtml(item.image)}" alt="">` : '<div></div>'}<div><h2><a href="${escapeHtml(item.url || `/products/${item.handle}`)}">${escapeHtml(item.title)}</a></h2>${cartOptions(item) ? `<p>${escapeHtml(cartOptions(item))}</p>` : ''}<p>${money(item.price)}</p><label>Qty <input type="number" min="1" max="20" value="${item.quantity}" data-cart-quantity></label>${cartStockNotice(item)}<button type="button" data-cart-remove>Remove</button></div><strong>${money(item.price * item.quantity)}</strong></article>`).join('');
   }
   const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   if (subtotal) subtotal.textContent = money(total);
@@ -455,11 +470,22 @@ cartRoot?.addEventListener('click', (event) => {
   const items = readCart(); items.splice(index, 1); writeCart(items); renderCart();
 });
 
+document.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-cart-stock-adjust]');
+  if (!button || checkoutPending) return;
+  const id = button.dataset.cartStockAdjust;
+  const maximum = checkoutStockIssues.get(id)?.maximumQuantity;
+  if (!Number.isInteger(maximum) || maximum < 1) return;
+  writeCart(readCart().map((item) => item.variant === id ? { ...item, quantity: maximum } : item));
+  renderCart();
+});
+
 checkoutButtons.forEach((checkout) => checkout.addEventListener('click', async () => {
   if (checkoutPending) return;
   const checkoutError = checkout.parentElement.querySelector('[data-checkout-error]');
   const lines = readCart().filter((item) => UUID.test(item.variant) && item.quantity > 0).map((item) => ({ variantId: item.variant, quantity: item.quantity }));
   if (!lines.length) return;
+  const submittedRevision = cartRevision;
   checkoutPending = true;
   const label = checkout.textContent;
   checkoutButtons.forEach((button) => { button.disabled = true; });
@@ -468,6 +494,21 @@ checkoutButtons.forEach((checkout) => checkout.addEventListener('click', async (
   try {
     const response = await fetch('/reai/checkout/start', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': crypto.randomUUID() }, body: JSON.stringify({ lines }) });
     const payload = await response.json().catch(() => ({}));
+    if (submittedRevision !== cartRevision) throw new Error('Your bag changed. Please check out again.');
+    if (response.status === 409 && payload.code === 'INSUFFICIENT_STOCK' && Array.isArray(payload.stockIssues)) {
+      checkoutStockIssues = new Map(payload.stockIssues.filter((issue) => lines.some((line) => line.variantId === issue.variantId && line.quantity === issue.requestedQuantity) && Number.isInteger(issue.maximumQuantity) && issue.maximumQuantity >= 0 && issue.maximumQuantity < issue.requestedQuantity).map((issue) => [issue.variantId, issue]));
+      const items = readCart().map((item) => {
+        const issue = checkoutStockIssues.get(item.variant);
+        return issue ? { ...item, title: issue.title || item.title, ...(Array.isArray(issue.options) ? { options: issue.options } : {}) } : item;
+      });
+      localStorage.setItem(CART_KEY, JSON.stringify(items));
+      renderDrawerCart(); renderCart();
+      const affected = items.filter((item) => checkoutStockIssues.has(item.variant));
+      if (affected.length) {
+        const names = affected.map((item) => `${item.title}${cartOptions(item) ? ` (${cartOptions(item)})` : ''}`).join('; ');
+        throw new Error(`Please update your bag: ${names}. See the highlighted items above.`);
+      }
+    }
     if (!response.ok || !payload.checkoutUrl) throw new Error(payload.detail || payload.error || 'Checkout could not be started.');
     location.assign(payload.checkoutUrl);
   } catch (error) {
@@ -475,6 +516,8 @@ checkoutButtons.forEach((checkout) => checkout.addEventListener('click', async (
     checkoutPending = false;
     checkoutButtons.forEach((button) => { button.disabled = !readCart().length; });
     checkout.textContent = label;
+    const container = checkout.closest('[data-cart-drawer], [data-cart-root]');
+    container?.querySelector('.has-stock-issue')?.scrollIntoView({ block: 'nearest', behavior: 'instant' });
   }
 }));
 
