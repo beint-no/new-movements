@@ -9,7 +9,7 @@ import { filterCollection, parseCollectionFilters } from "../../packages/reai-si
 export const SITE_ORIGIN = "https://newmovements.com";
 export const HANDLE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 export const STORE_SCRIPT = "/assets/store.js?v=23";
-export const STORE_STYLE = "/assets/store.css?v=54";
+export const STORE_STYLE = "/assets/store.css?v=55";
 const BRAND_LOGO = "/brand-assets/logo.png";
 const HOME_HERO_IMAGES = [
   "/brand-assets/hero-women.jpg",
@@ -291,7 +291,7 @@ export function renderHomePage(store, context = {}) {
     return `<a class="category-card" href="/collections/${escapeHtml(collection.handle)}">${product ? responsiveImage(product.images[0], { alt: product.images[0].alt || label, width: 960, sizes: "(max-width: 760px) 100vw, 50vw", loading: "lazy" }) : ""}<span>${sizeLabel}<strong>${escapeHtml(label)}</strong><em>Shop now</em></span></a>`;
   }).join("");
   const community = `<section class="community"><img src="${COMMUNITY_IMAGE}" alt="New Movements Community Center storefront at Steen & Strøm in Oslo" width="1440" height="1000" loading="lazy"><div><p class="eyebrow">NM Community Center</p><h2>Flagship store in Oslo</h2><p>Visit our NM Community Center in Steen & Strøm, Scandinavia's oldest department store, to experience our products and be part of the journey towards a circular future.</p><p>We're looking forward to welcoming you!</p><nav><a href="${DIRECTIONS_URL}" rel="external">⌖ Get directions</a><a href="/pages/contact-us">◌ Get in touch</a></nav></div></section>${renderReviews()}`;
-  const body = `${hero}${promises}${products.length ? `<section class="catalog-section"><header><div><p class="eyebrow">Autumn / Winter</p><h2>Made for colder days</h2></div><a href="/collections/boots">Explore boots</a></header>${productGrid(products, currency, 6, "home-product-strip")}</section>` : `<section class="season-shop-links"><h2>Shoes for every season</h2><a href="/collections/women">Explore women’s shoes</a><a href="/collections/men">Explore men’s shoes</a></section>`}${categoryCards ? `<section class="category-grid">${categoryCards}</section>` : ""}${community}`;
+  const body = `${hero}${promises}${products.length ? `<section class="catalog-section"><header class="season-products-header"><div><p class="eyebrow">Autumn / Winter</p><h2>Made for colder days</h2></div><a href="/collections/boots">Explore boots <span aria-hidden="true">→</span></a></header>${productGrid(products, currency, 6, "home-product-strip")}</section>` : `<section class="season-shop-links"><h2>Shoes for every season</h2><a href="/collections/women">Explore women’s shoes</a><a href="/collections/men">Explore men’s shoes</a></section>`}${categoryCards ? `<section class="category-grid">${categoryCards}</section>` : ""}${community}`;
   return documentHtml({ title: "Women’s & Men’s Shoes", description: "Unisex shoes designed in Oslo and handcrafted in Portugal for a circular future.", path: "/", body, store, image: HOME_HERO_IMAGES[0] });
 }
 
