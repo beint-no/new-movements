@@ -79,11 +79,13 @@ from currency alone or generate exchange-rate prices in browser code.
 
 ## Automatic PR previews
 
-Open same-repository PRs get a stable Cloudflare Preview URL, refreshed on each push
-and removed on close. `.github/workflows/preview.yml` builds without credentials,
-then deploys with reviewed default-branch tooling in `.github/preview/preview.mjs`.
-The preview is noindex and read-only: orders, payments and form submissions are disabled.
-GitHub secrets: CLOUDFLARE_PREVIEW_API_TOKEN and CLOUDFLARE_PREVIEW_ACCOUNT_ID;
-commerce sites also need REAI_PREVIEW_CREDENTIAL with only Site, catalog and availability reads.
+Open PRs receive a stable isolated Cloudflare Preview URL, updated on pushes
+and removed on close. `.github/workflows/preview.yml` builds without deployment
+credentials, then requests the trusted workflow in beint-no/reai through signed
+GitHub Actions OIDC. Cloudflare credentials stay in the central deployment repository.
+The server maps this repository to its assigned Worker, verifies the current PR,
+and provides only a read-only PREVIEW Site credential where catalog access is needed.
+Previews are noindex and reject orders, payments and form submissions.
 Manually dispatch PR previews with a PR number to backfill an already-open PR.
-Production publishing and domain approval follow the existing site instructions.
+Register independently created repositories in the server's customer preview registry;
+new repositories created through the e-commerce module are recognized automatically.

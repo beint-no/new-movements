@@ -22,6 +22,8 @@
   },
   "previews": {
     "vars": {
+      "REAI_MANAGED_PREVIEWS": "true",
+      "REAI_PREVIEW_API_BASE_URL": "https://app.reai.no",
       "REAI_BASE_URL": "https://app.reai.no",
       "CHECKOUT_ENABLED": "false"
     }

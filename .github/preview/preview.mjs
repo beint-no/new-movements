@@ -40,6 +40,58 @@ async function comment(body) {
   return github(`issues/${process.env.PR_NUMBER}/comments`, "POST", { body: `${marker}\n${body}` });
 }
 
+async function removePreview() {
+  const response = await fetch(`https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(process.env.CLOUDFLARE_ACCOUNT_ID)}/workers/workers/${encodeURIComponent(config.name)}/previews/${previewName}`, {
+    method: "DELETE", headers: { Authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}` },
+  });
+  const result = await response.json();
+  if (!result.success && !result.errors?.some(error => error.code === 10025)) throw new Error(`Cloudflare preview removal failed: ${response.status}`);
+}
+
+async function recordRemoval() {
+  for (const deployment of await github(`deployments?environment=${encodeURIComponent(environment)}&per_page=100`)) {
+    await github(`deployments/${deployment.id}/statuses`, "POST", { state: "inactive", environment, description: "Pull request closed" });
+  }
+  await comment(`Preview removed because PR #${process.env.PR_NUMBER} is closed.`);
+}
+
+async function recordPreview(url) {
+  const deployment = await github("deployments", "POST", { ref: process.env.PR_SHA, environment, auto_merge: false, required_contexts: [], transient_environment: true, production_environment: false, description: `PR #${process.env.PR_NUMBER} preview` });
+  await github(`deployments/${deployment.id}/statuses`, "POST", { state: "success", environment, environment_url: url, log_url: `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`, auto_inactive: true });
+  await comment(`Preview: [${config.name}](${url})\n\nUpdates on every push. Revision: \`${process.env.PR_SHA}\`. Read-only: orders, payments and form submissions are disabled. Removed when this PR closes.`);
+  if (process.env.GITHUB_STEP_SUMMARY) await writeFile(process.env.GITHUB_STEP_SUMMARY, `Preview: [${config.name}](${url})\n`, { flag: "a" });
+  console.log(url);
+}
+
+if (["deploy", "cleanup"].includes(command) && (config.vars?.REAI_MANAGED_PREVIEWS === "true" || config.previews?.vars?.REAI_MANAGED_PREVIEWS === "true")) {
+  const identity = await fetch(process.env.ACTIONS_ID_TOKEN_REQUEST_URL + "&audience=reai-storefront", {
+    headers: { Authorization: `Bearer ${process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN}` },
+  });
+  if (!identity.ok) throw new Error("GitHub identity request failed");
+  const { value } = await identity.json();
+  console.log(`::add-mask::${value}`);
+  const apiUrl = (config.previews?.vars?.REAI_PREVIEW_API_BASE_URL ?? config.vars?.REAI_API_BASE_URL ?? "https://app.reai.no").replace(/\/$/, "") + "/online-store/preview/";
+  const run = { repositoryId: Number(process.env.GITHUB_REPOSITORY_ID), runId: Number(process.env.GITHUB_RUN_ID),
+    attempt: Number(process.env.GITHUB_RUN_ATTEMPT), pullRequest: Number(process.env.PR_NUMBER), sha: process.env.PR_SHA,
+    artifactName: process.env.ARTIFACT_NAME };
+  async function request(route) {
+    const response = await fetch(apiUrl + route, { method: "POST", headers: { Authorization: `Bearer ${value}`, "Content-Type": "application/json" }, body: JSON.stringify(run) });
+    if (!response.ok) throw new Error(`Managed preview ${route} failed: ${response.status}`);
+    return response.status === 204 ? null : response.json();
+  }
+  await request("request");
+  for (let attempt = 0; ; attempt++) {
+    const result = await request("result");
+    if (result.ready) {
+      if (result.url) await recordPreview(result.url); else await recordRemoval();
+      break;
+    }
+    if (attempt === 59) throw new Error("Managed preview deployment timed out");
+    await setTimeout(10000);
+  }
+  process.exit(0);
+}
+
 if (command === "build") {
   await mkdir(artifact, { recursive: true });
   wrangler(["deploy", "--dry-run", "--config", configFile, "--outdir", path.join(artifact, "worker")], { cwd: path.dirname(configFile) });
@@ -47,7 +99,7 @@ if (command === "build") {
     await cp(path.resolve(path.dirname(configFile), config.assets.directory), path.join(artifact, "assets"), { recursive: true });
   }
   await writeFile(path.join(artifact, "entrypoint.json"), JSON.stringify(path.basename(config.main)));
-} else if (command === "deploy" || command === "cleanup") {
+} else if (["deploy", "cleanup", "publish", "remove"].includes(command)) {
   const vars = { ...config.vars, ...config.previews?.vars, CHECKOUT_ENABLED: "false", DEMO_CHECKOUT_ENABLED: "false" };
   // Build hooks, routes and production resource bindings never enter the credentialed job.
   const previewConfig = {
@@ -63,17 +115,16 @@ if (command === "build") {
   await mkdir(artifact, { recursive: true });
   const deployConfig = path.join(artifact, "preview.json");
   await writeFile(deployConfig, JSON.stringify(previewConfig, null, 2));
-  if (command === "cleanup") {
-    wrangler(["preview", "delete", "--config", deployConfig, "--name", previewName, "--skip-confirmation"]);
-    for (const deployment of await github(`deployments?environment=${encodeURIComponent(environment)}&per_page=100`)) {
-      await github(`deployments/${deployment.id}/statuses`, "POST", { state: "inactive", environment, description: "Pull request closed" });
-    }
-    await comment(`Preview removed because PR #${process.env.PR_NUMBER} is closed.`);
+  if (["cleanup", "remove"].includes(command)) {
+    await removePreview();
+    if (command === "cleanup") await recordRemoval();
   } else {
-    const pr = await github(`pulls/${process.env.PR_NUMBER}`);
-    if (pr.state !== "open" || pr.head.sha !== process.env.PR_SHA) {
-      console.log("Skipping a superseded or closed pull request preview");
-      process.exit(0);
+    if (command === "deploy") {
+      const pr = await github(`pulls/${process.env.PR_NUMBER}`);
+      if (pr.state !== "open" || pr.head.sha !== process.env.PR_SHA) {
+        console.log("Skipping a superseded or closed pull request preview");
+        process.exit(0);
+      }
     }
     const entrypoint = JSON.parse(await readFile(path.join(artifact, "entrypoint.json"), "utf8"));
     if (typeof entrypoint !== "string" || !/^[a-zA-Z0-9_.-]+\.(?:m?js)$/.test(entrypoint)) throw new Error("Invalid preview entrypoint");
@@ -120,11 +171,7 @@ export default {
         await setTimeout(2000);
       }
     }
-    const deployment = await github("deployments", "POST", { ref: process.env.PR_SHA, environment, auto_merge: false, required_contexts: [], transient_environment: true, production_environment: false, description: `PR #${process.env.PR_NUMBER} preview` });
-    await github(`deployments/${deployment.id}/statuses`, "POST", { state: "success", environment, environment_url: url, log_url: `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`, auto_inactive: true });
-    await comment(`Preview: [${config.name}](${url})\n\nUpdates on every push. Revision: \`${process.env.PR_SHA}\`. Read-only: orders, payments and form submissions are disabled. Removed when this PR closes.`);
-    if (process.env.GITHUB_STEP_SUMMARY) await writeFile(process.env.GITHUB_STEP_SUMMARY, `Preview: [${config.name}](${url})\n`, { flag: "a" });
-    console.log(url);
+    if (command === "publish") console.log(url); else await recordPreview(url);
   }
 } else {
   throw new Error("Usage: preview.mjs build|deploy|cleanup <wrangler-config> <artifact-directory>");
