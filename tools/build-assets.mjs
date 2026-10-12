@@ -10,13 +10,13 @@ export async function buildAssets(siteRoot) {
   await rm(join(output, 'public'), { recursive: true, force: true });
   await cp(source, join(output, 'public'), { recursive: true });
   const urls = {};
-  for (const [key, file] of [['STORE_SCRIPT', 'store.js'], ['STORE_STYLE', 'store.css']]) {
-    const bytes = await readFile(join(output, 'public', 'assets', file));
-    urls[key] = `/assets/${file}?v=${createHash('sha256').update(bytes).digest('hex').slice(0, 16)}`;
+  for (const [key, file] of [['STORE_SCRIPT', 'assets/store.js'], ['STORE_STYLE', 'assets/store.css'], ['FAVICON_SVG', 'assets/favicon.svg'], ['FAVICON_ICO', 'favicon.ico'], ['TOUCH_ICON', 'apple-touch-icon.png']]) {
+    const bytes = await readFile(join(output, 'public', file));
+    urls[key] = `/${file}?v=${createHash('sha256').update(bytes).digest('hex').slice(0, 16)}`;
   }
   for (const file of ['index.html', '404.html']) {
     const html = await readFile(join(output, 'public', file), 'utf8');
-    await writeFile(join(output, 'public', file), html.replaceAll('/assets/store.css', urls.STORE_STYLE));
+    await writeFile(join(output, 'public', file), html.replaceAll('/assets/store.css', urls.STORE_STYLE).replaceAll('/assets/favicon.svg', urls.FAVICON_SVG).replaceAll('/favicon.ico', urls.FAVICON_ICO).replaceAll('/apple-touch-icon.png', urls.TOUCH_ICON));
   }
   const manifest = Object.entries(urls).map(([key, url]) => `export const ${key} = ${JSON.stringify(url)};`).join('\n') + '\n';
   const manifestPath = join(output, 'assets.mjs');

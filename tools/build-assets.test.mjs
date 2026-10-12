@@ -12,6 +12,7 @@ test('content changes refresh only the affected URL and build the matching fallb
   await writeFile(join(root, 'public', 'assets', 'store.js'), 'console.log("store");');
   await writeFile(join(root, 'public', 'assets', 'store.css'), 'body{margin:0}');
   for (const file of ['index.html', '404.html']) await writeFile(join(root, 'public', file), '<link rel="stylesheet" href="/assets/store.css">');
+  for (const file of ['assets/favicon.svg', 'favicon.ico', 'apple-touch-icon.png']) await writeFile(join(root, 'public', file), 'icon');
   const first = await buildAssets(root);
   assert.deepEqual(await buildAssets(root), first);
   await writeFile(join(root, 'public', 'assets', 'store.css'), 'body{margin:1px}');

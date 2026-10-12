@@ -1,4 +1,4 @@
-import { STORE_SCRIPT, STORE_STYLE } from "./dist/assets.mjs";
+import { STORE_SCRIPT, STORE_STYLE, FAVICON_SVG, FAVICON_ICO, TOUCH_ICON } from "./dist/assets.mjs";
 import { renderPaymentMarks, renderSocialLinks } from "./footer-icons.mjs";
 import { CART_UPSELL_HANDLES, sortProductSizes, VIEWS, selectedView, productView, productsForView, isProductShot, viewUrl } from "./merchandising.mjs";
 import { FEATURED_REVIEWS, GOOGLE_REVIEW_COUNT, GOOGLE_REVIEWS_URL } from "./reviews.mjs";
@@ -201,7 +201,7 @@ function documentHtml({ title, description, path, body, store, schema = "", imag
   const { header, footer } = chrome(store, view);
   const canonical = `${SITE_ORIGIN}${path}`;
   const robots = NON_INDEXABLE_PATHS.has(path) ? '<meta name="robots" content="noindex,follow">' : "";
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title><meta name="description" content="${escapeHtml(description)}"><meta name="theme-color" content="#ffffff">${robots}<link rel="canonical" href="${escapeHtml(canonical)}"><link rel="icon" href="/assets/favicon.svg" type="image/svg+xml"><link rel="preconnect" href="https://app.reai.no" crossorigin><meta property="og:title" content="${escapeHtml(title)}"><meta property="og:description" content="${escapeHtml(description)}"><meta property="og:url" content="${escapeHtml(canonical)}"><meta property="og:type" content="${type}">${image ? `<meta property="og:image" content="${escapeHtml(image)}">` : ""}<link rel="stylesheet" href="${STORE_STYLE}"><script type="module" src="${STORE_SCRIPT}"></script>${schema}</head><body data-view="${view}">${header}<main id="main">${body}</main>${footer}</body></html>`;
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title><meta name="description" content="${escapeHtml(description)}"><meta name="theme-color" content="#ffffff">${robots}<link rel="canonical" href="${escapeHtml(canonical)}"><link rel="icon" href="${FAVICON_ICO}" sizes="16x16 32x32 48x48"><link rel="icon" href="${FAVICON_SVG}" type="image/svg+xml"><link rel="apple-touch-icon" href="${TOUCH_ICON}" sizes="180x180"><link rel="preconnect" href="https://app.reai.no" crossorigin><meta property="og:title" content="${escapeHtml(title)}"><meta property="og:description" content="${escapeHtml(description)}"><meta property="og:url" content="${escapeHtml(canonical)}"><meta property="og:type" content="${type}">${image ? `<meta property="og:image" content="${escapeHtml(image)}">` : ""}<link rel="stylesheet" href="${STORE_STYLE}"><script type="module" src="${STORE_SCRIPT}"></script>${schema}</head><body data-view="${view}">${header}<main id="main">${body}</main>${footer}</body></html>`;
 }
 
 function productCard(product, currency = "NOK", priority = false, includeCurrency = true) {
