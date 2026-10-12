@@ -3,7 +3,7 @@
 ## Public business context
 
 - New Movements is an Oslo footwear brand focused on unisex, repairable and recyclable shoes.
-- The public storefront is English-language and prices are displayed in NOK.
+- The public storefront is English-language. Norway uses NOK, Germany EUR and Switzerland CHF; the server selects the configured ReAI market.
 - The reference domain is `https://newmovements.com`.
 
 ## Site constraints
@@ -119,9 +119,7 @@ Review URL: https://newmovements.respiro.workers.dev
 
 As checked on 2026-10-10, ReAI Site 10 (tenant 3157) is named New Movements
 Development, has no active domain, and its existing credential is PREVIEW.
-The current market is English/NOK with Norway as its only destination; shipping
-is Bring/PostNord at NOK 69, free from NOK 850. Do not advertise worldwide DHL
-shipping until the corresponding ReAI market and shipping configuration exists.
+Markets are configured in ReAI: Norway/NOK with Bring/PostNord at NOK 69 (free from NOK 850), Germany/EUR and Switzerland/CHF with free fixed DHL Express delivery. International delivery uses merchant fulfillment; no automatic DHL booking integration is implied. Do not advertise other destinations until their prices, tax treatment and shipping are configured.
 
 Before domain cutover: review this Worker and update the hub pointer, configure
 the intended production Site identity/domain/credential, and verify shipping and
@@ -160,3 +158,9 @@ Asset URLs are derived from SHA-256 content hashes by tools/build-assets.mjs. Wr
 ## Layout gutters
 
 Use the existing --pad responsive gutter for homepage product sections, collection headers/toolbars/grids and general content pages. Keep collection grids aligned to their headers without a second nested gutter. Search cards share the recommendation card styling, with responsive column counts. Full-width hero/category photography and horizontally scrolling product rails are intentional; text and controls should remain inside their content columns. Review all sitemap routes plus cart, search, confirmation and error pages at narrow mobile, tablet and desktop widths after shared layout changes.
+
+## Market selection
+
+The shared market Worker discovers enabled markets through the Site API, caches the small configuration for one minute, and selects explicit query choice, saved cookie, Cloudflare country, then the default market. The header is a destination-and-currency selector because a currency alone cannot identify Shopify pricing or shipping. HTML and catalog responses are private; the shared catalog cache is scoped by market and locale.
+
+Switching markets retains variant IDs and quantities and reloads authoritative prices from ReAI. Checkout is disabled while repricing or if an item has no price in the selected market. Never convert cached cart values or add exchange rates in the browser. Shopify contextual pricing remains the source of each market list. Price filters are cleared on a market change.

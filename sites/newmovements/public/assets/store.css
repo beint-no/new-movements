@@ -157,9 +157,10 @@
 }
 
 /* Header utility refinements */
-.currency-label{font-size:0;display:flex;align-items:center;gap:5px}
-.currency-label::before{content:"NOK";font-size:1rem}
-.currency-label::after{width:6px;height:6px;border-right:1px solid currentColor;border-bottom:1px solid currentColor;content:"";transform:translateY(-2px) rotate(45deg)}
+.market-selector{display:flex;align-items:center}
+.market-selector select{max-width:170px;font:inherit;font-size:.85rem;border:0;background:transparent;color:inherit;cursor:pointer;padding:8px 0}
+.market-selector select:focus-visible{outline:2px solid currentColor;outline-offset:3px}
+@media(max-width:760px){.market-selector select{max-width:135px;font-size:.72rem}}
 .cart-badge{top:1px;right:1px;min-width:14px;height:14px;font-size:.55rem}
 .cart-badge[hidden]{display:none}
 .cart-summary .checkout-error{display:block}
