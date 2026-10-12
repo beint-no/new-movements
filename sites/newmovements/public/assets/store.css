@@ -641,4 +641,4 @@ body[data-view="women"] .collection-layout .product-shot picture{
 @media(max-width:760px){.country-name{display:none}.country-code{display:inline}.country-switcher [data-country-open]{font-size:.72rem}.country-dialog{padding:20px}.country-options{max-height:calc(100dvh - 260px)}}
 
 @media(max-width:760px){.site-nav{grid-template-columns:24px minmax(0,1fr) auto;gap:8px}.wordmark,.wordmark img{width:min(140px,100%)}.country-switcher [data-country-open]{padding-inline:0}}
-.country-fallback noscript button{display:inline;width:auto;height:auto;padding:4px;font-size:.75rem}
+.utility-nav .country-fallback noscript button{display:inline;width:auto;height:auto;padding:4px;font-size:.75rem}
