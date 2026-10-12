@@ -487,3 +487,12 @@ test("preserves actionable checkout stock conflicts without caching them", async
   assert.equal(response.headers.get("Content-Language"), "en");
   assert.deepEqual(await response.json(), problem);
 });
+
+test("allows an explicit image CDN without broadening script or form permissions", async () => {
+  const worker = createReaiStorefrontWorker({ cacheKey: "image-cdn", storefront, market: "default", locale: "en", imageOrigins: ["https://cdn.shopify.com"] });
+  const response = await worker.fetch(new Request("https://shop.example/reai/catalog"), {});
+  const policy = response.headers.get("Content-Security-Policy");
+  assert.match(policy, /img-src 'self' data: https:\/\/app.reai.no https:\/\/cdn.shopify.com;/);
+  assert.match(policy, /script-src 'self'; form-action 'self' mailto:/);
+  assert.throws(() => createReaiStorefrontWorker({ cacheKey: "unsafe-image-cdn", storefront, market: "default", locale: "en", imageOrigins: ["https://cdn.shopify.com; script-src *"] }), /Invalid URL|HTTPS origins/);
+});

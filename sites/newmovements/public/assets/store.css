@@ -642,3 +642,5 @@ body[data-view="women"] .collection-layout .product-shot picture{
 
 @media(max-width:760px){.site-nav{grid-template-columns:24px minmax(0,1fr) auto;gap:8px}.wordmark,.wordmark img{width:min(140px,100%)}.country-switcher [data-country-open]{padding-inline:0}}
 .utility-nav .country-fallback noscript button{display:inline;width:auto;height:auto;padding:4px;font-size:.75rem}
+
+.collection-directory-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:36px 20px}.collection-tile{min-width:0}.collection-tile h2{margin:12px 0 4px;font-size:1.05rem;font-weight:500;letter-spacing:-.02em}.collection-tile p{margin:0;color:var(--muted);font-size:.85rem}.collection-tile-empty{display:flex;align-items:center;justify-content:center;height:100%;font-size:1rem;letter-spacing:.1em;text-transform:uppercase}.collection-tile:focus-visible{outline:2px solid;outline-offset:6px}@media(max-width:700px){.collection-directory-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:28px 12px}}

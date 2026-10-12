@@ -41,6 +41,8 @@ const store = {
     { id: "c1", handle: "new-arrivals", title: "New Arrivals", products: [{ handle: product.handle }] },
     { id: "c2", handle: "sneakers", title: "Sneakers", products: [{ handle: product.handle }] },
     { id: "c3", handle: "loafers", title: "Loafers", products: [{ handle: product.handle }] },
+    { id: "c4", handle: "women", title: "Women", products: [{ handle: product.handle }] },
+    { id: "c5", handle: "men", title: "Men", products: [{ handle: product.handle }] },
   ],
 };
 
@@ -275,8 +277,15 @@ assert.doesNotMatch(productMetadata, /<title>[^<]*Osl(?:<| \|)/);
 assert.match(renderCollectionPage(store, "women"), /<title>Women&#39;s Shoes \| New Movements<\/title>/);
 assert.match(renderCollectionPage(store, "men"), /<title>Men&#39;s Shoes \| New Movements<\/title>/);
 assert.match(renderPage(store, "/search"), /name="robots" content="noindex,follow"/);
-assert.doesNotMatch(sitemap, /<loc>[^<]*\/(?:cart|search|order\/complete|collections\/shoe-care-1)<\/loc>/);
+assert.doesNotMatch(sitemap, /<loc>[^<]*\/(?:cart|search|order\/complete)<\/loc>/);
 
 const careProduct = { ...product, title: "Shoe Cleaner", variants: [{ ...product.variants[0], options: [{ name: "Size", value: "One size" }] }] };
 const carePage = renderProductPage(store, careProduct);
 assert.doesNotMatch(carePage, /Unisex footwear designed|class="product-promises"/);
+
+// Publication and exact membership are authoritative; unavailable collections are never inferred from product names.
+assert.equal(renderCollectionPage(store, "archive"), null);
+const emptyArchiveStore = { ...store, collections: [...store.collections, { id: "empty", handle: "archive", title: "Archive", products: [] }] };
+assert.doesNotMatch(renderCollectionPage(emptyArchiveStore, "archive"), /class="product-card"/);
+assert.match(renderPage(emptyArchiveStore, "/collections"), /href="\/collections\/archive"/);
+assert.match(renderSitemap(emptyArchiveStore), /<loc>https:\/\/newmovements.com\/collections\/archive<\/loc>/);

@@ -164,3 +164,11 @@ Use the existing --pad responsive gutter for homepage product sections, collecti
 The shared market Worker discovers enabled markets through the Site API, caches the small configuration for one minute, and selects explicit query choice, saved cookie, Cloudflare country, then the default market. The header is a destination-and-currency selector because a currency alone cannot identify Shopify pricing or shipping. HTML and catalog responses are private; the shared catalog cache is scoped by market and locale.
 
 Switching markets retains variant IDs and quantities and reloads authoritative prices from ReAI. Checkout is disabled while repricing or if an item has no price in the selected market. Never convert cached cart values or add exchange rates in the browser. Shopify contextual pricing remains the source of each market list. Price filters are cleared on a market change.
+
+## Collections
+
+All collection titles, descriptions, images and membership come from the published ReAI snapshot.
+Do not infer missing collections from product names or silently recreate unpublished collections.
+`/collections` lists the published collections, including real collections that currently have no
+published products. Both Shop navigation and the footer link to it. Shopify's separate `shoe-care-1`
+collection retains its own route and membership. The empty tax utility collection remains hidden.
