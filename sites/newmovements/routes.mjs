@@ -1,5 +1,4 @@
 const REDIRECTS = new Map([
-  ["/collections/shoe-care-1", "/collections/shoe-care"],
   ["/collections/all-shoes-1", "/collections/all"],
   ["/collections/all-shoes", "/collections/all"],
   ["/pages/about-us", "/pages/evensen-story"],

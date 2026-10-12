@@ -55,13 +55,13 @@ function siteOrigin(env) {
   }
 }
 
-function securityHeaders(headers, env) {
+function baseSecurityHeaders(headers, env, extraImageOrigins) {
   headers.set("X-Content-Type-Options", "nosniff");
   headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
   headers.set(
     "Content-Security-Policy",
-    `default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: ${siteOrigin(env)}; script-src 'self'; form-action 'self' mailto:; base-uri 'self'; frame-ancestors 'none'; object-src 'none'`,
+    `default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: ${siteOrigin(env)}${extraImageOrigins ? ` ${extraImageOrigins}` : ''}; script-src 'self'; form-action 'self' mailto:; base-uri 'self'; frame-ancestors 'none'; object-src 'none'`,
   );
   return headers;
 }
@@ -95,7 +95,7 @@ function stripPathPrefix(pathname, pathPrefix) {
  *   messages?: Partial<typeof defaultMessages>,
  *   locale: string,
  *   market: string,
- *   countryCode?: string,
+ *   countryCode?: string, imageOrigins?: string[],
  *   pathPrefix?: string,
  *   beforeRequest?: ((context: BeforeRequestContext) => Response | null | Promise<Response | null>) | null,
  * }} options
@@ -111,11 +111,18 @@ export function createReaiStorefrontWorker({
   pathPrefix: configuredPathPrefix = "",
   beforeRequest = null,
   countryCode = undefined,
+  imageOrigins = [],
 }) {
   if (!cacheKey) throw new TypeError("cacheKey is required");
   if (!storefront?.HANDLE || !storefront?.matchRoute) throw new TypeError("storefront helpers are required");
   if (typeof locale !== "string" || !locale.trim()) throw new TypeError("locale is required");
   if (typeof market !== "string" || !market.trim()) throw new TypeError("market is required");
+  const extraImageOrigins = imageOrigins.map((value) => {
+    const url = new URL(value);
+    if (url.protocol !== 'https:' || url.origin !== value) throw new TypeError('imageOrigins must be HTTPS origins');
+    return url.origin;
+  }).join(' ');
+  const securityHeaders = (headers, env) => baseSecurityHeaders(headers, env, extraImageOrigins);
 
   const messages = { ...defaultMessages, ...messageOverrides };
   const pathPrefix = normalizePathPrefix(configuredPathPrefix);
