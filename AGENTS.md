@@ -91,3 +91,5 @@ Register independently created repositories in the server's customer preview reg
 new repositories created through the e-commerce module are recognized automatically.
 
 This customer repository is public at the owner’s request. Keep credentials and private data outside Git history. Preview publishing runs in the reviewed default-branch storefront-preview.yml workflow in beint-no/reai-site-examples; ReAI privately verifies the current PR and assigned Worker. Publishing credentials remain encrypted Actions secrets in the controller repository.
+
+The preview comment records the PR head revision so reviewers can confirm which push is deployed.
