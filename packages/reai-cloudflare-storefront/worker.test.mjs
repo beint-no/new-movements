@@ -496,3 +496,23 @@ test("allows an explicit image CDN without broadening script or form permissions
   assert.match(policy, /script-src 'self'; form-action 'self' mailto:/);
   assert.throws(() => createReaiStorefrontWorker({ cacheKey: "unsafe-image-cdn", storefront, market: "default", locale: "en", imageOrigins: ["https://cdn.shopify.com; script-src *"] }), /Invalid URL|HTTPS origins/);
 });
+
+test("merchant checkout pages and draft responses suppress referrers and caching", async (context) => {
+  const originalFetch = globalThis.fetch;
+  context.after(() => { globalThis.fetch = originalFetch; });
+  globalThis.fetch = async () => new Response(JSON.stringify({ id: "a".repeat(32) }), {
+    headers: { "Content-Type": "application/json" },
+  });
+  const worker = createReaiStorefrontWorker({
+    cacheKey: "merchant-private-response", market: "default", locale: "en",
+    merchantCheckoutPath: "/checkout",
+    storefront: { ...storefront, renderCheckoutPage: () => "<!doctype html><title>Checkout</title>" },
+  });
+  for (const path of ["/checkout?checkout=" + "a".repeat(32), "/reai/checkout/" + "a".repeat(32)]) {
+    const response = await worker.fetch(new Request("https://shop.example" + path), { REAI_SITE_TOKEN: "test-token" });
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("Referrer-Policy"), "no-referrer");
+    assert.equal(response.headers.get("Cache-Control"), "no-store");
+    assert.equal(response.headers.get("X-Robots-Tag"), "noindex, nofollow");
+  }
+});

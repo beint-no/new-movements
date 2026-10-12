@@ -561,7 +561,8 @@ export function createReaiStorefrontWorker({
     const api = path?.match(/^\/reai\/checkout\/([a-f0-9]{32})(?:\/(delivery-options|prepare-payment|change-country))?$/);
     const isPage = path === merchantCheckoutPath || path === checkoutReturnPath;
     if (!api && !isPage) return null;
-    const headers = securityHeaders(new Headers({ "Cache-Control": "no-store", "Referrer-Policy": "no-referrer", "X-Robots-Tag": "noindex, nofollow" }), env);
+    const headers = securityHeaders(new Headers({ "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow" }), env);
+    headers.set("Referrer-Policy", "no-referrer");
     try {
       const id = api?.[1] || url.searchParams.get("checkout");
       if (!id || !/^[a-f0-9]{32}$/.test(id)) return isPage ? Response.redirect(new URL("/cart", url.origin).href, 303) : jsonResponse({ error: "Checkout not found." }, 404, env);
