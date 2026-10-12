@@ -239,6 +239,10 @@ export class ReaiSiteClient {
     return new SiteApiResponse(await this.#request(expandPath("/site/v1/commerce/checkout-sessions/{id}/delivery-options", { id }), undefined,
       { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }));
   }
+  /** @param {string} id @param {string} query @param {string} countryCode */
+  async checkoutAddressSuggestions(id, query, countryCode) {
+    return new SiteApiResponse(await this.#request(expandPath("/site/v1/commerce/checkout-sessions/{id}/address-suggestions", { id }), { query, countryCode }));
+  }
   /** @param {string} id @param {import("./site-api.d.ts").components["schemas"]["SiteCheckoutPrepareReq"]} body */
   async prepareCheckoutPayment(id, body) {
     return new SiteApiResponse(await this.#request(expandPath("/site/v1/commerce/checkout-sessions/{id}/prepare-payment", { id }), undefined,

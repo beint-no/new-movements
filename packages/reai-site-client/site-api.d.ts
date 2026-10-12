@@ -99,6 +99,26 @@ export interface paths {
         patch: operations["update"];
         trace?: never;
     };
+    "/site/v1/commerce/checkout-sessions/{id}/address-suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Suggest a Norwegian delivery address
+         * @description Optional autocomplete with a minimum of three characters. Returns streetAddress, postalCode and city. Country must belong to this checkout market; other supported countries return an empty list and use manual entry. Provider credentials remain server-side. Never cache or log address queries.
+         */
+        get: operations["addresses"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/site/v1/commerce/checkout-sessions/{id}/change-country": {
         parameters: {
             query?: never;
@@ -130,7 +150,7 @@ export interface paths {
         put?: never;
         /**
          * Find delivery options and pickup points
-         * @description Read-only discovery for the supplied address. Pass an optionToken to fetch its pickup points. Persist selection with PATCH and the current revision.
+         * @description Read-only discovery for the supplied address. Returns localized service names/descriptions, carrier identity/logo, pickup label, location type and optional distance in meters. Pass an optionToken to fetch only its pickup points; filter name/address/postalCode/city locally without further carrier calls. Persist selection with PATCH and the current revision.
          */
         post: operations["options"];
         delete?: never;
@@ -420,6 +440,11 @@ export interface components {
             marketId: string;
             products: components["schemas"]["SiteDeliveryProductRes"][];
         };
+        SiteCheckoutAddressDto: {
+            city: string;
+            postalCode: string;
+            streetAddress: string;
+        };
         SiteCheckoutCountryReq: {
             customer: components["schemas"]["SiteCheckoutCustomerDto"];
             /** Format: int32 */
@@ -444,8 +469,14 @@ export interface components {
             pickupDetails?: string | null;
         };
         SiteCheckoutDeliveryOptionDto: {
+            carrierCode: string;
+            carrierLogoUrl?: string | null;
+            carrierName: string;
+            deliveryMethod: string;
+            description: string;
             gross: number;
             name: string;
+            pickupLabel: string;
             pickupRequired: boolean;
             pickups: components["schemas"]["SiteCheckoutPickupDto"][];
             token: string;
@@ -515,9 +546,13 @@ export interface components {
         SiteCheckoutPickupDto: {
             address: string;
             city: string;
+            /** Format: int32 */
+            distanceMeters?: number | null;
             name: string;
             postalCode: string;
             token: string;
+            type: string;
+            typeLabel: string;
         };
         SiteCheckoutPrepareReq: {
             /** Format: int32 */
@@ -1222,6 +1257,84 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SiteCheckoutDetailsDto"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    addresses: {
+        parameters: {
+            query: {
+                query: string;
+                /** @example NO */
+                countryCode: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteCheckoutAddressDto"][];
                 };
             };
             /** @description Bad request */
