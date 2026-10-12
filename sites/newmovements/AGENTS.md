@@ -12,7 +12,7 @@
 - Products, collections, variants, prices, availability, descriptions and images are rendered from the ReAI Site API at request time.
 - Never add a committed catalog, Shopify runtime client, or local product images. Product images must use the API `url`, `renditions`, `alt`, `width` and `height` fields.
 - Preserve Shopify-compatible paths: `/products/{handle}`, `/collections/{handle}`, `/cart`, `/search`, `/pages/{handle}` and `/policies/{handle}`.
-- Cart state is browser-local. Checkout posts opaque Site API variant IDs and quantities to `/reai/checkout/start`, then redirects to ReAI hosted checkout. The success return is `/order/complete`.
+- Cart state is browser-local. Checkout posts opaque Site API variant IDs and quantities to `/reai/checkout/start`, then opens merchant-domain contact and delivery before ReAI summary/payment. The success return is `/order/complete`.
 - Keep the Site credential in the Worker secret `REAI_SITE_TOKEN`.
 
 ## Local development
@@ -174,3 +174,7 @@ Do not infer missing collections from product names or silently recreate unpubli
 `/collections` lists the published collections, including real collections that currently have no
 published products. Both Shop navigation and the footer link to it. Shopify's separate `shoe-care-1`
 collection retains its own route and membership. The empty tax utility collection remains hidden.
+
+## Merchant-domain checkout
+
+New Movements opts in with merchantCheckoutPath=/checkout. The shared Worker and typed Site client own the private proxy; the Site token stays server-side. Contact, address, delivery and discount edits are saved in ReAI with optimistic revision checks. Cross-market country changes create a new currency quote and retire the old draft. Background preparation is unpayable and holds no stock; ReAI validates and reserves only on payment submission. The complete hosted checkout remains the shared default for other storefronts. Checkout HTML/API are no-store, noindex and no-referrer; never log their personal data. Confirmation checks fulfillment before removing purchased cart quantities, once per checkout. No implicit newsletter consent.

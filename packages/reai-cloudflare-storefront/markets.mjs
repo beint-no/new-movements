@@ -101,7 +101,12 @@ export function createReaiMarketStorefrontWorker(options) {
       headers.set('Vary', 'Cookie, CF-IPCountry');
       headers.set('X-ReAI-Market', market.handle);
       headers.set('X-ReAI-Country', country);
-      if (requested || saved !== market.handle || savedCountry !== country) headers.append('Set-Cookie', choiceCookie(market.handle, country));
+      const checkoutMarket = markets.find(item => item.handle === headers.get('X-Reai-Checkout-Market'));
+      const checkoutCountry = headers.get('X-Reai-Checkout-Country');
+      headers.delete('X-Reai-Checkout-Market');
+      headers.delete('X-Reai-Checkout-Country');
+      if (checkoutMarket?.countries?.includes(checkoutCountry)) headers.append('Set-Cookie', choiceCookie(checkoutMarket.handle, checkoutCountry));
+      else if (requested || saved !== market.handle || savedCountry !== country) headers.append('Set-Cookie', choiceCookie(market.handle, country));
       return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
     },
   };

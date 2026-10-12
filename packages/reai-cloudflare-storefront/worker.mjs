@@ -3,7 +3,7 @@
 import { ReaiSiteClient } from "../reai-site-client/client.mjs";
 
 /** @typedef {import("../reai-site-client/site-api.d.ts").components["schemas"]["SiteCheckoutSessionReq"]} SiteCheckoutSessionRequest */
-/** @typedef {{ REAI_BASE_URL?: string, REAI_SITE_TOKEN?: string, CHECKOUT_ENABLED?: string, NEWSLETTER_RATE_LIMIT?: { limit(options: { key: string }): Promise<{ success: boolean }> }, ASSETS: { fetch(request: Request): Promise<Response> } }} WorkerEnv */
+/** @typedef {{ REAI_BASE_URL?: string, REAI_SITE_TOKEN?: string, CHECKOUT_ENABLED?: string, NEWSLETTER_RATE_LIMIT?: { limit(options: { key: string }): Promise<{ success: boolean }> }, CHECKOUT_RATE_LIMIT?: { limit(options: { key: string }): Promise<{ success: boolean }> }, ASSETS: { fetch(request: Request): Promise<Response> } }} WorkerEnv */
 /** @typedef {{ request: Request, env: WorkerEnv, url: URL, renderContext: any }} BeforeRequestContext */
 
 const STATIC_ASSET = /\.(?:avif|css|eot|gif|ico|jpe?g|js|json|map|mp4|ogg|otf|png|svg|ttf|webm|webp|woff2?)$/i;
@@ -90,7 +90,7 @@ function stripPathPrefix(pathname, pathPrefix) {
  * @param {{
  *   cacheKey: string,
  *   storefront: any,
- *   checkoutReturnPath?: string,
+ *   checkoutReturnPath?: string, merchantCheckoutPath?: string,
  *   noStorePaths?: string[],
  *   messages?: Partial<typeof defaultMessages>,
  *   locale: string,
@@ -104,6 +104,7 @@ export function createReaiStorefrontWorker({
   cacheKey,
   storefront,
   checkoutReturnPath = "/bestilling/fullfort/",
+  merchantCheckoutPath = undefined,
   noStorePaths = ["/handlekurv/", checkoutReturnPath],
   messages: messageOverrides = {},
   locale,
@@ -203,6 +204,7 @@ export function createReaiStorefrontWorker({
     const checkoutBody = {
       lines,
       returnUrl: new URL(publicPath(checkoutReturnPath), url.origin).href,
+      ...(merchantCheckoutPath ? { merchantCheckoutUrl: new URL(publicPath(merchantCheckoutPath), url.origin).href } : {}),
     };
     return { body: checkoutBody };
   }
@@ -508,6 +510,9 @@ export function createReaiStorefrontWorker({
       } else upstreamResult = client.subscribeNewsletter({ email, consent: true, ...(name ? { name } : {}) });
       cacheControl = "no-store";
     } else if (request.method === "POST" && route === "/reai/checkout/start") {
+      if (env.CHECKOUT_ENABLED === "false") return jsonResponse({ error: "Checkout is disabled in this preview." }, 403, env);
+      if (merchantCheckoutPath && request.headers.get("Origin") !== url.origin) return jsonResponse({ error: "Invalid request origin." }, 403, env);
+      if (merchantCheckoutPath && await checkoutRateLimited(request, env, url)) return jsonResponse({ error: "Too many checkout requests. Please wait a moment." }, 429, env);
       const checkout = await checkoutRequest(request, url, env);
       if (checkout.error) return checkout.error;
       upstreamResult = client.createCheckoutSession(
@@ -541,6 +546,60 @@ export function createReaiStorefrontWorker({
     } catch (error) {
       console.error("Site API request failed", error);
       return jsonResponse({ error: messages.temporarilyUnavailable }, 502, env);
+    }
+  }
+
+  async function checkoutRateLimited(request, env, url) {
+    if (!env.CHECKOUT_RATE_LIMIT) return false;
+    const result = await env.CHECKOUT_RATE_LIMIT.limit({ key: `checkout:${url.host}:${request.headers.get("CF-Connecting-IP") || "local"}` });
+    return !result.success;
+  }
+
+  async function merchantCheckout(request, env, url) {
+    if (!merchantCheckoutPath) return null;
+    const path = stripPathPrefix(url.pathname, pathPrefix);
+    const api = path?.match(/^\/reai\/checkout\/([a-f0-9]{32})(?:\/(delivery-options|prepare-payment|change-country))?$/);
+    const isPage = path === merchantCheckoutPath || path === checkoutReturnPath;
+    if (!api && !isPage) return null;
+    const headers = securityHeaders(new Headers({ "Cache-Control": "no-store", "Referrer-Policy": "no-referrer", "X-Robots-Tag": "noindex, nofollow" }), env);
+    try {
+      const id = api?.[1] || url.searchParams.get("checkout");
+      if (!id || !/^[a-f0-9]{32}$/.test(id)) return isPage ? Response.redirect(new URL("/cart", url.origin).href, 303) : jsonResponse({ error: "Checkout not found." }, 404, env);
+      const client = siteClient(env);
+      let result;
+      if (["GET", "HEAD"].includes(request.method) && !api?.[2]) result = await client.checkoutDetails(id);
+      else if (api && ["PATCH", "POST"].includes(request.method)) {
+        if (env.CHECKOUT_ENABLED === "false") return jsonResponse({ error: "Checkout is disabled in this preview." }, 403, env);
+        if (request.headers.get("Origin") !== url.origin || request.headers.get("Sec-Fetch-Site") === "cross-site") return jsonResponse({ error: "Invalid request origin." }, 403, env);
+        if (await checkoutRateLimited(request, env, url)) return jsonResponse({ error: "Too many checkout requests. Please wait a moment." }, 429, env);
+        const text = await request.text();
+        if (text.length > 8192) return jsonResponse({ error: "Request too large." }, 413, env);
+        let body;
+        try { body = JSON.parse(text); } catch { return jsonResponse({ error: "Invalid JSON." }, 400, env); }
+        if (request.method === "PATCH" && !api[2]) result = await client.updateCheckout(id, body);
+        else if (request.method === "POST" && api[2] === "delivery-options") result = await client.checkoutDeliveryOptions(id, body);
+        else if (request.method === "POST" && api[2] === "change-country") result = await client.changeCheckoutCountry(id, body, request.headers.get("Idempotency-Key") || crypto.randomUUID());
+        else if (request.method === "POST" && api[2] === "prepare-payment") result = await client.prepareCheckoutPayment(id, body);
+        else return jsonResponse({ error: "Method not allowed." }, 405, env);
+      } else return jsonResponse({ error: "Method not allowed." }, 405, env);
+      const upstream = result.response;
+      if (!upstream.ok) {
+        headers.set("Content-Type", "application/json; charset=utf-8");
+        return new Response(request.method === "HEAD" ? null : upstream.body, { status: upstream.status, headers });
+      }
+      const details = await upstream.json();
+      if (details.marketHandle && details.customer?.countryCode) {
+        headers.set("X-Reai-Checkout-Market", details.marketHandle);
+        headers.set("X-Reai-Checkout-Country", details.customer.countryCode);
+      }
+      if (!isPage) {
+        headers.set("Content-Type", "application/json; charset=utf-8");
+        return new Response(request.method === "HEAD" ? null : JSON.stringify(details), { status: upstream.status, headers });
+      }
+      headers.set("Content-Type", "text/html; charset=utf-8");
+      return new Response(request.method === "HEAD" ? null : storefront.renderCheckoutPage(details, { completed: path === checkoutReturnPath }), { headers });
+    } catch {
+      return new Response("Checkout is temporarily unavailable. Please refresh to try again.", { status: 503, headers });
     }
   }
 
@@ -636,6 +695,8 @@ export function createReaiStorefrontWorker({
       const url = new URL(request.url);
       const earlyResponse = await beforeRequest?.({ request, env, url, renderContext });
       if (earlyResponse) return earlyResponse;
+      const checkoutResponse = await merchantCheckout(request, env, url);
+      if (checkoutResponse) return checkoutResponse;
       const storefrontPath = stripPathPrefix(url.pathname, pathPrefix);
       if (storefrontPath?.startsWith("/reai/")) return siteApiResponse(request, env, url, executionContext);
 
