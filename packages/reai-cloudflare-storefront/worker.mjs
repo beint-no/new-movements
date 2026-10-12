@@ -95,6 +95,7 @@ function stripPathPrefix(pathname, pathPrefix) {
  *   messages?: Partial<typeof defaultMessages>,
  *   locale: string,
  *   market: string,
+ *   countryCode?: string,
  *   pathPrefix?: string,
  *   beforeRequest?: ((context: BeforeRequestContext) => Response | null | Promise<Response | null>) | null,
  * }} options
@@ -109,6 +110,7 @@ export function createReaiStorefrontWorker({
   market,
   pathPrefix: configuredPathPrefix = "",
   beforeRequest = null,
+  countryCode = undefined,
 }) {
   if (!cacheKey) throw new TypeError("cacheKey is required");
   if (!storefront?.HANDLE || !storefront?.matchRoute) throw new TypeError("storefront helpers are required");
@@ -502,7 +504,7 @@ export function createReaiStorefrontWorker({
       const checkout = await checkoutRequest(request, url, env);
       if (checkout.error) return checkout.error;
       upstreamResult = client.createCheckoutSession(
-        checkout.body,
+        { ...checkout.body, ...(countryCode ? { countryCode } : {}) },
         deliveryContext,
         request.headers.get("Idempotency-Key") || crypto.randomUUID(),
       );

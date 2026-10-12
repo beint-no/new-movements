@@ -66,7 +66,7 @@ export interface paths {
         put?: never;
         /**
          * Create an immutable checkout snapshot
-         * @description Call this from a trusted backend or Worker with a Site credential and Idempotency-Key. The request supplies the frozen checkout lines and optional returnUrl. Keep the Site credential server-side; never send it to the browser. Open the returned checkoutUrl in the shopper's browser to complete contact, shipping, and payment. Submit bundle variant IDs and bundle counts without expanding components. Stock validation combines shared components across the whole cart and returns 409 INSUFFICIENT_STOCK with stockIssues when it cannot fit. Creating a session does not reserve stock; the components are atomically reserved when payment starts.
+         * @description Call this from a trusted backend or Worker with a Site credential and Idempotency-Key. The request supplies the frozen checkout lines and optional returnUrl and delivery countryCode within the selected market. Keep the Site credential server-side; never send it to the browser. Open the returned checkoutUrl in the shopper's browser to complete contact, shipping, and payment. Submit bundle variant IDs and bundle counts without expanding components. Stock validation combines shared components across the whole cart and returns 409 INSUFFICIENT_STOCK with stockIssues when it cannot fit. Creating a session does not reserve stock; the components are atomically reserved when payment starts.
          */
         post: operations["createCheckoutSession"];
         delete?: never;
@@ -344,6 +344,8 @@ export interface components {
         };
         /** @description Checkout lines already selected by the store or application. Create this request from a trusted backend or Worker, never from the shopper's browser. */
         SiteCheckoutSessionReq: {
+            /** @description ISO 3166-1 alpha-2 delivery country within the selected market. Defaults to its first country when omitted. */
+            countryCode?: string | null;
             lines: components["schemas"]["SiteCheckoutLineReq"][];
             returnUrl?: string | null;
         };

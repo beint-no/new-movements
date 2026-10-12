@@ -621,3 +621,24 @@ body[data-view="women"] .collection-layout .product-shot picture{
 .cart-items>.message-page{min-height:30vh;padding:40px 0}
 .cart-layout:has(.cart-items>.message-page){grid-template-columns:1fr}
 .cart-layout:has(.cart-items>.message-page)>.cart-summary{display:none}
+
+.country-switcher:has([data-country-open]:not([hidden])) .country-fallback{display:none}
+.country-switcher [data-country-open]{border:0;background:transparent;color:inherit;font:inherit;font-size:.85rem;padding:8px;white-space:nowrap;cursor:pointer;display:flex;width:auto;height:auto;gap:4px;align-items:center}
+.country-switcher [data-country-open][hidden],.country-options button[hidden]{display:none}
+.country-code{display:none}
+.country-dialog{width:min(460px,calc(100% - 32px));max-height:min(680px,calc(100dvh - 48px));padding:24px;border:1px solid #d4d4cd;background:#fff;color:#111;box-sizing:border-box}
+.country-dialog::backdrop{background:#0006}
+.country-dialog header{display:flex;justify-content:space-between;align-items:center;gap:20px}
+.country-dialog h2{margin:0;font-size:1.4rem;font-weight:500;letter-spacing:0}
+.country-dialog header button{background:transparent;border:0;font:inherit;font-size:1.75rem;padding:0 8px;cursor:pointer}
+.country-dialog p{font-size:.85rem;color:#666;line-height:1.5}
+.country-dialog input{box-sizing:border-box;width:100%;padding:12px;border:1px solid #aaa;background:#fff;color:#111;font:inherit;font-size:1rem;margin:4px 0 16px}
+.country-options{display:flex;flex-direction:column;max-height:390px;overflow:auto}
+.country-options button{display:flex;justify-content:space-between;gap:24px;width:100%;border:0;border-bottom:1px solid #eee;padding:14px 8px;background:#fff;color:#111;font:inherit;text-align:left;cursor:pointer}
+.country-options button span:last-child{color:#666;font-size:.85rem}
+.country-options button:hover,.country-options button[aria-current]{background:#f2f2ed}
+.country-switcher button:focus-visible,.country-dialog input:focus-visible{outline:2px solid #111;outline-offset:2px}
+@media(max-width:760px){.country-name{display:none}.country-code{display:inline}.country-switcher [data-country-open]{font-size:.72rem}.country-dialog{padding:20px}.country-options{max-height:calc(100dvh - 260px)}}
+
+@media(max-width:760px){.site-nav{grid-template-columns:24px minmax(0,1fr) auto;gap:8px}.wordmark,.wordmark img{width:min(140px,100%)}.country-switcher [data-country-open]{padding-inline:0}}
+.country-fallback noscript button{display:inline;width:auto;height:auto;padding:4px;font-size:.75rem}
