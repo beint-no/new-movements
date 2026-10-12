@@ -19,7 +19,7 @@ Cloudflare Worker.
 - Render API image alt text, intrinsic dimensions, and width-based renditions.
 - Preserve semantic HTML, keyboard operation, visible focus, reduced-motion
   support, and useful metadata.
-- CI may validate and perform Wrangler dry runs, but deployment is local-only.
+- CI validates and creates isolated previews for open PRs. Production deployment remains local-only.
   Checks run on pull requests and pushes to `main` only, not every branch push.
 
 ## Brand constraints
@@ -55,7 +55,7 @@ npm run secret
 npm run deploy
 ```
 
-Deployment is local-only. Product data continues to be managed and published
+Production deployment is local-only. Product data continues to be managed and published
 through ReAI; this repository does not contain a second catalog or Shopify
 runtime client.
 
@@ -76,3 +76,16 @@ The header searches country names, ISO country codes and currency codes, with a 
 select fallback. The HttpOnly preference retains both market and country, and the
 Worker passes the validated country to checkout. Never infer the delivery country
 from currency alone or generate exchange-rate prices in browser code.
+
+## Automatic PR previews
+
+Open PRs receive a stable isolated Cloudflare Preview URL, updated on pushes
+and removed on close. `.github/workflows/preview.yml` builds without deployment
+credentials, then requests the trusted workflow in beint-no/reai through signed
+GitHub Actions OIDC. Cloudflare credentials stay in the central deployment repository.
+The server maps this repository to its assigned Worker, verifies the current PR,
+and provides only a read-only PREVIEW Site credential where catalog access is needed.
+Previews are noindex and reject orders, payments and form submissions.
+Manually dispatch PR previews with a PR number to backfill an already-open PR.
+Register independently created repositories in the server's customer preview registry;
+new repositories created through the e-commerce module are recognized automatically.
