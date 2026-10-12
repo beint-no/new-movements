@@ -156,3 +156,7 @@ responses for a cart changed while checkout was pending. Never infer stock from
 the cached catalog or silently discard a cart line.
 
 Asset URLs are derived from SHA-256 content hashes by tools/build-assets.mjs. Wrangler builds them automatically for development, dry runs and deployment; npm checks build them before importing the renderer. The generated manifest and public assets live in ignored dist/. Static fallback pages receive the same stylesheet URL. Never edit generated output or add manual version counters. One-time stock notification consent starts checked; submitting Notify me requests that notification only and does not subscribe to the newsletter.
+
+## Layout gutters
+
+Use the existing --pad responsive gutter for homepage product sections, collection headers/toolbars/grids and general content pages. Keep collection grids aligned to their headers without a second nested gutter. Search cards share the recommendation card styling, with responsive column counts. Full-width hero/category photography and horizontally scrolling product rails are intentional; text and controls should remain inside their content columns. Review all sitemap routes plus cart, search, confirmation and error pages at narrow mobile, tablet and desktop widths after shared layout changes.
