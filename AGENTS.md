@@ -67,3 +67,12 @@ keep its primary checkout on main and develop in dedicated worktrees under
 reviewed child revision; editing or deploying this site does not deploy siblings.
 Keep credentials out of Git, documentation and browser code. Client access is
 repository-specific; the hub never grants access to its submodules.
+
+## Countries and currencies
+
+Delivery countries are discovered from the ReAI Site markets. Several countries can
+share a market and price list; New Movements keeps one Shopify-synced list per currency.
+The header searches country names, ISO country codes and currency codes, with a native
+select fallback. The HttpOnly preference retains both market and country, and the
+Worker passes the validated country to checkout. Never infer the delivery country
+from currency alone or generate exchange-rate prices in browser code.

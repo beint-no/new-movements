@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { selectMarket, createReaiMarketStorefrontWorker } from './markets.mjs';
+import { selectMarket, selectDestination, createReaiMarketStorefrontWorker } from './markets.mjs';
 const markets = [
   { handle: 'default', currency: 'NOK', countries: ['NO'], isDefault: true },
-  { handle: 'de', currency: 'EUR', countries: ['DE'] },
+  { handle: 'de', currency: 'EUR', countries: ['AT', 'DE', 'FR'] },
   { handle: 'ch', currency: 'CHF', countries: ['CH'] },
 ];
 test('explicit and saved choices take precedence over country detection', () => {
@@ -23,7 +23,7 @@ test('market preference redirects safely and removes prices in the previous curr
   const result = await send('/collections/women?view=women&filter.v.price.gte=2000&market=de');
   assert.equal(result.status, 303);
   assert.equal(result.headers.get('Location'), 'https://shop.example/collections/women?view=women');
-  assert.match(result.headers.get('Set-Cookie'), /reai-market=ch;.*HttpOnly; Secure; SameSite=Lax/);
+  assert.match(result.headers.get('Set-Cookie'), /reai-market=ch%3ACH;.*HttpOnly; Secure; SameSite=Lax/);
   assert.equal((await send('https://evil.example')).status, 400);
   assert.equal((await send('/', 'missing')).status, 400);
   assert.equal((await send('/', 'ch', 'https://evil.example')).status, 403);
@@ -50,4 +50,37 @@ test('catalog and checkout use the selected market and are never publicly cached
   assert.match(checkout.url, /market=ch&locale=en/);
   assert.equal(checkout.body.lines[0].quantity, 2);
   assert.equal((await worker.fetch(new Request('https://shop.example/reai/catalog?market=missing'), env)).status, 400);
+});
+
+test('countries sharing EUR retain destination independently of currency', () => {
+  assert.equal(selectDestination(markets, { country: 'FR' }).market.handle, 'de');
+  assert.equal(selectDestination(markets, { country: 'FR' }).country, 'FR');
+  assert.equal(selectDestination(markets, { saved: 'de', savedCountry: 'FR', country: 'CH' }).country, 'FR');
+  assert.equal(selectDestination(markets, { requested: 'ch', saved: 'de', savedCountry: 'FR' }).country, 'CH');
+  assert.equal(selectDestination(markets, { saved: 'de', savedCountry: 'US' }).country, 'AT');
+});
+test('country form stores destination and checkout ignores browser country override', async (context) => {
+  const originalFetch = globalThis.fetch;
+  context.after(() => { globalThis.fetch = originalFetch; });
+  let checkout;
+  globalThis.fetch = async (url, init) => {
+    if (String(url).endsWith('/site/v1/site')) return Response.json({ markets });
+    checkout = JSON.parse(init.body);
+    return Response.json({ checkoutUrl: 'https://app.reai.no/checkout/session/test' }, { status: 201 });
+  };
+  const worker = createReaiMarketStorefrontWorker({ storefront: { HANDLE: /^[a-z0-9-]+$/, matchRoute: () => null }, cacheKey: 'test', locale: 'en' });
+  const env = { REAI_SITE_TOKEN: 'test' };
+  const select = (country) => worker.fetch(new Request('https://shop.example/reai/market', {
+    method: 'POST', body: new URLSearchParams({ country, returnTo: '/products/shoe?view=women' }),
+  }), env);
+  const result = await select('FR');
+  assert.equal(result.status, 303);
+  assert.match(result.headers.get('Set-Cookie'), /reai-market=de%3AFR;/);
+  assert.equal((await select('US')).status, 400);
+  const response = await worker.fetch(new Request('https://shop.example/reai/checkout/start', {
+    method: 'POST', headers: { Cookie: 'reai-market=de%3AFR', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ countryCode: 'CH', lines: [{ variantId: '018f3c2e-8b1a-4d3e-9c4f-5a6b7c8d9e0f', quantity: 1 }] }),
+  }), env);
+  assert.equal(response.status, 201);
+  assert.equal(checkout.countryCode, 'FR');
 });

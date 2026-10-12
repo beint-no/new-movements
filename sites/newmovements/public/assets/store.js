@@ -726,13 +726,49 @@ async function refreshCartPrices() {
     document.querySelectorAll('[data-checkout-error]').forEach((node) => { node.hidden = false; node.textContent = 'We could not update prices for your delivery country. Refresh the page to try again.'; });
   } finally { if (requestId === cartPriceRequest) { cartRepricing = false; renderCart(); renderDrawerCart(); } }
 }
-const marketForm = document.querySelector('[data-market-form]');
-marketForm?.querySelector('[data-market-select]')?.addEventListener('change', () => {
-  const returnTo = marketForm.querySelector('[name=returnTo]') || document.createElement('input');
-  returnTo.type = 'hidden'; returnTo.name = 'returnTo'; returnTo.value = location.pathname + location.search;
-  marketForm.append(returnTo);
-  marketForm.requestSubmit();
+const updateCountryReturn = (form) => {
+  const returnTo = form.querySelector('[name="returnTo"]');
+  if (returnTo) returnTo.value = location.pathname + location.search;
+};
+document.querySelectorAll('[data-market-form]').forEach((form) => {
+  form.addEventListener('submit', () => updateCountryReturn(form));
+  form.querySelector('[data-market-select]')?.addEventListener('change', () => {
+    updateCountryReturn(form);
+    form.requestSubmit();
+  });
 });
+const countryDialog = document.querySelector('#country-dialog');
+const countryOpen = document.querySelector('[data-country-open]');
+const countrySearch = document.querySelector('[data-country-search]');
+if (countryDialog && countryOpen && countrySearch) {
+  const filterCountries = () => {
+    const query = countrySearch.value.trim().toLowerCase();
+    let matches = 0;
+    countryDialog.querySelectorAll('[data-country-option]').forEach((option) => {
+      option.hidden = !option.dataset.search.includes(query);
+      if (!option.hidden) matches++;
+    });
+    countryDialog.querySelector('[data-country-empty]').hidden = matches > 0;
+  };
+  countryOpen.hidden = false;
+  countryOpen.addEventListener('click', () => {
+    countrySearch.value = '';
+    filterCountries();
+    countryDialog.showModal();
+    countrySearch.focus();
+  });
+  countryDialog.querySelector('[data-country-close]')?.addEventListener('click', () => countryDialog.close());
+  countryDialog.addEventListener('close', () => countryOpen.focus());
+  countryDialog.addEventListener('click', (event) => { if (event.target === countryDialog) countryDialog.close(); });
+  countrySearch.addEventListener('input', filterCountries);
+  countrySearch.addEventListener('keydown', (event) => {
+    if (event.key === 'ArrowDown' || event.key === 'Enter') {
+      const first = countryDialog.querySelector('[data-country-option]:not([hidden])');
+      if (first) { event.preventDefault(); event.key === 'Enter' ? first.click() : first.focus(); }
+    }
+  });
+}
+
 window.addEventListener('storage', (event) => { if (event.key === CART_KEY) { updateCount(); refreshCartPrices(); renderCart(); renderDrawerCart(); } });
 updateCount();
 refreshCartPrices();

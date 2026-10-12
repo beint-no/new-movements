@@ -4,17 +4,31 @@ import { createReaiStorefrontWorker } from './worker.mjs';
 
 /** @typedef {import('../reai-site-client/site-api.d.ts').components['schemas']['SiteDeliveryMarketRes']} Market */
 const COOKIE = 'reai-market';
-const cookieValue = (request) => request.headers.get('Cookie')?.split(';').map((part) => part.trim()).find((part) => part.startsWith(`${COOKIE}=`))?.slice(COOKIE.length + 1);
-const choiceCookie = (handle) => `${COOKIE}=${encodeURIComponent(handle)}; Path=/; Max-Age=31536000; HttpOnly; Secure; SameSite=Lax`;
+const cookieValue = (request) => {
+  const raw = request.headers.get('Cookie')?.split(';').map((part) => part.trim()).find((part) => part.startsWith(`${COOKIE}=`))?.slice(COOKIE.length + 1);
+  try { return decodeURIComponent(raw || '').split(':'); } catch { return []; }
+};
+const choiceCookie = (handle, country) => `${COOKIE}=${encodeURIComponent(`${handle}:${country}`)}; Path=/; Max-Age=31536000; HttpOnly; Secure; SameSite=Lax`;
 
 /** Country selects an enabled market; currency alone cannot identify a destination or price list. */
-/** @param {Market[]} markets @param {{ requested?: string | null, saved?: string, country?: string | null }} context */
+/** @param {Market[]} markets @param {{ requested?: string | null | undefined, saved?: string | undefined, country?: string | null | undefined }} context */
 export function selectMarket(markets, { requested, saved, country } = {}) {
   return markets.find((market) => market.handle === requested)
     || markets.find((market) => market.handle === saved)
     || markets.find((market) => country && market.countries?.includes(country))
     || markets.find((market) => market.isDefault)
     || markets[0];
+}
+
+/** @param {Market[]} markets @param {{ requested?: string | null | undefined, saved?: string | undefined, savedCountry?: string | undefined, country?: string | null | undefined }} context */
+export function selectDestination(markets, { requested, saved, savedCountry, country } = {}) {
+  const market = selectMarket(markets, { requested, saved, country });
+  if (!market) return undefined;
+  const countries = market.countries?.length ? market.countries : ['NO'];
+  const selectedCountry = (market.handle === saved && countries.includes(savedCountry || '') && savedCountry)
+    || (countries.includes(country || '') && country)
+    || countries[0] || 'NO';
+  return { market, country: selectedCountry };
 }
 
 /** Wrap the static worker with Site API market discovery and server-side preference handling. */
@@ -58,7 +72,9 @@ export function createReaiMarketStorefrontWorker(options) {
         if (request.method !== 'POST') return new Response(null, { status: 405, headers: { Allow: 'POST' } });
         if (request.headers.get('Origin') && request.headers.get('Origin') !== url.origin) return new Response(null, { status: 403 });
         const form = await request.formData();
-        const market = markets.find((item) => item.handle === form.get('market'));
+        const selectedCountry = form.get('country');
+        const market = selectedCountry ? markets.find((item) => (item.countries?.length ? item.countries : ['NO']).includes(String(selectedCountry))) : markets.find((item) => item.handle === form.get('market'));
+        const country = selectedCountry || market?.countries?.[0] || 'NO';
         if (!market) return new Response('This market is unavailable.', { status: 400, headers: { 'Cache-Control': 'no-store' } });
         let returnTo;
         try { returnTo = new URL(String(form.get('returnTo') || '/'), url.origin); }
@@ -67,22 +83,25 @@ export function createReaiMarketStorefrontWorker(options) {
         returnTo.searchParams.delete('market');
         returnTo.searchParams.delete('filter.v.price.gte');
         returnTo.searchParams.delete('filter.v.price.lte');
-        return new Response(null, { status: 303, headers: { Location: returnTo.href, 'Set-Cookie': choiceCookie(market.handle), 'Cache-Control': 'no-store' } });
+        return new Response(null, { status: 303, headers: { Location: returnTo.href, 'Set-Cookie': choiceCookie(market.handle, country), 'Cache-Control': 'no-store' } });
       }
-      const country = request.cf?.country || request.headers.get('CF-IPCountry');
-      const market = selectMarket(markets, { requested, saved: cookieValue(request), country });
-      if (!market) return new Response('This market is unavailable.', { status: 503 });
+      const geoCountry = request.cf?.country || request.headers.get('CF-IPCountry');
+      const [saved, savedCountry] = cookieValue(request);
+      const destination = selectDestination(markets, { requested, saved, savedCountry, country: geoCountry });
+      if (!destination) return new Response('This market is unavailable.', { status: 503 });
+      const { market, country } = destination;
       const renderer = Object.fromEntries(Object.entries(options.storefront).map(([name, value]) => [name,
         name.startsWith('render') && typeof value === 'function'
-          ? (store, ...args) => value(store ? { ...store, markets, marketReturnTo: url.pathname + url.search } : store, ...args)
+          ? (store, ...args) => value(store ? { ...store, markets, countryCode: country, marketReturnTo: url.pathname + url.search } : store, ...args)
           : value,
       ]));
-      const response = await createReaiStorefrontWorker({ ...options, storefront: renderer, market: market.handle, locale: options.locale || market.defaultLocale }).fetch(request, env, executionContext);
+      const response = await createReaiStorefrontWorker({ ...options, storefront: renderer, market: market.handle, countryCode: country, locale: options.locale || market.defaultLocale }).fetch(request, env, executionContext);
       const headers = new Headers(response.headers);
       headers.set('Cache-Control', 'private, no-store');
       headers.set('Vary', 'Cookie, CF-IPCountry');
       headers.set('X-ReAI-Market', market.handle);
-      if (requested || !cookieValue(request)) headers.append('Set-Cookie', choiceCookie(market.handle));
+      headers.set('X-ReAI-Country', country);
+      if (requested || saved !== market.handle || savedCountry !== country) headers.append('Set-Cookie', choiceCookie(market.handle, country));
       return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
     },
   };
