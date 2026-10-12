@@ -12,7 +12,7 @@ const [command, configPath, artifactPath = ".preview"] = process.argv.slice(2);
 const configFile = path.resolve(configPath);
 const { rawConfig: config } = experimental_readRawConfig({ config: configFile });
 const artifact = path.resolve(artifactPath);
-const previewName = `pr-${process.env.PR_NUMBER}`;
+const previewName = `review-${process.env.PR_NUMBER}`;
 const environment = `${config.name}-${previewName}`;
 const marker = `<!-- reai-pr-preview:${config.name} -->`;
 

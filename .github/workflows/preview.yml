@@ -80,6 +80,7 @@ jobs:
           if-no-files-found: error
           retention-days: 1
   deploy-preview:
+    name: PR preview (${{ matrix.site }})
     needs: [metadata, build]
     if: always() && needs.metadata.result == 'success' && (needs.metadata.outputs.closed == 'true' || needs.build.result == 'success')
     runs-on: ubuntu-latest
