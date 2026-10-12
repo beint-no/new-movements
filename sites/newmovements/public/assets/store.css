@@ -644,3 +644,21 @@ body[data-view="women"] .collection-layout .product-shot picture{
 .utility-nav .country-fallback noscript button{display:inline;width:auto;height:auto;padding:4px;font-size:.75rem}
 
 .collection-directory-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:36px 20px}.collection-tile{min-width:0}.collection-tile h2{margin:12px 0 4px;font-size:1.05rem;font-weight:500;letter-spacing:-.02em}.collection-tile p{margin:0;color:var(--muted);font-size:.85rem}.collection-tile-empty{display:flex;align-items:center;justify-content:center;height:100%;font-size:1rem;letter-spacing:.1em;text-transform:uppercase}.collection-tile:focus-visible{outline:2px solid;outline-offset:6px}@media(max-width:700px){.collection-directory-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:28px 12px}}
+
+@media(max-width:900px){
+  .home-hero{height:min(800px,calc(100svh - 100px));grid-template-rows:repeat(2,minmax(0,1fr))}
+  .home-hero-panel{height:100%;min-height:0}
+  .home-hero-panel--men{order:1}
+  .home-hero-panel--women{order:2}
+  .home-hero-panel--men img{object-position:center 65%}
+  .home-hero-panel--women img{object-position:center 85%}
+  .home-hero-panel>span,.home-hero-panel:last-child>span{inset:auto 18px 16px auto;width:160px;min-height:44px;font-size:.75rem}
+  .home-hero-panel--women>span{right:auto;left:18px}
+  .season-hero-copy{top:18px}
+  .season-hero-copy h1{max-width:310px;margin-bottom:10px;font-size:clamp(1.65rem,7.8vw,2.4rem)}
+  .season-hero-copy p{font-size:.7rem}
+}
+@media(max-width:900px) and (orientation:landscape){
+  .home-hero{height:calc(100svh - 100px);min-height:260px;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:1fr}
+  .season-hero-copy h1{max-width:500px;font-size:clamp(1.65rem,4vw,2.1rem)}
+}
