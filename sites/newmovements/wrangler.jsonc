@@ -19,5 +19,11 @@
   "build": {
     "command": "node ../../tools/build-assets.mjs",
     "watch_dir": ["public", "../../tools/build-assets.mjs"]
+  },
+  "previews": {
+    "vars": {
+      "REAI_BASE_URL": "https://app.reai.no",
+      "CHECKOUT_ENABLED": "false"
+    }
   }
 }

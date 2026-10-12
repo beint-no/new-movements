@@ -19,7 +19,7 @@ Cloudflare Worker.
 - Render API image alt text, intrinsic dimensions, and width-based renditions.
 - Preserve semantic HTML, keyboard operation, visible focus, reduced-motion
   support, and useful metadata.
-- CI may validate and perform Wrangler dry runs, but deployment is local-only.
+- CI validates and creates isolated previews for open PRs. Production deployment remains local-only.
   Checks run on pull requests and pushes to `main` only, not every branch push.
 
 ## Brand constraints
@@ -55,7 +55,7 @@ npm run secret
 npm run deploy
 ```
 
-Deployment is local-only. Product data continues to be managed and published
+Production deployment is local-only. Product data continues to be managed and published
 through ReAI; this repository does not contain a second catalog or Shopify
 runtime client.
 
@@ -76,3 +76,14 @@ The header searches country names, ISO country codes and currency codes, with a 
 select fallback. The HttpOnly preference retains both market and country, and the
 Worker passes the validated country to checkout. Never infer the delivery country
 from currency alone or generate exchange-rate prices in browser code.
+
+## Automatic PR previews
+
+Open same-repository PRs get a stable Cloudflare Preview URL, refreshed on each push
+and removed on close. `.github/workflows/preview.yml` builds without credentials,
+then deploys with reviewed default-branch tooling in `.github/preview/preview.mjs`.
+The preview is noindex and read-only: orders, payments and form submissions are disabled.
+GitHub secrets: CLOUDFLARE_PREVIEW_API_TOKEN and CLOUDFLARE_PREVIEW_ACCOUNT_ID;
+commerce sites also need REAI_PREVIEW_CREDENTIAL with only Site, catalog and availability reads.
+Manually dispatch PR previews with a PR number to backfill an already-open PR.
+Production publishing and domain approval follow the existing site instructions.
