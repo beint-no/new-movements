@@ -1,0 +1,6 @@
+REAI_SITE_TOKEN=replace-with-a-site-scoped-preview-token
+
+# Optional newsletter provider webhook. The endpoint receives
+# { "email": "visitor@example.com", "source": "newmovements-storefront" }.
+NEWSLETTER_WEBHOOK_URL=
+NEWSLETTER_WEBHOOK_TOKEN=
