@@ -558,7 +558,7 @@ export function createReaiStorefrontWorker({
   async function merchantCheckout(request, env, url) {
     if (!merchantCheckoutPath) return null;
     const path = stripPathPrefix(url.pathname, pathPrefix);
-    const api = path?.match(/^\/reai\/checkout\/([a-f0-9]{32})(?:\/(delivery-options|prepare-payment|change-country))?$/);
+    const api = path?.match(/^\/reai\/checkout\/([a-f0-9]{32})(?:\/(delivery-options|prepare-payment|change-country|address-suggestions))?$/);
     const isPage = path === merchantCheckoutPath || path === checkoutReturnPath;
     if (!api && !isPage) return null;
     const headers = securityHeaders(new Headers({ "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow" }), env);
@@ -569,6 +569,13 @@ export function createReaiStorefrontWorker({
       const client = siteClient(env);
       let result;
       if (["GET", "HEAD"].includes(request.method) && !api?.[2]) result = await client.checkoutDetails(id);
+      else if (api?.[2] === "address-suggestions" && request.method === "GET") {
+        if (request.headers.get("Sec-Fetch-Site") === "cross-site") return jsonResponse({ error: "Invalid request origin." }, 403, env);
+        if (await checkoutRateLimited(request, env, url)) return jsonResponse({ error: "Too many checkout requests. Please wait a moment." }, 429, env);
+        const query = url.searchParams.get("query") || "";
+        if (query.length > 254) return jsonResponse({ error: "Address query too long." }, 400, env);
+        result = await client.checkoutAddressSuggestions(id, query, url.searchParams.get("countryCode") || "NO");
+      }
       else if (api && ["PATCH", "POST"].includes(request.method)) {
         if (env.CHECKOUT_ENABLED === "false") return jsonResponse({ error: "Checkout is disabled in this preview." }, 403, env);
         if (request.headers.get("Origin") !== url.origin || request.headers.get("Sec-Fetch-Site") === "cross-site") return jsonResponse({ error: "Invalid request origin." }, 403, env);

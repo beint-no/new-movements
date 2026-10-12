@@ -105,3 +105,5 @@ catalog identity and checkout variant IDs intact; filter only the presentation.
 `imageOrigins` optionally permits explicit HTTPS CDN origins for imported collection images.
 Keep the default policy restricted to the site and ReAI media, configure only reviewed origins,
 and never derive CSP sources from browser input or widen script/form permissions.
+
+Merchant address suggestions are optional, authenticated through the typed Site client, private/no-store and rate limited alongside checkout writes. Reject cross-site fetches and oversized queries; provider credentials stay in ReAI. Pickup filtering is local to the browser after one selected-option discovery.
