@@ -75,6 +75,90 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/site/v1/commerce/checkout-sessions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Resume a merchant checkout
+         * @description Server-side Site credential and opaque checkout ID required. Contains personal data: never cache or log the response. Hosted checkouts are deliberately excluded.
+         */
+        get: operations["read"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Save merchant checkout details
+         * @description Uses optimistic revision locking. Set complete for final contact/address validation. Empty discountCode removes a discount. Changing the address clears delivery selection. Locked payments cannot be edited.
+         */
+        patch: operations["update"];
+        trace?: never;
+    };
+    "/site/v1/commerce/checkout-sessions/{id}/change-country": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Change the delivery country
+         * @description Uses configured countries and currency prices. For a different market, creates a fresh quote and retires the previous draft atomically. Idempotency-Key is required. Contact/address are retained; shipping and discounts must be selected again.
+         */
+        post: operations["country"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/site/v1/commerce/checkout-sessions/{id}/delivery-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Find delivery options and pickup points
+         * @description Read-only discovery for the supplied address. Pass an optionToken to fetch its pickup points. Persist selection with PATCH and the current revision.
+         */
+        post: operations["options"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/site/v1/commerce/checkout-sessions/{id}/prepare-payment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Prepare payment for a merchant checkout
+         * @description Validates complete details and prepares an unpayable provider session. Returns a ReAI paymentUrl; no provider credentials or sessionData are delivered to the merchant. ReAI reserves stock and finalizes payment on the payment page.
+         */
+        post: operations["prepare"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/site/v1/commerce/collections": {
         parameters: {
             query?: never;
@@ -336,17 +420,116 @@ export interface components {
             marketId: string;
             products: components["schemas"]["SiteDeliveryProductRes"][];
         };
+        SiteCheckoutCountryReq: {
+            customer: components["schemas"]["SiteCheckoutCustomerDto"];
+            /** Format: int32 */
+            revision: number;
+        };
+        SiteCheckoutCustomerDto: {
+            addressPart1?: string;
+            addressPart2?: string;
+            city?: string;
+            countryCode?: string;
+            email?: string;
+            name?: string;
+            phone?: string;
+            postalCode?: string;
+            province?: string;
+        };
+        SiteCheckoutDeliveryMethodDto: {
+            gross: number;
+            /** Format: uuid */
+            id: string;
+            name: string;
+            pickupDetails?: string | null;
+        };
+        SiteCheckoutDeliveryOptionDto: {
+            gross: number;
+            name: string;
+            pickupRequired: boolean;
+            pickups: components["schemas"]["SiteCheckoutPickupDto"][];
+            token: string;
+        };
+        SiteCheckoutDeliveryOptionsDto: {
+            error?: string | null;
+            options: components["schemas"]["SiteCheckoutDeliveryOptionDto"][];
+        };
+        SiteCheckoutDestinationDto: {
+            countryCode: string;
+            currency: string;
+            marketHandle: string;
+        };
+        SiteCheckoutDetailsDto: {
+            checkoutUrl: string;
+            countries: string[];
+            currency: string;
+            customer: components["schemas"]["SiteCheckoutCustomerDto"];
+            destinations: components["schemas"]["SiteCheckoutDestinationDto"][];
+            discountCode?: string | null;
+            discountGross?: number | null;
+            dynamicShipping: boolean;
+            editable: boolean;
+            /** Format: date-time */
+            expiresAt: string;
+            id: string;
+            lines: components["schemas"]["SiteCheckoutDetailsLineDto"][];
+            locale: string;
+            marketHandle: string;
+            paymentUrl: string;
+            phase: string;
+            returnUrl: string;
+            /** Format: int32 */
+            revision: number;
+            selectedOptionToken?: string | null;
+            selectedPickupToken?: string | null;
+            shippingGross?: number | null;
+            /** Format: uuid */
+            shippingMethodId?: string | null;
+            shippingMethods: components["schemas"]["SiteCheckoutDeliveryMethodDto"][];
+            shippingName?: string | null;
+            shippingRequired: boolean;
+            subtotal: number;
+            total: number;
+            vat: number;
+        };
+        SiteCheckoutDetailsLineDto: {
+            gross: number;
+            imageUrl: string;
+            options: components["schemas"]["SiteVariantOption"][];
+            /** Format: int32 */
+            quantity: number;
+            title: string;
+            variantId: string;
+        };
         SiteCheckoutLineReq: {
             /** Format: int32 */
             quantity: number;
             /** Format: uuid */
             variantId: string;
         };
+        SiteCheckoutOptionsReq: {
+            customer: components["schemas"]["SiteCheckoutCustomerDto"];
+            includeOtherOptions?: boolean;
+            optionToken?: string | null;
+        };
+        SiteCheckoutPickupDto: {
+            address: string;
+            city: string;
+            name: string;
+            postalCode: string;
+            token: string;
+        };
+        SiteCheckoutPrepareReq: {
+            /** Format: int32 */
+            revision: number;
+        };
         /** @description Checkout lines already selected by the store or application. Create this request from a trusted backend or Worker, never from the shopper's browser. */
         SiteCheckoutSessionReq: {
             /** @description ISO 3166-1 alpha-2 delivery country within the selected market. Defaults to its first country when omitted. */
             countryCode?: string | null;
             lines: components["schemas"]["SiteCheckoutLineReq"][];
+            /** @description Optional HTTPS details-page URL on the registered site domain. Opts into merchant checkout; ReAI appends the opaque checkout parameter. Omit for complete hosted checkout. */
+            merchantCheckoutUrl?: string | null;
             returnUrl?: string | null;
         };
         /** @description Created checkout session. Open checkoutUrl in the shopper's browser. Do not expose the Site credential to the browser. */
@@ -366,6 +549,17 @@ export interface components {
             gross: number;
             net: number;
             vat: number;
+        };
+        SiteCheckoutUpdateReq: {
+            complete?: boolean;
+            customer?: components["schemas"]["SiteCheckoutCustomerDto"] | null;
+            discountCode?: string | null;
+            optionToken?: string | null;
+            pickupToken?: string | null;
+            /** Format: int32 */
+            revision: number;
+            /** Format: uuid */
+            shippingMethodId?: string | null;
         };
         SiteDeliveryBundleItemRes: {
             options: components["schemas"]["SiteDeliveryOptionRes"][];
@@ -567,6 +761,10 @@ export interface components {
             status: "AVAILABLE" | "OUT_OF_STOCK";
             /** Format: uuid */
             variantId: string;
+        };
+        SiteVariantOption: {
+            name: string;
+            value: string;
         };
     };
     responses: never;
@@ -872,6 +1070,394 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SiteCheckoutSessionRes"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    read: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteCheckoutDetailsDto"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SiteCheckoutUpdateReq"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteCheckoutDetailsDto"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    country: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SiteCheckoutCountryReq"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteCheckoutDetailsDto"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    options: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SiteCheckoutOptionsReq"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteCheckoutDeliveryOptionsDto"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    prepare: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SiteCheckoutPrepareReq"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteCheckoutDetailsDto"];
                 };
             };
             /** @description Bad request */

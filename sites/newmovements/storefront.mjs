@@ -1,3 +1,4 @@
+export { renderCheckoutPage } from "./checkout.mjs";
 import { STORE_SCRIPT, STORE_STYLE, FAVICON_SVG, FAVICON_ICO, TOUCH_ICON } from "./dist/assets.mjs";
 import { renderPaymentMarks, renderSocialLinks } from "./footer-icons.mjs";
 import { CART_UPSELL_HANDLES, sortProductSizes, VIEWS, selectedView, productView, productsForView, isProductShot, viewUrl } from "./merchandising.mjs";
@@ -87,6 +88,7 @@ export const priceRange = (variants = [], currency = "NOK", includeCurrency = tr
 
 export function matchRoute(pathname) {
   const path = pathname === "/index.html" ? "/" : pathname;
+  if (path === "/checkout") return { type: "checkout" };
   if (path === "/") return { type: "home" };
   if (path === "/sitemap.xml") return { type: "sitemap" };
   const staticPath = path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path;

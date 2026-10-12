@@ -10,6 +10,7 @@ export default createReaiMarketStorefrontWorker({
   market: "default",
   locale: "en",
   imageOrigins: ["https://cdn.shopify.com"],
+  merchantCheckoutPath: "/checkout",
   checkoutReturnPath: "/order/complete",
   beforeRequest: handleStorefrontRequest,
   noStorePaths: ["/cart/", "/search/", "/order/complete/"],

@@ -213,11 +213,36 @@ export class ReaiSiteClient {
    * @returns {Promise<SiteApiResponse<SiteAvailability>>}
    */
   async availability(variantId, context) {
-    /** @type {SiteApiOperations["availability"]["parameters"]["path"]} */
+  /** @type {SiteApiOperations["availability"]["parameters"]["path"]} */
     const path = { variantId };
     /** @type {SiteApiOperations["availability"]["parameters"]["query"]} */
     const query = context;
     return new SiteApiResponse(await this.#request(expandPath(AVAILABILITY_PATH, path), query));
+  }
+
+  /** @param {string} id @returns {Promise<SiteApiResponse<import("./site-api.d.ts").components["schemas"]["SiteCheckoutDetailsDto"]>>} */
+  async checkoutDetails(id) {
+    return new SiteApiResponse(await this.#request(expandPath("/site/v1/commerce/checkout-sessions/{id}", { id })));
+  }
+  /** @param {string} id @param {import("./site-api.d.ts").components["schemas"]["SiteCheckoutCountryReq"]} body @param {string} key */
+  async changeCheckoutCountry(id, body, key) {
+    return new SiteApiResponse(await this.#request(expandPath("/site/v1/commerce/checkout-sessions/{id}/change-country", { id }), undefined,
+      { method: "POST", headers: { "Content-Type": "application/json", "Idempotency-Key": key }, body: JSON.stringify(body) }));
+  }
+  /** @param {string} id @param {import("./site-api.d.ts").components["schemas"]["SiteCheckoutUpdateReq"]} body */
+  async updateCheckout(id, body) {
+    return new SiteApiResponse(await this.#request(expandPath("/site/v1/commerce/checkout-sessions/{id}", { id }), undefined,
+      { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }));
+  }
+  /** @param {string} id @param {import("./site-api.d.ts").components["schemas"]["SiteCheckoutOptionsReq"]} body */
+  async checkoutDeliveryOptions(id, body) {
+    return new SiteApiResponse(await this.#request(expandPath("/site/v1/commerce/checkout-sessions/{id}/delivery-options", { id }), undefined,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }));
+  }
+  /** @param {string} id @param {import("./site-api.d.ts").components["schemas"]["SiteCheckoutPrepareReq"]} body */
+  async prepareCheckoutPayment(id, body) {
+    return new SiteApiResponse(await this.#request(expandPath("/site/v1/commerce/checkout-sessions/{id}/prepare-payment", { id }), undefined,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }));
   }
 
   /**

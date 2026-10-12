@@ -31,7 +31,7 @@ Cloudflare Worker.
 - Preserve Shopify-compatible public routes for products, collections, cart,
   search, pages, and policies.
 - Cart state is browser-local. Checkout posts opaque Site API variant IDs and
-  quantities to `/reai/checkout/start` and redirects to hosted checkout.
+  quantities to `/reai/checkout/start` and opens merchant-domain contact and delivery before ReAI summary/payment.
 
 ## Development
 
@@ -119,3 +119,7 @@ REAI_PREVIEW_CREDENTIAL_FILE to a token file outside Git, or provide
 REAI_PREVIEW_CREDENTIAL in your local environment. Never use the live Site token
 for a preview or commit a credential. Obtain the read-only credential through
 ReAI Site credential management.
+
+## Merchant-domain checkout
+
+New Movements opts in with merchantCheckoutPath=/checkout. The shared Worker and typed Site client own the private proxy; the Site token stays server-side. Contact, address, delivery and discount edits are saved in ReAI with optimistic revision checks. Cross-market country changes create a new currency quote and retire the old draft. Background preparation is unpayable and holds no stock; ReAI validates and reserves only on payment submission. The complete hosted checkout remains the shared default for other storefronts. Checkout HTML/API are no-store, noindex and no-referrer; never log their personal data. Confirmation checks fulfillment before removing purchased cart quantities, once per checkout. No implicit newsletter consent.

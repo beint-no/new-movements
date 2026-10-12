@@ -10,7 +10,7 @@ export async function buildAssets(siteRoot) {
   await rm(join(output, 'public'), { recursive: true, force: true });
   await cp(source, join(output, 'public'), { recursive: true });
   const urls = {};
-  for (const [key, file] of [['STORE_SCRIPT', 'assets/store.js'], ['STORE_STYLE', 'assets/store.css'], ['FAVICON_SVG', 'assets/favicon.svg'], ['FAVICON_ICO', 'favicon.ico'], ['TOUCH_ICON', 'apple-touch-icon.png']]) {
+  for (const [key, file] of [['CHECKOUT_SCRIPT', 'assets/checkout.js'], ['CHECKOUT_STYLE', 'assets/checkout.css'], ['STORE_SCRIPT', 'assets/store.js'], ['STORE_STYLE', 'assets/store.css'], ['FAVICON_SVG', 'assets/favicon.svg'], ['FAVICON_ICO', 'favicon.ico'], ['TOUCH_ICON', 'apple-touch-icon.png']]) {
     const bytes = await readFile(join(output, 'public', file));
     urls[key] = `/${file}?v=${createHash('sha256').update(bytes).digest('hex').slice(0, 16)}`;
   }
