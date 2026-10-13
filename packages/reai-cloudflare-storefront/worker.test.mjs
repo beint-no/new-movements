@@ -516,3 +516,52 @@ test("merchant checkout pages and draft responses suppress referrers and caching
     assert.equal(response.headers.get("X-Robots-Tag"), "noindex, nofollow");
   }
 });
+
+test("newsletter requests explicitly select the offer and preserve the storefront locale", async (context) => {
+  const originalFetch = globalThis.fetch;
+  context.after(() => { globalThis.fetch = originalFetch; });
+  const calls = [];
+  globalThis.fetch = async (input, init) => {
+    calls.push({ input, body: JSON.parse(init.body) });
+    return Response.json({ accepted: true });
+  };
+  const worker = createReaiStorefrontWorker({ cacheKey: "newsletter", storefront, market: "default", locale: "nb-NO" });
+  const signup = (body) => worker.fetch(new Request("https://shop.example/reai/newsletter/subscribe", {
+    method: "POST", headers: { "Content-Type": "application/json", Origin: "https://shop.example" }, body: JSON.stringify(body),
+  }), { REAI_SITE_TOKEN: "test-token" });
+  assert.equal((await signup({ email: " member@example.com ", name: " Member ", consent: true })).status, 200);
+  assert.deepEqual(calls[0].body, { email: "member@example.com", name: "Member", consent: true, locale: "nb-NO" });
+  assert.equal((await signup({ email: "member@example.com", consent: true, welcomeDiscount: true })).status, 200);
+  assert.equal(calls[1].body.welcomeDiscount, true);
+  assert.equal(calls[1].body.locale, "nb-NO");
+  assert.equal((await signup({ email: "member@example.com", consent: false, welcomeDiscount: true })).status, 400);
+  assert.equal((await signup({ email: "member@example.com", consent: true, welcomeDiscount: "true" })).status, 400);
+  assert.equal(calls.length, 2);
+});
+
+test("newsletter forms work without JavaScript and never claim success for a disabled offer", async (context) => {
+  const originalFetch = globalThis.fetch;
+  context.after(() => { globalThis.fetch = originalFetch; });
+  let status = 200;
+  let payload;
+  globalThis.fetch = async (input, init) => {
+    payload = JSON.parse(init.body);
+    return Response.json({ accepted: status === 200 }, { status });
+  };
+  const worker = createReaiStorefrontWorker({ cacheKey: "newsletter-form", storefront: {
+    ...storefront, renderMessagePage: (store, message) => `<h1>${message.heading}</h1><p>${message.text}</p>`,
+  }, market: "default", locale: "en" });
+  const signup = () => worker.fetch(new Request("https://shop.example/reai/newsletter/subscribe", {
+    method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", Origin: "https://shop.example" },
+    body: new URLSearchParams({ email: "member@example.com", consent: "true", welcomeDiscount: "true" }),
+  }), { REAI_SITE_TOKEN: "test-token" });
+  let response = await signup();
+  assert.equal(response.status, 200);
+  assert.match(await response.text(), /Check your email/);
+  assert.equal(payload.welcomeDiscount, true);
+  status = 400;
+  response = await signup();
+  assert.equal(response.status, 400);
+  assert.match(await response.text(), /could not save/);
+  assert.equal(response.headers.get("Cache-Control"), "no-store");
+});
