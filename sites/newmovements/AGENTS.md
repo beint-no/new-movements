@@ -118,10 +118,15 @@ Do not add a review API, third-party widget or runtime refresh for this section.
 
 Review URL: https://newmovements.respiro.workers.dev
 
-As checked on 2026-10-10, ReAI Site 10 (tenant 3157) is named New Movements
-Development, has no active domain, and its existing credential is PREVIEW.
-Markets are configured in ReAI: Norway/NOK with Bring/PostNord at NOK 69 (free from NOK 850), Germany/EUR and Switzerland/CHF with free fixed DHL Express delivery. International delivery uses merchant fulfillment; no automatic DHL booking integration is implied. Do not advertise other destinations until their prices, tax treatment and shipping are configured.
-
+As checked on 2026-10-13, tenant 3157's Site is named New Movements, has no
+active domain, and uses the existing review Worker. All enabled market shipping
+methods are free without a minimum order: Bring/Posten and PostNord in Norway,
+DHL Express internationally. Taxes and duties are included in every destination,
+as the merchant explicitly confirmed. International delivery is merchant-fulfilled;
+ReAI's current DHL booking adapter supports Norway domestic only. The merchant
+must arrange international shipments with duties/taxes billed to the sender.
+Do not mistake a free checkout rate or Norwegian export VAT code for a completed
+DDP shipping integration.
 Before domain cutover: review this Worker and update the hub pointer, configure
 the intended production Site identity/domain/credential, and verify shipping and
 a controlled payment end to end. The footer supports newsletter signup with explicit consent. Hosted checkout creation and payment
@@ -182,7 +187,7 @@ collection retains its own route and membership. The empty tax utility collectio
 
 New Movements opts in with merchantCheckoutPath=/checkout. The shared Worker and typed Site client own the private proxy; the Site token stays server-side. Contact, address, delivery and discount edits are saved in ReAI with optimistic revision checks. Cross-market country changes create a new currency quote and retire the old draft. Background preparation is unpayable and holds no stock; ReAI validates and reserves only on payment submission. The complete hosted checkout remains the shared default for other storefronts. Checkout HTML/API are no-store, noindex and no-referrer; never log their personal data. Confirmation checks fulfillment before removing purchased cart quantities, once per checkout. No implicit newsletter consent.
 
-Checkout shipping cards consume Site API carrier logos, localized descriptions and pickup labels. Pickup search filters returned locations locally and supports keyboard selection; distance is shown only when supplied by the carrier. Optional Norwegian address suggestions use the same private Worker/Site client boundary because Bring requires credentials; keep manual input working during provider failure. Checkout promises free returns within 30 days and free exchanges per https://newmovements.com/pages/returns-exchanges (checked 2026-10-12); do not infer free shipping or unrelated promises. Payment marks are optimized inline SVG; Vipps is shown for Norwegian destinations only.
+Checkout shipping cards consume Site API carrier logos, localized descriptions and pickup labels. Pickup search filters returned locations locally and supports keyboard selection; distance is shown only when supplied by the carrier. Optional Norwegian address suggestions use the same private Worker/Site client boundary because Bring requires credentials; keep manual input working during provider failure. Checkout promises free returns within 30 days and free exchanges per https://newmovements.com/pages/returns-exchanges (checked 2026-10-12); Free delivery and taxes/duties included were separately confirmed on 2026-10-13; keep all shopping surfaces consistent. Payment marks are optimized inline SVG; Vipps is shown for Norwegian destinations only.
 
 Checkout contact drafts use sessionStorage (this browser tab) with a 24-hour expiry. Store only contact/address fields, never delivery quotes, payment tokens or consent. Write on input and pagehide to protect unfinished edits; restore into compatible quotes without overriding newer server edits or the quote country/currency. Clear the matching draft after confirmed completion. Disabled browser storage must not block server autosave. Selecting delivery saves a partial draft; complete validation belongs to Continue to payment. Required fields are marked, optional fields labeled, and validation errors are shown beside inputs with accessible focus.
 
@@ -191,3 +196,16 @@ window), with one in-flight request and one retry for transient failures. Pendin
 events are bounded at 25. Hidden-page flushes use keepalive; GPC/DNT opt-outs,
 storage restrictions and missing browser APIs must never interrupt shopping.
 Only allowlisted anonymous event fields are transmitted.
+
+## Launch audit (2026-10-13)
+
+Gift Card (product 70025) is deliberately unpublished from this Site: ReAI does not
+yet issue or redeem stored-value codes. Legacy product/collection/page links lead
+to gift-card customer care. Never republish it as an ordinary digital product.
+Shopify gift cards/balances still need a merchant-approved redemption plan before
+cutover. The original Shopify store remains the backup; this change is ReAI-only.
+
+Recovery flow has stage zero only. The previous 8/16-hour follow-ups conflicted
+with Bud's one marketing email per sender/recipient per 24 hours and the 24-hour
+checkout lifetime. Do not bypass that cap or promise these follow-ups. Other
+welcome/post-purchase stages use longer delays and retain consent checks.
