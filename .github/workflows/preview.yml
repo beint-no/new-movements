@@ -1,7 +1,7 @@
 name: PR previews
+# Automatic PR previews are paused; use npm run preview:deploy from local.
+# Manual dispatch remains available when the Actions budget allows it.
 on:
-  pull_request_target:
-    types: [opened, synchronize, reopened, closed]
   workflow_dispatch:
     inputs:
       pull_request:

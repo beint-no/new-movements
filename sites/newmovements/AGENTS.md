@@ -35,10 +35,11 @@ npm run check
 
 ## Deployment
 
-Store the Site API credential as a Cloudflare Worker secret before deploying:
+Run checks and deploy from local; GitHub Actions checks and PR previews are
+temporarily manual-only. Configure the Site API credential with `npm run secret`
+only for initial setup or an intentional rotation. Normal deployments retain it.
 
 ```sh
-npm run secret
 npm run deploy
 ```
 
@@ -159,7 +160,9 @@ Asset URLs are derived from SHA-256 content hashes by tools/build-assets.mjs. Wr
 
 ## Layout gutters
 
-Use the existing --pad responsive gutter for homepage product sections, collection headers/toolbars/grids and general content pages. Keep collection grids aligned to their headers without a second nested gutter. Search cards share the recommendation card styling, with responsive column counts. Full-width hero/category photography and horizontally scrolling product rails are intentional; text and controls should remain inside their content columns. Review all sitemap routes plus cart, search, confirmation and error pages at narrow mobile, tablet and desktop widths after shared layout changes.
+Use the existing --pad responsive gutter for homepage product sections, collection headers/toolbars/grids and general content pages. Keep collection grids aligned to their headers without a second nested gutter. Search cards share the recommendation card styling, with responsive column counts. Category product photos use contain fitting to keep the full shoe visible at every
+width, with a stable 4:5 frame on mobile. Full-width hero/category photography and
+horizontally scrolling product rails are intentional; text and controls should remain inside their content columns. Review all sitemap routes plus cart, search, confirmation and error pages at narrow mobile, tablet and desktop widths after shared layout changes.
 
 ## Market selection
 

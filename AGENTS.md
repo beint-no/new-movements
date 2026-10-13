@@ -19,8 +19,9 @@ Cloudflare Worker.
 - Render API image alt text, intrinsic dimensions, and width-based renditions.
 - Preserve semantic HTML, keyboard operation, visible focus, reduced-motion
   support, and useful metadata.
-- CI validates and creates isolated previews for open PRs. Production deployment remains local-only.
-  Checks run on pull requests and pushes to `main` only, not every branch push.
+- GitHub Actions checks and PR previews are temporarily manual-only while the
+  private Actions budget is exhausted. Run `npm run check` locally before pushing
+  and deploy locally. Do not restore automatic triggers without agreement.
 
 ## Brand constraints
 
@@ -51,9 +52,11 @@ to browser JavaScript.
 
 ```sh
 npm run check
-npm run secret
 npm run deploy
 ```
+
+Only run `npm run secret` when initially configuring or intentionally rotating the
+Site credential; normal deployments retain the existing secret.
 
 Production deployment is local-only. Product data continues to be managed and published
 through ReAI; this repository does not contain a second catalog or Shopify
@@ -77,10 +80,15 @@ select fallback. The HttpOnly preference retains both market and country, and th
 Worker passes the validated country to checkout. Never infer the delivery country
 from currency alone or generate exchange-rate prices in browser code.
 
-## Automatic PR previews
+## Manual PR previews
 
-Open PRs receive a stable isolated Cloudflare Preview URL, updated on pushes
-and removed on close. `.github/workflows/preview.yml` builds without deployment
+Automatic PR previews are paused. Use `npm run preview:deploy -- design` and
+`npm run preview:remove -- design` for local preview management. The retained
+Actions workflow can be manually dispatched with a PR number when the budget
+allows it, but opening, updating or closing a PR does not run it. For manually
+dispatched previews, dispatch again after closing the PR to clean up its preview.
+
+`.github/workflows/preview.yml` builds without deployment
 credentials, then requests the trusted preview workflow in beint-no/reai-site-examples through signed
 GitHub Actions OIDC. Cloudflare credentials stay in the central deployment repository.
 The server maps this repository to its assigned Worker, verifies the current PR,
@@ -111,7 +119,7 @@ npm run preview:remove -- design
 Deployment and preview creation run the relevant existing checks. --dry-run builds
 without publishing. Multi-site repositories require a site name; available names
 are in tools/worker-sites.json. Previews use a separate local- namespace, block
-writes and carry noindex. Removing one leaves automatic PR previews intact.
+writes and carry noindex. Removing one leaves independently dispatched PR previews intact.
 
 Catalog previews additionally need a PREVIEW Site credential with only site:read,
 commerce:catalog:read and commerce:availability:read. Set

@@ -1,10 +1,8 @@
 name: Check storefront
+# Automatic runs are paused while the private Actions budget is exhausted.
+# Run npm run check and deploy from local; dispatch only when explicitly needed.
 on:
-  pull_request:
-    paths: ['sites/**', 'packages/**', 'tools/**', 'package*.json', 'tsconfig.json', '.github/workflows/**']
-  push:
-    branches: [main]
-    paths: ['sites/**', 'packages/**', 'tools/**', 'package*.json', 'tsconfig.json', '.github/workflows/**']
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:
