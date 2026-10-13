@@ -1,3 +1,4 @@
+import './analytics.js';
 const root = document.body;
 let state = JSON.parse(root.dataset.checkout);
 const no = /^no|^nb|^nn/.test(state.locale);

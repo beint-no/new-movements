@@ -4,6 +4,26 @@
  */
 
 export interface paths {
+    "/site/v1/analytics/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record anonymous storefront events
+         * @description Up to 25 events per batch, deduplicated by Site and event UUID. No email, address, arbitrary properties or URL query strings. Server receipt time is authoritative. Browser events are untrusted funnel signals; checkout/order counts come from ReAI sessions. Never send personal data. Raw events retained 180 days.
+         */
+        post: operations["record"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/site/v1/commerce/availability": {
         parameters: {
             query?: never;
@@ -411,6 +431,24 @@ export interface components {
             /** Format: int32 */
             width: number;
         };
+        SiteAnalyticsBatchDto: {
+            events: components["schemas"]["SiteAnalyticsEventDto"][];
+        };
+        SiteAnalyticsEventDto: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            kind: "page_view" | "product_view" | "add_to_cart" | "remove_from_cart" | "checkout_view";
+            path: string;
+            /** Format: uuid */
+            productId?: string | null;
+            /** Format: int32 */
+            quantity?: number | null;
+            /** Format: uuid */
+            sessionId: string;
+            /** Format: uuid */
+            variantId?: string | null;
+        };
         SiteAvailabilitiesRes: {
             currency: components["schemas"]["CurrencyCode"];
             locale: string;
@@ -462,6 +500,9 @@ export interface components {
             province?: string;
         };
         SiteCheckoutDeliveryMethodDto: {
+            carrierCode?: string | null;
+            carrierLogoUrl?: string | null;
+            carrierName?: string | null;
             gross: number;
             /** Format: uuid */
             id: string;
@@ -812,6 +853,80 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    record: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SiteAnalyticsBatchDto"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
     availabilities: {
         parameters: {
             query: {

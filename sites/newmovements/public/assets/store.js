@@ -1,3 +1,4 @@
+import {track} from './analytics.js';
 document.documentElement.classList.add('has-store-js');
 const CART_KEY = 'newmovements-cart-v1';
 const activeCurrency = document.body.dataset.currency || 'NOK';
@@ -14,6 +15,15 @@ const readCart = () => {
   try { return JSON.parse(localStorage.getItem(CART_KEY) || '[]'); } catch { return []; }
 };
 const writeCart = (items) => {
+  const previous=readCart();
+  for(const item of items) {
+    const delta=item.quantity-(previous.find(p=>p.variant===item.variant)?.quantity||0);
+    if(delta>0) track('add_to_cart',{productId:item.id,variantId:item.variant,quantity:delta});
+  }
+  for(const item of previous) {
+    const delta=item.quantity-(items.find(p=>p.variant===item.variant)?.quantity||0);
+    if(delta>0) track('remove_from_cart',{productId:item.id,variantId:item.variant,quantity:delta});
+  }
   const serialized = JSON.stringify(items);
   if (localStorage.getItem(CART_KEY) !== serialized) localStorage.setItem(CART_KEY, serialized);
   cartRevision += 1;
@@ -824,3 +834,6 @@ document.querySelectorAll('[data-stock-form]').forEach((form) => form.addEventLi
   } catch (error) { status.textContent = error.message; }
   finally { button.disabled = false; }
 }));
+
+const viewed=document.querySelector('[data-add-to-cart][data-id]');
+if(viewed) track('product_view',{productId:viewed.dataset.id});

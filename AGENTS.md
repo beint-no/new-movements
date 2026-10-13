@@ -123,3 +123,25 @@ ReAI Site credential management.
 ## Merchant-domain checkout
 
 New Movements opts in with merchantCheckoutPath=/checkout. The shared Worker and typed Site client own the private proxy; the Site token stays server-side. Contact, address, delivery and discount edits are saved in ReAI with optimistic revision checks. Cross-market country changes create a new currency quote and retire the old draft. Background preparation is unpayable and holds no stock; ReAI validates and reserves only on payment submission. The complete hosted checkout remains the shared default for other storefronts. Checkout HTML/API are no-store, noindex and no-referrer; never log their personal data. Confirmation checks fulfillment before removing purchased cart quantities, once per checkout. No implicit newsletter consent.
+
+## Analytics and flow configuration
+
+The shared browser analytics module records page/product views, cart quantity
+changes and checkout views through the private Worker proxy. It respects GPC/DNT,
+uses short-lived sessionStorage IDs, strips URL queries, batches at most 25 events
+and reuses event IDs on retries. The live Site credential needs
+commerce:analytics:write; add it through credential scope PATCH, without rotation.
+Rate limit analytics independently from commerce writes. Asset build rewrites
+hashed module imports so changes invalidate parent scripts automatically.
+
+Flow content and delivery destination rules live in ReAI, not a duplicated Worker
+catalog. New Movements uses welcome/story/materials/community, checkout recovery,
+exact-size restock, purchase care/reviews/recycling and annual winback. The welcome
+5% offer uses existing CC; no automatic code creation. Sunset is deliberately not
+ported. Anonymous analytics do not send browsing/cart recovery emails.
+
+Bring/Posten/PostNord are Norway-only. International markets expose fixed DHL
+Express alternatives with country restrictions and carrier branding from the Site
+API. This is merchant-fulfilled shipping, not new automatic international DHL
+booking or Webshipper carrier quotes. Configure the actual customer delivery price
+and thresholds separately; do not invent prices from carrier names.
