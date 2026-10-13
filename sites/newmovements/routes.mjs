@@ -27,6 +27,7 @@ const REDIRECTS = new Map([
   ["/pages/video", "/pages/evensen-story"],
   ["/pages/guttestreker-oa-studio-at-new-movements", "/pages/join"],
   ["/blogs/walk-the-talk", "/blogs/news"],
+  ["/blogs/walk-the-talk/new-movements-sneakers-and-fashion", "/blogs/news/new-movements-sneakers-and-fashion"],
   ["/blogs/lets-go", "/blogs/news"],
   ["/blogs/finansavisen", "/blogs/news"],
 ]);
