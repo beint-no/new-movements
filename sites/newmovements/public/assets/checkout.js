@@ -9,16 +9,49 @@ const status = document.querySelector('[data-save-status]');
 const continueButton = document.querySelector('[data-continue]');
 const delivery = document.querySelector('[data-delivery-options]');
 const customerFields = ['email','phone','name','countryCode','addressPart1','addressPart2','postalCode','city','province'];
-let chain = Promise.resolve(), timer, conflict = false, submitting = false;
+let chain = Promise.resolve(), timer, conflict = false, submitting = false, lastSentCustomer = null;
 let options = [], discovery = 0, choosingOption = null;
 const deliveryAddress = c => JSON.stringify(['name','countryCode','addressPart1','addressPart2','postalCode','city','province'].map(n=>c[n]));
 const apiPath = `/reai/checkout/${state.id}`;
 const customer = () => Object.fromEntries(customerFields.map(name => [name, form?.elements.namedItem(name)?.value.trim() || '']));
 const equal = (a,b) => JSON.stringify(a) === JSON.stringify(b);
+// Tab-scoped contact drafts bridge navigation and new quotes, without keeping
+// personal details indefinitely or reusing delivery/payment tokens.
+const draftKey = 'newmovements-checkout-details-v1';
+function readDraft() {
+  try {
+    const draft=JSON.parse(sessionStorage.getItem(draftKey));
+    if (!draft || !Number.isFinite(draft.expiresAt) || draft.expiresAt<=Date.now()) {sessionStorage.removeItem(draftKey);return null;}
+    return draft;
+  } catch { return null; }
+}
+function rememberDraft() {
+  if (!form || !state.editable || root.dataset.completed==='true') return;
+  try {sessionStorage.setItem(draftKey,JSON.stringify({id:state.id,expiresAt:Date.now()+24*60*60*1000,base:state.customer,sent:lastSentCustomer,customer:customer()}));} catch { /* Storage can be disabled; server autosave still works. */ }
+}
+function clearDraft() {
+  try {if(readDraft()?.id===state.id)sessionStorage.removeItem(draftKey);} catch {}
+}
+function restoreDraft() {
+  const draft=readDraft();if(!form || !state.editable || !draft?.customer)return false;
+  let restored=false;
+  for(const name of customerFields) {
+    if(name==='countryCode')continue; // The current quote owns country/currency.
+    if(!['email','phone','name'].includes(name) && draft.customer.countryCode!==state.customer.countryCode)continue;
+    const input=form.elements.namedItem(name), value=draft.customer[name];
+    if(!input || typeof value!=='string' || value.length>254)continue;
+    // A newer server edit wins over an older local snapshot.
+    if(draft.id===state.id ? state.customer[name]!==draft.base?.[name] && state.customer[name]!==draft.sent?.[name] : input.value)continue;
+    if(input.value!==value){input.value=value;restored=true;}
+  }
+  return restored;
+}
+const restoredDraft=restoreDraft();
 function message(text = '') { if (errorBox) { errorBox.textContent = text; errorBox.hidden = !text; } }
 function text(selector, value) { const node = document.querySelector(selector); if (node) node.textContent = value; }
 function refresh(next) {
   state = next;
+  rememberDraft();
   text('[data-subtotal]', money(state.subtotal)); text('[data-total]', money(state.total)); text('[data-mobile-total]', money(state.total));
   text('[data-shipping-price]', state.shippingGross == null ? t('Choose delivery','Velg levering') : money(state.shippingGross));
   text('[data-discount-name]',state.discountCode || ''); text('[data-discount-amount]',money(-(state.discountGross || 0)));
@@ -57,14 +90,43 @@ async function save(extra = {}, complete = false) {
   return enqueue(async () => {
     if (conflict) throw new Error(t('Refresh this page before continuing.','Last inn siden på nytt før du fortsetter.'));
     if (status) status.textContent = t('Saving…','Lagrer…');
+    // The server may accept this save even if navigation interrupts its reply.
+    lastSentCustomer=c;rememberDraft();
     const next = await api('', 'PATCH', { revision:state.revision, customer:c, complete, ...extra });
+    lastSentCustomer=null;
     refresh(next);
     if (status) status.textContent = t('Saved','Lagret');
     return next;
   });
 }
 function addressComplete(c) { return ['name','addressPart1','postalCode','city','countryCode'].every(n=>c[n]); }
-function error(error) { message(error.message); if (status) status.textContent = ''; }
+function error(error, reveal = false) {
+  message(error.message); if (status) status.textContent = '';
+  if(reveal && errorBox){errorBox.scrollIntoView({block:'center'});errorBox.focus({preventScroll:true});}
+}
+function clearFieldError(input) {
+  const hint=document.getElementById(`checkout-${input.name}-error`);
+  input.removeAttribute('aria-invalid');input.removeAttribute('aria-describedby');
+  if(hint){hint.hidden=true;hint.textContent='';}
+}
+function validateDetails() {
+  let first;
+  for(const name of customerFields) {
+    const input=form.elements.namedItem(name);if(!input)continue;
+    clearFieldError(input);
+    let detail='';
+    if(input.required && !input.value.trim())detail=t('Please complete this required field.','Fyll ut dette obligatoriske feltet.');
+    else if(name==='email' && (input.validity.typeMismatch || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.value.trim())))detail=t('Enter a valid email address.','Oppgi en gyldig e-postadresse.');
+    else if(!input.validity.valid)detail=t('Check this field before continuing.','Sjekk dette feltet før du fortsetter.');
+    if(detail) {
+      const hint=document.getElementById(`checkout-${name}-error`);
+      if(hint){hint.textContent=detail;hint.hidden=false;input.setAttribute('aria-describedby',hint.id);}
+      input.setAttribute('aria-invalid','true');first ||= input;
+    }
+  }
+  if(first){first.scrollIntoView({block:'center'});first.focus({preventScroll:true});return false;}
+  return true;
+}
 // A small ARIA combobox shared by address suggestions and local pickup search.
 // Input keeps focus; options never need a second network request or browser window.
 let comboSequence = 0;
@@ -150,8 +212,8 @@ function renderDelivery() {
         if (dynamic && o.pickupRequired) {
           renderDelivery();await discover(o.token);
           if(choosingOption===o.token)delivery.querySelector(`[data-pickup-option="${CSS.escape(o.token)}"]`)?.focus();
-        } else { await save(dynamic?{optionToken:o.token}:{shippingMethodId:o.id},true);choosingOption=null;renderDelivery();warmPayment(); }
-      } catch(e){error(e);}
+        } else { await save(dynamic?{optionToken:o.token}:{shippingMethodId:o.id});choosingOption=null;renderDelivery();warmPayment(); }
+      } catch(e){error(e,true);}
     });
     if (dynamic && o.pickupRequired && selected) {
       const box=document.createElement('div');box.className='co-pickup';card.append(box);
@@ -165,7 +227,7 @@ function renderDelivery() {
         search:query=>{const q=query.trim().toLocaleLowerCase(no?'nb-NO':'en');return o.pickups.filter(p=>[p.name,p.address,p.postalCode,p.city].join(' ').toLocaleLowerCase(no?'nb-NO':'en').includes(q));},
         draw:pickupDisplay,empty:t('No matching pickup locations. Try another street or name.','Ingen hentesteder matcher. Prøv en annen gate eller et annet navn.'),
         restore:()=>selectedPickup()?.name || '',
-        choose:async p=> {search.value=p.name;search.disabled=true;message();try{await save({optionToken:o.token,pickupToken:p.token},true);choosingOption=null;renderDelivery();const next=delivery.querySelector(`[data-pickup-option="${CSS.escape(o.token)}"]`);if(next){next.dataset.skipOpen='true';next.focus({preventScroll:true});}warmPayment();}catch(e){error(e);search.disabled=false;}}
+        choose:async p=> {search.value=p.name;search.disabled=true;message();try{await save({optionToken:o.token,pickupToken:p.token});choosingOption=null;renderDelivery();const next=delivery.querySelector(`[data-pickup-option="${CSS.escape(o.token)}"]`);if(next){next.dataset.skipOpen='true';next.focus({preventScroll:true});}warmPayment();}catch(e){error(e,true);search.disabled=false;}}
       });
       const chosen=selectedPickup();if(chosen){const address=document.createElement('p');address.className='co-selected-address';address.textContent=`${chosen.address}, ${chosen.postalCode} ${chosen.city}`;box.append(address);}
     }
@@ -207,6 +269,7 @@ function warmPayment() {
 }
 form?.addEventListener('input',e=> {
   if (!customerFields.includes(e.target.name) || submitting) return;
+  clearFieldError(e.target);rememberDraft();
   if(e.target.name==='countryCode' && !state.countries.includes(e.target.value)) return;
   const addressChanged=deliveryAddress(state.customer)!==deliveryAddress(customer());
   clearTimeout(timer);if(addressChanged){discovery++;choosingOption=null;}message();
@@ -231,13 +294,13 @@ form?.elements.countryCode.addEventListener('change',async()=> {
     });
     // This quote belongs to its currency, tax and delivery market. The old draft is retired.
     location.assign(next.checkoutUrl);
-  } catch(e){error(e);form.inert=false;form.elements.countryCode.value=state.customer.countryCode;continueButton.disabled=false;provinceVisibility();}
+  } catch(e){form.inert=false;error(e,true);form.elements.countryCode.value=state.customer.countryCode;continueButton.disabled=false;provinceVisibility();rememberDraft();}
 });
 provinceVisibility();
 enhanceAddress();
 form?.addEventListener('submit',async e=> {
   e.preventDefault(); if(submitting)return;
-  if(!form.reportValidity())return;
+  if(!validateDetails())return;
   submitting=true;continueButton.disabled=true;clearTimeout(timer);message();
   const c=customer();
   try {
@@ -247,7 +310,7 @@ form?.addEventListener('submit',async e=> {
     const next=await enqueue(()=>api('/prepare-payment','POST',{revision}));refresh(next);
     if(next.revision!==revision||!equal(c,customer()))throw new Error(t('Your details changed. Review them and continue again.','Detaljene er endret. Sjekk dem og fortsett igjen.'));
     location.assign(state.paymentUrl);
-  } catch(e){error(e);submitting=false;continueButton.disabled=false;}
+  } catch(e){error(e,true);submitting=false;continueButton.disabled=false;}
 });
 const discountForm=document.querySelector('[data-discount-form]');
 discountForm?.addEventListener('submit',async e=>{e.preventDefault();const code=discountForm.elements.discountCode.value.trim();if(!code)return;const btn=discountForm.querySelector('button');btn.disabled=true;text('[data-discount-status]','');try{await save({discountCode:code});discountForm.reset();warmPayment();}catch(e){text('[data-discount-status]',e.message);}finally{btn.disabled=false;}});
@@ -255,7 +318,8 @@ document.querySelector('[data-remove-discount]')?.addEventListener('click',async
 if (form) {
   if (!state.editable) { form.hidden=true; const p=document.createElement('p');p.textContent=state.phase==='expired'?t('This checkout has expired. Your bag is still available.','Denne kassen har utløpt. Handlekurven din er bevart.'):t('Payment is in progress. Continue on the secure payment page.','Betalingen er i gang. Fortsett på den sikre betalingssiden.');const link=document.createElement('a');link.className='co-button';link.href=state.phase==='expired'?'/cart':state.paymentUrl;link.textContent=state.phase==='expired'?t('Return to bag','Tilbake til handlekurven'):t('Continue payment','Fortsett betaling');form.before(p,link); }
   else {
-    if(state.dynamicShipping&&addressComplete(customer())) {
+    if(restoredDraft)save().then(()=>{if(state.dynamicShipping&&addressComplete(customer()))return discover(state.selectedOptionToken||undefined,true);}).then(warmPayment).catch(error);
+    else if(state.dynamicShipping&&addressComplete(customer())) {
       discover(state.selectedOptionToken||undefined,true).then(()=> {
         if(options.find(o=>o.token===state.selectedOptionToken)?.pickupRequired)return discover(state.selectedOptionToken);
       }).catch(error);
@@ -270,6 +334,7 @@ if (root.dataset.cartReturn==='true') {
     try {
       refresh(await api());
       if(state.phase==='complete') {
+        clearDraft();
         // Only remove the purchased cart; items added in another tab remain.
         const key='newmovements-cart-v1';
         const clearedKey='newmovements-completed-checkouts';
@@ -291,5 +356,7 @@ if (root.dataset.cartReturn==='true') {
     } catch { if(++polls<30)setTimeout(verify,3000); }
   };verify();
 }
+if(root.dataset.completed==='true' && state.phase==='complete')clearDraft();
+window.addEventListener('pagehide',rememberDraft);
 window.addEventListener('pageshow',e=>{if(e.persisted)location.reload();});
 if(matchMedia('(max-width:760px)').matches)document.querySelector('.co-summary-mobile').open=false;
