@@ -209,3 +209,7 @@ Recovery flow has stage zero only. The previous 8/16-hour follow-ups conflicted
 with Bud's one marketing email per sender/recipient per 24 hours and the 24-hour
 checkout lifetime. Do not bypass that cap or promise these follow-ups. Other
 welcome/post-purchase stages use longer delays and retain consent checks.
+
+The legacy 2021 sneakers-and-fashion article is preserved as a dated archive with
+local editorial images. Its Shopify URL redirects to the canonical journal article.
+It remains in the sitemap, without joining the curated current Stories listing.
