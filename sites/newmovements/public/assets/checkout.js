@@ -273,7 +273,7 @@ form?.addEventListener('input',e=> {
   if(e.target.name==='countryCode' && !state.countries.includes(e.target.value)) return;
   const addressChanged=deliveryAddress(state.customer)!==deliveryAddress(customer());
   clearTimeout(timer);if(addressChanged){discovery++;choosingOption=null;}message();
-  timer=setTimeout(async()=>{try {await save();if(state.dynamicShipping&&addressChanged&&addressComplete(customer()))await discover();else if(!state.dynamicShipping)renderDelivery();warmPayment();}catch(e){error(e);}},650);
+  timer=setTimeout(async()=>{try {const needsDiscovery=deliveryAddress(state.customer)!==deliveryAddress(customer());await save();if(state.dynamicShipping&&needsDiscovery&&addressComplete(customer()))await discover();else if(!state.dynamicShipping)renderDelivery();warmPayment();}catch(e){error(e);}},650);
 });
 function provinceVisibility() {
   const node = document.querySelector('[data-province]');
