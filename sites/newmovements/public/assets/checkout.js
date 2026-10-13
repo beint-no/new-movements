@@ -89,7 +89,10 @@ function combobox(input, { search, choose, draw, empty, restore }) {
       items=results;list.replaceChildren();active=-1;input.removeAttribute('aria-activedescendant');
       items.forEach((item,i)=> {
         const row=document.createElement('div');row.role='option';row.id=`${list.id}-${i}`;row.className='co-choice';row.setAttribute('aria-selected','false');draw(row,item);
-        row.addEventListener('pointerdown',e=>e.preventDefault());row.addEventListener('click',()=>select(i));list.append(row);
+        row.addEventListener('pointerdown',e=>e.preventDefault());
+        // Options sit inside the field's label. Cancel its default input click,
+        // which would reopen the list after selection; keep keyboard focus.
+        row.addEventListener('click',e=>{e.preventDefault();select(i);});list.append(row);
       });
       if(!items.length && empty && input.value.trim()) {const p=document.createElement('p');p.className='co-empty';p.textContent=empty;list.append(p);}
       list.hidden=!list.childElementCount;input.setAttribute('aria-expanded',String(!list.hidden));
