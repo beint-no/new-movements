@@ -185,3 +185,9 @@ New Movements opts in with merchantCheckoutPath=/checkout. The shared Worker and
 Checkout shipping cards consume Site API carrier logos, localized descriptions and pickup labels. Pickup search filters returned locations locally and supports keyboard selection; distance is shown only when supplied by the carrier. Optional Norwegian address suggestions use the same private Worker/Site client boundary because Bring requires credentials; keep manual input working during provider failure. Checkout promises free returns within 30 days and free exchanges per https://newmovements.com/pages/returns-exchanges (checked 2026-10-12); do not infer free shipping or unrelated promises. Payment marks are optimized inline SVG; Vipps is shown for Norwegian destinations only.
 
 Checkout contact drafts use sessionStorage (this browser tab) with a 24-hour expiry. Store only contact/address fields, never delivery quotes, payment tokens or consent. Write on input and pagehide to protect unfinished edits; restore into compatible quotes without overriding newer server edits or the quote country/currency. Clear the matching draft after confirmed completion. Disabled browser storage must not block server autosave. Selecting delivery saves a partial draft; complete validation belongs to Continue to payment. Required fields are marked, optional fields labeled, and validation errors are shown beside inputs with accessible focus.
+
+Browser analytics batches after page load and an idle opportunity (five-second
+window), with one in-flight request and one retry for transient failures. Pending
+events are bounded at 25. Hidden-page flushes use keepalive; GPC/DNT opt-outs,
+storage restrictions and missing browser APIs must never interrupt shopping.
+Only allowlisted anonymous event fields are transmitted.
