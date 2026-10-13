@@ -20,6 +20,8 @@
 /** @type {keyof SiteApiPaths} */
 const SITE_PATH = "/site/v1/site";
 /** @type {keyof SiteApiPaths} */
+const ANALYTICS_PATH = "/site/v1/analytics/events";
+/** @type {keyof SiteApiPaths} */
 const NEWSLETTER_PATH = "/site/v1/newsletter/subscriptions";
 /** @type {keyof SiteApiPaths} */
 const STOCK_SUBSCRIPTION_PATH = "/site/v1/commerce/stock-subscriptions";
@@ -107,6 +109,11 @@ export class ReaiSiteClient {
     headers.set("Accept", "application/json");
     headers.set("Authorization", `Bearer ${this.#token}`);
     return this.#fetch(url.href, { ...init, headers });
+  }
+
+  /** @param {import("./site-api.d.ts").components["schemas"]["SiteAnalyticsBatchDto"]} body */
+  async analyticsEvents(body) {
+    return new SiteApiResponse(await this.#request(ANALYTICS_PATH, undefined, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }));
   }
 
   /** @param {import("./site-api.d.ts").components["schemas"]["SiteStockSubscriptionReq"]} body

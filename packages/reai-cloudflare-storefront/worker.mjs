@@ -476,6 +476,25 @@ export function createReaiStorefrontWorker({
       if (!VARIANT_ID.test(variantId)) return jsonResponse({ error: messages.invalidVariantId }, 400, env);
       upstreamResult = client.availability(variantId, deliveryContext);
       cacheControl = "no-store";
+    } else if (request.method === "POST" && route === "/reai/analytics/events") {
+      if (request.headers.get("Origin") !== url.origin) return jsonResponse({ error: "Invalid origin" }, 403, env);
+      if (Number(request.headers.get("Content-Length")) > 16000) return jsonResponse({ error: "Batch too large" }, 413, env);
+      if (env.ANALYTICS_RATE_LIMIT) {
+        const { success } = await env.ANALYTICS_RATE_LIMIT.limit({ key: `analytics:${url.host}:${request.headers.get("CF-Connecting-IP") || "local"}` });
+        if (!success) return jsonResponse({ error: "Rate limited" }, 429, env);
+      }
+      const text = await request.text();
+      if (text.length>16000) return jsonResponse({ error: "Batch too large" }, 413, env);
+      let batch;
+      try { batch=JSON.parse(text); } catch { return jsonResponse({ error: "Invalid events" }, 400, env); }
+      const kinds=new Set(["page_view","product_view","add_to_cart","remove_from_cart","checkout_view"]);
+      if (!batch || !Array.isArray(batch.events) || batch.events.length<1 || batch.events.length>25 || batch.events.some((event) =>
+          !event || typeof event!=="object" || !VARIANT_ID.test(event.id) || !VARIANT_ID.test(event.sessionId) || !kinds.has(event.kind) || typeof event.path!=="string" || event.path.length>500 || !/^\/[^?#\s]*$/.test(event.path) ||
+          (event.productId!=null && !VARIANT_ID.test(event.productId)) || (event.variantId!=null && !VARIANT_ID.test(event.variantId)) ||
+          (event.quantity!=null && (!Number.isInteger(event.quantity) || event.quantity<1 || event.quantity>100)))) return jsonResponse({ error: "Invalid events" }, 400, env);
+      // Strip unknown fields so no personal data or arbitrary metadata reaches analytics.
+      upstreamResult=client.analyticsEvents({events:batch.events.map(({id,sessionId,kind,path,productId,variantId,quantity})=>({id,sessionId,kind,path,productId,variantId,quantity}))});
+      cacheControl="no-store";
     } else if (request.method === "POST" && ["/reai/newsletter/subscribe", "/reai/stock/subscribe"].includes(route)) {
       const origin = request.headers.get("Origin");
       if (origin && origin !== url.origin) return jsonResponse({ error: messages.invalidNewsletter }, 403, env);
