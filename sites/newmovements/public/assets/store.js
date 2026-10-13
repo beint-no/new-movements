@@ -783,16 +783,19 @@ document.querySelectorAll('[data-newsletter-form]').forEach((newsletterForm) => 
   if (button.disabled) return;
   const data = new FormData(newsletterForm);
   const name = String(data.get('name') || '').trim();
+  const welcomeDiscount = data.get('welcomeDiscount') === 'true';
   button.disabled = true;
   button.textContent = 'Signing up…';
   status.hidden = true;
   try {
     const response = await fetch('/reai/newsletter/subscribe', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: String(data.get('email') || '').trim(), ...(name ? { name } : {}), consent: true }),
+      body: JSON.stringify({ email: String(data.get('email') || '').trim(), ...(name ? { name } : {}), consent: true, ...(welcomeDiscount ? { welcomeDiscount: true } : {}) }),
     });
     if (!response.ok) throw new Error('Signup unavailable');
-    status.textContent = "You're on the list. Thanks for joining the New Movements community.";
+    status.textContent = welcomeDiscount
+      ? "You're on the list. Check your email for your 5% welcome discount. If you've already requested it, you can use the code in your earlier email."
+      : "You're on the list. Thanks for joining the New Movements community.";
     newsletterForm.reset();
   } catch {
     status.textContent = 'We could not save your signup. Please try again in a moment.';

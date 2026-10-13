@@ -491,6 +491,10 @@ export function createReaiStorefrontWorker({
           const form = new URLSearchParams(text);
           body = Object.fromEntries(form);
           body.consent = body.consent === "true";
+          if (body.welcomeDiscount != null) {
+            if (!["true", "false"].includes(body.welcomeDiscount)) return jsonResponse({ error: messages.invalidNewsletter }, 400, env);
+            body.welcomeDiscount = body.welcomeDiscount === "true";
+          }
         } else body = JSON.parse(text);
       } catch { return jsonResponse({ error: messages.invalidJson }, 400, env); }
       const email = typeof body?.email === "string" ? body.email.trim() : "";
@@ -507,7 +511,16 @@ export function createReaiStorefrontWorker({
           const returnTo = typeof body.returnTo === "string" && /^\/products\/[a-z0-9-]+(?:\?view=(?:men|women))?$/.test(body.returnTo) ? body.returnTo : "/collections/all";
           return Response.redirect(new URL(`${returnTo}${returnTo.includes("?") ? "&" : "?"}notification=requested`,url.origin).href,303);
         }
-      } else upstreamResult = client.subscribeNewsletter({ email, consent: true, ...(name ? { name } : {}) });
+      } else {
+        if (body.welcomeDiscount != null && typeof body.welcomeDiscount !== "boolean") return jsonResponse({ error: messages.invalidNewsletter }, 400, env);
+        upstreamResult = client.subscribeNewsletter({ email, consent: true, locale: canonicalLocale, ...(body.welcomeDiscount === true ? { welcomeDiscount: true } : {}), ...(name ? { name } : {}) });
+        if (request.headers.get("Content-Type")?.includes("application/x-www-form-urlencoded")) {
+          const upstream = (await upstreamResult.catch(() => ({ response: new Response(null, { status: 503 }) }))).response;
+          return htmlResponse(storefront.renderMessagePage(null, upstream.ok
+            ? { title: "Newsletter signup", heading: "Thanks for joining", text: body.welcomeDiscount === true ? "Check your email for your welcome discount. If you have already requested it, use the code in your earlier email." : "You're on the list. Thanks for joining our community." }
+            : { title: "Newsletter signup", heading: "Please try again", text: "We could not save your signup. Go back and try again in a moment." }), env, upstream.ok ? 200 : upstream.status);
+        }
+      }
       cacheControl = "no-store";
     } else if (request.method === "POST" && route === "/reai/checkout/start") {
       if (env.CHECKOUT_ENABLED === "false") return jsonResponse({ error: "Checkout is disabled in this preview." }, 403, env);

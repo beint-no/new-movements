@@ -25,7 +25,7 @@ npm run dev
 
 Use a Site-scoped credential in `.dev.vars`; it must never be exposed to browser JavaScript. The storefront expects the New Movements Shopify catalog to be connected and published in ReAI, including product images and renditions.
 
-Newsletter signup posts email, optional name and explicit consent through the shared Worker and ReAI Site API. Keep submissions server-side; no external webhook, welcome email or discount automation is configured.
+Newsletter signup posts email, optional name and explicit consent through the shared Worker and ReAI Site API. Keep submissions server-side. The footer explicitly requests `welcomeDiscount: true`, which queues the built-in welcome-discount flow once per email/store. Its editable default email contains existing code `CC` for 5% off; ordinary newsletter signup stays separate. No codes are created and no external webhook is used.
 
 ## Checks
 

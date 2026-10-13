@@ -100,7 +100,7 @@ Projection happens after snapshot retrieval, never inside the shared cache, and
 conditional response tags include the request query and Worker cache key. Keep
 catalog identity and checkout variant IDs intact; filter only the presentation.
 
-`POST /reai/newsletter/subscribe` accepts email, optional name and `consent: true`, and forwards only these values through the Site client. It rejects cross-origin submissions and returns uncached responses. Storefronts may configure the `NEWSLETTER_RATE_LIMIT` Worker binding for repeated submissions. The Site token needs `newsletter:subscribe`; signup stores consent without sending email or creating a discount.
+`POST /reai/newsletter/subscribe` accepts email, optional name and `consent: true`, and forwards only these values through the Site client. It rejects cross-origin submissions and returns uncached responses. Storefronts may configure the `NEWSLETTER_RATE_LIMIT` Worker binding for repeated submissions. The Site token needs `newsletter:subscribe`; ordinary signup queues the configured welcome after new consent. Optional `welcomeDiscount: true` explicitly requests the separately enabled welcome-discount flow instead, including existing subscribers, once per email/store. Both forward the current locale. No discount codes are created.
 
 `imageOrigins` optionally permits explicit HTTPS CDN origins for imported collection images.
 Keep the default policy restricted to the site and ReAI media, configure only reviewed origins,
