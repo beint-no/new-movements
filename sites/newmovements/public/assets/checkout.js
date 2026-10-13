@@ -54,7 +54,7 @@ function refresh(next) {
   state = next;
   rememberDraft();
   text('[data-subtotal]', money(state.subtotal)); text('[data-total]', money(state.total)); text('[data-mobile-total]', money(state.total));
-  text('[data-shipping-price]', state.shippingGross == null ? t('Choose delivery','Velg levering') : money(state.shippingGross));
+  text('[data-shipping-price]', state.shippingGross == null ? t('Choose delivery','Velg levering') : Number(state.shippingGross) === 0 ? t('Free','Gratis') : money(state.shippingGross));
   text('[data-discount-name]',state.discountCode || ''); text('[data-discount-amount]',money(-(state.discountGross || 0)));
   document.querySelector('[data-discount-row]').hidden = !state.discountCode;
   if (state.currency === 'NOK') text('[data-tax]', t('Including VAT','Inkludert MVA') + ' ' + money(state.vat));
