@@ -122,9 +122,11 @@ As checked on 2026-10-13, tenant 3157's Site is named New Movements, has no
 active domain, and uses the existing review Worker. All enabled market shipping
 methods are free without a minimum order: Bring/Posten and PostNord in Norway,
 DHL Express internationally. Taxes and duties are included in every destination,
-as the merchant explicitly confirmed. International delivery is merchant-fulfilled;
-ReAI's current DHL booking adapter supports Norway domestic only. The merchant
-must arrange international shipments with duties/taxes billed to the sender.
+as the merchant explicitly confirmed. On 2026-10-13, the merchant confirmed that
+international orders will use the existing DHL/Webshipper fulfillment setup with
+duties and taxes billed to New Movements. ReAI's current DHL booking adapter
+supports Norway domestic only; international delivery remains merchant-fulfilled.
+Before cutover, verify the operational handoff of ReAI orders to that setup.
 Do not mistake a free checkout rate or Norwegian export VAT code for a completed
 DDP shipping integration.
 Before domain cutover: review this Worker and update the hub pointer, configure
@@ -202,8 +204,10 @@ Only allowlisted anonymous event fields are transmitted.
 Gift Card (product 70025) is deliberately unpublished from this Site: ReAI does not
 yet issue or redeem stored-value codes. Legacy product/collection/page links lead
 to gift-card customer care. Never republish it as an ordinary digital product.
-Shopify gift cards/balances still need a merchant-approved redemption plan before
-cutover. The original Shopify store remains the backup; this change is ReAI-only.
+On 2026-10-13, the merchant confirmed there are no outstanding Shopify gift-card
+balances, so no balance migration is required. Gift-card sales remain unavailable
+until issuance and redemption are supported. The original Shopify store remains
+the backup; this change is ReAI-only.
 
 Recovery flow has stage zero only. The previous 8/16-hour follow-ups conflicted
 with Bud's one marketing email per sender/recipient per 24 hours and the 24-hour
