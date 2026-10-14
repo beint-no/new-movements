@@ -235,7 +235,7 @@ assert.match(page, /schema\.org\/InStock/);
 assert.match(page, /data-gallery-srcset/);
 assert.match(page, /White leather sneaker/);
 assert.match(page, /You may also like/);
-assert.match(page, /Shop with New Movements/);
+assert.match(page, /purchase-assurance/);
 assert.match(page, /Four generations of shoemakers/);
 assert.match(page, /Size guide/);
 
