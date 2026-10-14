@@ -224,10 +224,15 @@ It remains in the sitemap, without joining the curated current Stories listing.
 SHOE LASTS + SIZE CHART + LACE LENGTH workbook, Last Sizes sheet. Its provenance
 includes the source checksum and exact ranges. All 88 rows retain their supplied
 EU/US/UK conversions, half sizes and blanks; never extrapolate a missing size.
-Length values are normalized to cm and retained in the data, but their meaning
-(foot, internal shoe, or last length) awaits merchant confirmation. Do not expose
-them as foot-length recommendations or invent toe allowance. The source has
-inconsistent cm/mm headings and length jumps around EU 40/40.5 in boots/loafers.
+The merchant authorized using best judgment to publish CM guidance on 2026-10-14.
+Lengths are provisionally interpreted as heel-to-toe foot measurements, matching
+how the original public Original/Allrounder guide describes its matching CM values.
+`SIZE_GUIDE_SOURCE` records this assumption with `lengthConfirmed: false`; the team
+was asked to confirm it by email. Do not treat this as merchant-verified measurement
+meaning. Display the supplied lengths as approximate, style-specific guidance;
+do not invent toe allowance, extrapolate missing rows, or smooth jumps around
+EU 40/40.5 in boots/loafers. Values 200–320 are converted from mm to cm; values
+22–30 already represent cm, regardless of inconsistent workbook headings.
 Lace tables also have overlapping/missing ranges and are not published.
 
 `size-guide.mjs` renders the standalone `/pages/size-guide` with `style` and `view`
