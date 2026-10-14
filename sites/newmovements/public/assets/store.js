@@ -280,9 +280,20 @@ const syncVariant = () => {
   add.dataset.label = option?.dataset.label || '';
   add.dataset.price = option?.dataset.price || '';
   add.disabled = option?.dataset.available !== 'true' || !UUID.test(add.dataset.variant);
-  add.textContent = add.disabled ? 'Sold out' : 'Add to cart';
+  add.textContent = !option?.value ? 'Select your size' : add.disabled ? 'Sold out' : 'Add to cart';
+  const sizeStatus = document.querySelector('[data-size-status]');
+  const guideLink = document.querySelector('.product-size-picker .size-guide-link');
+  if (guideLink) {
+    const guideUrl = new URL(guideLink.href);
+    const size = option?.dataset.label || '';
+    if (/^\d+(?:\.\d+)?$/.test(size)) guideUrl.searchParams.set('size', size);
+    else guideUrl.searchParams.delete('size');
+    guideLink.href = guideUrl.href;
+  }
   const notify = document.querySelector('[data-stock-notification]');
   const notifySize = notify?.querySelector('select[name="variantId"]');
+  const canNotify = notifySize && [...notifySize.options].some(item => item.value === add.dataset.variant);
+  if (sizeStatus) sizeStatus.textContent = option?.dataset.available === 'false' ? canNotify ? 'This size is sold out. Request a one-time email below.' : 'This option is currently unavailable.' : '';
   if (option?.dataset.available === 'false' && notifySize?.querySelector(`option[value="${add.dataset.variant}"]`)) {
     notify.open = true;
     notifySize.value = add.dataset.variant;
@@ -847,7 +858,7 @@ if (sizeGuideDialog && typeof sizeGuideDialog.showModal === 'function') {
   let controller;
   let trigger;
   let generation = 0;
-  const load = async (href) => {
+  const load = async (href, focusLabel = '') => {
     const current = ++generation;
     controller?.abort();
     controller = new AbortController();
@@ -863,6 +874,7 @@ if (sizeGuideDialog && typeof sizeGuideDialog.showModal === 'function') {
       if (current !== generation || !sizeGuideDialog.open) return;
       body.replaceChildren(content);
       body.scrollTop = 0;
+      if (focusLabel) [...body.querySelectorAll('nav a')].find(link => link.textContent.trim() === focusLabel)?.focus({ preventScroll: true });
     } catch {
       if (current === generation && sizeGuideDialog.open) window.location.assign(href);
     } finally {
@@ -881,9 +893,9 @@ if (sizeGuideDialog && typeof sizeGuideDialog.showModal === 'function') {
   });
   body.addEventListener('click', event => {
     const link = event.target.closest('a');
-    if (!link || !link.closest('.sg-styles, .sg-audiences') || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button !== 0) return;
+    if (!link || !link.closest('.sg-styles, .sg-audiences, .sg-units') || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button !== 0) return;
     event.preventDefault();
-    load(link.href);
+    load(link.href, link.textContent.trim());
   });
   close.addEventListener('click', () => sizeGuideDialog.close());
   sizeGuideDialog.addEventListener('click', event => {

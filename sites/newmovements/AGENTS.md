@@ -242,3 +242,12 @@ focus to the product link. Model matching uses explicit known brand families.
 Allrounder S, High Flow and Zipper Boot lack an explicit chart in the workbook and
 open the general guide without assigning another model's fit. Size guidance does
 not alter ReAI variants, stock, merchandising ranges, cart state or checkout.
+
+Product footwear with multiple sizes starts without a selection; only an explicit
+variant URL preselects a size. Sold-out choices explain the one-time notification.
+The guide link stays beside size selection and highlights its exact EU row.
+CM/inches is a display conversion from supplied lengths (cm / 2.54, two decimals),
+not another chart or a foot-to-size calculator. Guide navigation retains chosen
+size/unit, works as ordinary links without JS, and stays inside the drawer with JS.
+All style choices wrap on mobile; never clip them in a hidden horizontal rail.
+Purchase reassurance uses the confirmed delivery/returns policy beside Add to cart.

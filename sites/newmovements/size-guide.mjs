@@ -15,10 +15,12 @@ export function sizeChartForProduct(product) {
   return '';
 }
 
-export function sizeGuideUrl(style = '', view = '') {
+export function sizeGuideUrl(style = '', view = '', size = '', unit = 'cm') {
   const params = new URLSearchParams();
   if (SIZE_CHARTS.some(chart => chart.id === style)) params.set('style', style);
   if (view === 'women' || view === 'men') params.set('view', view);
+  if (/^\d+(?:\.\d+)?$/.test(String(size))) params.set('size', size);
+  if (unit === 'in') params.set('unit', unit);
   return `/pages/size-guide${params.size ? `?${params}` : ''}`;
 }
 
@@ -28,19 +30,22 @@ export function renderSizeGuide(context = {}) {
   const params = context.url?.searchParams || new URLSearchParams();
   const chart = SIZE_CHARTS.find(item => item.id === params.get('style')) || SIZE_CHARTS[0];
   const audience = Object.hasOwn(audiences, params.get('view') || '') ? params.get('view') : 'all';
+  const unit = params.get('unit') === 'in' ? 'in' : 'cm';
+  const selectedSize = params.has('size') ? Number(params.get('size')) : null;
   const rows = chart.rows.filter(row => audience === 'women' ? row.eu >= 35 && row.eu <= 42 : audience === 'men' ? row.eu >= 39 && row.eu <= 48 : true);
   const columns = audience === 'women' ? [['US', 'usWomen'], ['UK', 'ukWomen']] : audience === 'men' ? [['US', 'usMen'], ['UK', 'ukMen']] : [['US women', 'usWomen'], ['US men', 'usMen'], ['UK women', 'ukWomen'], ['UK men', 'ukMen']];
   if (audience === 'all' && chart.ukShared) columns.splice(2, 2, ['UK', 'ukWomen']);
   const lengthMeaning = chart.lengthMeaning || SIZE_GUIDE_SOURCE.lengthMeaning;
   const lengthReady = ['foot', 'internal', 'last'].includes(lengthMeaning);
-  if (lengthReady) columns.push([lengthMeaning === 'foot' ? 'Foot length · cm' : lengthMeaning === 'internal' ? 'Internal length · cm' : 'Last length · cm', 'lengthCm']);
-  const link = (style, view) => escape(sizeGuideUrl(style, view));
+  if (lengthReady) columns.push([`${lengthMeaning === 'foot' ? 'Foot length' : lengthMeaning === 'internal' ? 'Internal length' : 'Last length'} · ${unit === 'in' ? 'inches' : 'cm'}`, 'lengthCm']);
+  const link = (style, view, lengthUnit = unit) => escape(sizeGuideUrl(style, view, params.get('size') || '', lengthUnit));
+  const cell = (row, key) => row[key] == null ? '<span aria-label="Conversion not listed">—</span>' : escape(key === 'lengthCm' && unit === 'in' ? (row[key] / 2.54).toFixed(2) : row[key]);
   return `<div class="size-guide-content" data-size-guide-content>
     <header class="sg-heading"><p class="eyebrow">A little guidance goes a long way</p><h1>Find your fit.</h1><p>Choose your style. Compare your size. Make room for movement.</p></header>
     <div class="sg-layout"><nav class="sg-styles" aria-label="Shoe style">${SIZE_CHARTS.map(item => `<a href="${link(item.id, audience)}"${item === chart ? ' aria-current="page"' : ''}><span>${escape(item.label)}</span><span aria-hidden="true">↗</span></a>`).join('')}</nav>
     <section class="sg-chart" aria-labelledby="sg-chart-title"><header><p class="eyebrow">Size chart</p><h2 id="sg-chart-title">${escape(chart.label)}</h2><p class="sg-models">${chart.models.map(escape).join(' · ')}</p></header>
-    <nav class="sg-audiences" aria-label="Size conversion">${Object.entries(audiences).map(([key, label]) => `<a href="${link(chart.id, key)}"${key === audience ? ' aria-current="page"' : ''}>${label}</a>`).join('')}</nav>
-    <div class="sg-table-scroll" role="region" aria-label="${escape(chart.label)} size conversions" tabindex="0"><table class="sg-table"><caption class="sr-only">${escape(chart.label)} · ${escape(audiences[audience])}</caption><thead><tr><th scope="col">EU</th>${columns.map(([label]) => `<th scope="col">${escape(label)}</th>`).join('')}</tr></thead><tbody>${rows.map(row => `<tr><th scope="row">${row.eu}</th>${columns.map(([, key]) => `<td>${row[key] == null ? '<span aria-label="Conversion not listed">—</span>' : escape(row[key])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
+    <div class="sg-chart-controls"><nav class="sg-audiences" aria-label="Size conversion">${Object.entries(audiences).map(([key, label]) => `<a href="${link(chart.id, key)}"${key === audience ? ' aria-current="page"' : ''}>${label}</a>`).join('')}</nav>${lengthReady ? `<nav class="sg-units" aria-label="Measurement unit">${[['cm', 'cm'], ['in', 'inches']].map(([key, label]) => `<a href="${link(chart.id, audience, key)}"${key === unit ? ' aria-current="page"' : ''}>${label}</a>`).join('')}</nav>` : ''}</div>
+    <div class="sg-table-scroll" role="region" aria-label="${escape(chart.label)} size conversions" tabindex="0"><table class="sg-table"><caption class="sr-only">${escape(chart.label)} · ${escape(audiences[audience])}</caption><thead><tr><th scope="col">EU</th>${columns.map(([label]) => `<th scope="col">${escape(label)}</th>`).join('')}</tr></thead><tbody>${rows.map(row => `<tr${row.eu === selectedSize ? ' class="is-selected"' : ''}><th scope="row">${row.eu}${row.eu === selectedSize ? '<span class="sr-only"> (selected size)</span>' : ''}</th>${columns.map(([, key]) => `<td>${cell(row, key)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
     ${lengthMeaning === 'foot' ? '<p class="sg-measure-note">Compare the heel-to-toe measurement of your longer foot with the chart. Measurements are an approximate guide; fit varies by style.</p>' : ''}
     <p class="sg-chart-note">EU is the size you select when ordering. A dash means a conversion is not listed. Available sizes are shown on each product.</p>
     <a class="sg-help-link" href="mailto:store@newmovements.com?subject=${encodeURIComponent(`Size advice: ${chart.label}`)}">Between sizes or need advice? Ask our team →</a></section></div>
