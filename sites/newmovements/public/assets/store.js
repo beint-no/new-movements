@@ -56,7 +56,7 @@ const cartStockNotice = (item) => {
   return `<p class="cart-stock-notice">${escapeHtml(cartStockMessage(issue))}</p>${issue.maximumQuantity > 0 ? `<button type="button" data-cart-stock-adjust="${escapeHtml(item.variant)}">Change quantity to ${issue.maximumQuantity}</button>` : `<a class="cart-stock-action" href="${escapeHtml(item.url || `/products/${item.handle}`)}">${hasSize ? 'Choose another size' : 'View product'}</a>`}`;
 };
 if (!document.querySelector('[data-drawer-backdrop]')) {
-  document.querySelector('.site-header')?.insertAdjacentHTML('afterend', '<div class="drawer-backdrop" data-drawer-backdrop hidden></div><dialog class="store-drawer search-drawer" aria-label="Search" data-search-drawer><header><h2>Search</h2><button type="button" data-drawer-close>Close</button></header><form role="search" data-predictive-search><label class="sr-only" for="predictive-query">Search products</label><input id="predictive-query" name="q" type="search" autocomplete="off" placeholder="Search shoes, styles, materials"><button type="submit">View all</button></form><p data-predictive-status>Start typing to search the live catalog.</p><div class="predictive-results" data-predictive-results></div></dialog><dialog class="store-drawer cart-drawer" aria-label="Shopping bag" data-cart-drawer><header><h2>Your bag</h2><button type="button" data-drawer-close>Close</button></header><div data-drawer-cart-items></div><footer><p><span>Subtotal</span><strong data-drawer-subtotal>NOK 0</strong></p><a href="/cart">View bag</a></footer></dialog>');
+  document.querySelector('.site-header')?.insertAdjacentHTML('afterend', '<div class="drawer-backdrop" data-drawer-backdrop hidden></div><dialog class="store-drawer search-drawer" aria-label="Search" data-search-drawer><header><h2>Search</h2><button type="button" data-drawer-close>Close</button></header><form role="search" data-predictive-search><label class="sr-only" for="predictive-query">Search products</label><input id="predictive-query" name="q" type="search" autocomplete="off" placeholder="Search shoes, styles, materials"><button type="submit">View all</button></form><p data-predictive-status role="status" aria-live="polite">Start typing to search the live catalog.</p><div class="predictive-results" data-predictive-results></div></dialog><dialog class="store-drawer cart-drawer" aria-label="Shopping bag" data-cart-drawer><header><h2>Your bag</h2><button type="button" data-drawer-close>Close</button></header><div data-drawer-cart-items></div><footer><p><span>Subtotal</span><strong data-drawer-subtotal>NOK 0</strong></p><a href="/cart">View bag</a></footer></dialog>');
 }
 const showToast = (message) => {
   const toast = document.querySelector('[data-cart-toast]');
@@ -307,11 +307,13 @@ const syncVariant = () => {
   add.dataset.price = option?.dataset.price || '';
   add.disabled = option?.dataset.available !== 'true' || !UUID.test(add.dataset.variant);
   const unavailable = add.disabled;
-  add.textContent = !option?.value ? 'Select your size' : unavailable ? 'Notify me' : 'Add to cart';
+  const unknown = option?.dataset.available === 'unknown';
+  add.textContent = !option?.value ? 'Select your size' : unknown ? 'Check availability' : unavailable ? 'Notify me' : 'Add to cart';
+  add.dataset.checkStock = String(unknown);
   add.disabled = !option?.value;
   add.dataset.notify = String(unavailable && !!option?.value);
   const mobileAction = document.querySelector('[data-mobile-purchase-action]');
-  if (mobileAction) mobileAction.textContent = !option?.value ? 'Choose size' : unavailable ? 'Notify me' : `Add to bag · ${money(option.dataset.price)}`;
+  if (mobileAction) mobileAction.textContent = !option?.value ? 'Choose size' : unknown ? 'Check availability' : unavailable ? 'Notify me' : `Add to bag · ${money(option.dataset.price)}`;
   document.querySelectorAll('[data-color-link]').forEach((link) => {
     try {
       const choices = JSON.parse(link.dataset.colorVariants);
@@ -343,7 +345,7 @@ const syncVariant = () => {
   const notify = document.querySelector('[data-stock-notification]');
   const notifySize = notify?.querySelector('select[name="variantId"]');
   const canNotify = notifySize && [...notifySize.options].some(item => item.value === add.dataset.variant);
-  if (sizeStatus) sizeStatus.textContent = option?.dataset.available === 'false' ? canNotify ? 'This size is sold out. Request a one-time email below.' : 'This option is currently unavailable.' : '';
+  if (sizeStatus) sizeStatus.textContent = unknown ? 'Live stock could not be checked. Please try again.' : option?.dataset.available === 'false' ? canNotify ? 'This size is sold out. Request a one-time email below.' : 'This option is currently unavailable.' : '';
   if (option?.dataset.available === 'false' && notifySize?.querySelector(`option[value="${add.dataset.variant}"]`)) {
     notify.open = true;
     notifySize.value = add.dataset.variant;
@@ -364,6 +366,7 @@ document.querySelectorAll('[data-variant-choice]').forEach((button) => button.ad
 syncVariant();
 
 add?.addEventListener('click', () => {
+  if (add.dataset.checkStock === 'true') { location.assign(add.dataset.url); return; }
   if (add.dataset.notify === 'true') { const notify = document.querySelector('[data-stock-notification]'); if (notify) { notify.open = true; notify.querySelector('input[type=email]')?.focus(); } return; }
   if (!UUID.test(add.dataset.variant || '')) return;
   const quantity = Math.max(1, Math.min(20, Number(document.querySelector('[data-quantity]')?.value || 1)));
