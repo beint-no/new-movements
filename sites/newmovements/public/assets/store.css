@@ -640,7 +640,26 @@ body[data-view="women"] .collection-layout .product-shot picture{
 .country-switcher button:focus-visible,.country-dialog input:focus-visible{outline:2px solid #111;outline-offset:2px}
 @media(max-width:760px){.country-name{display:none}.country-code{display:inline}.country-switcher [data-country-open]{font-size:.72rem}.country-dialog{padding:20px}.country-options{max-height:calc(100dvh - 260px)}}
 
-@media(max-width:760px){.site-nav{grid-template-columns:24px minmax(0,1fr) auto;gap:8px}.wordmark,.wordmark img{width:min(140px,100%)}.country-switcher [data-country-open]{padding-inline:0}}
+/* Equal side columns keep the mobile wordmark centered on the viewport. */
+.mobile-header-start{display:none}
+@media(max-width:900px){
+ .site-nav{grid-template-columns:minmax(88px,1fr) minmax(0,180px) minmax(88px,1fr);gap:4px;padding-inline:12px;min-height:68px}
+ .mobile-header-start{display:flex;align-items:center}
+ .mobile-header-start button,.utility-nav>[data-cart-open]{display:grid;place-items:center;width:44px;height:44px;padding:0;border:0;background:transparent;cursor:pointer;color:inherit}
+ .mobile-header-start svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.25}
+ .mobile-header-start .menu-toggle{position:relative}
+ .mobile-header-start .menu-toggle>span:not(.sr-only){width:24px;margin:3px auto}
+ .mobile-header-start .menu-toggle>span:first-child{align-self:end}
+ .mobile-header-start .menu-toggle>span:nth-child(2){align-self:start}
+ .wordmark{justify-self:center;width:100%;max-width:180px;min-width:0}
+ .wordmark img{width:100%;height:auto}
+ .utility-nav{gap:0;min-width:0}
+ .utility-nav>[data-search-open]{display:none}
+ .country-switcher .country-code{display:inline}
+ .country-switcher .country-name,.country-switcher .country-currency{display:none}
+ .country-switcher [data-country-open]{min-width:44px;min-height:44px;padding:0;justify-content:center;gap:3px}
+ .country-fallback select{width:44px;max-width:44px;min-height:44px;padding:0;font-size:.68rem}
+}
 .utility-nav .country-fallback noscript button{display:inline;width:auto;height:auto;padding:4px;font-size:.75rem}
 
 .collection-directory-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:36px 20px}.collection-tile{min-width:0}.collection-tile h2{margin:12px 0 4px;font-size:1.05rem;font-weight:500;letter-spacing:-.02em}.collection-tile p{margin:0;color:var(--muted);font-size:.85rem}.collection-tile-empty{display:flex;align-items:center;justify-content:center;height:100%;font-size:1rem;letter-spacing:.1em;text-transform:uppercase}.collection-tile:focus-visible{outline:2px solid;outline-offset:6px}@media(max-width:700px){.collection-directory-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:28px 12px}}
