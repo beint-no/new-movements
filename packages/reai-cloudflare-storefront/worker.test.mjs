@@ -565,3 +565,52 @@ test("newsletter forms work without JavaScript and never claim success for a dis
   assert.match(await response.text(), /could not save/);
   assert.equal(response.headers.get("Cache-Control"), "no-store");
 });
+
+
+test("collection conditional responses follow inventory-driven order without a catalog edit", async (context) => {
+  const originalFetch = globalThis.fetch;
+  const originalCaches = globalThis.caches;
+  const originalNow = Date.now;
+  context.after(() => {
+    globalThis.fetch = originalFetch;
+    globalThis.caches = originalCaches;
+    Date.now = originalNow;
+  });
+  let now = 1_000_000;
+  Date.now = () => now;
+  const cache = new Map();
+  globalThis.caches = { default: {
+    async match(request) { return cache.get(request.url)?.clone(); },
+    async put(request, response) { cache.set(request.url, response.clone()); },
+  } };
+  let order = ["broad-sizes", "one-size"];
+  let revision = 'W/"stock-1"';
+  globalThis.fetch = async (_input, init) => {
+    if (init.headers.get("If-None-Match") === revision) return new Response(null, { status: 304 });
+    return Response.json({
+      catalogVersion: 7, marketId: "market", locale: "en", products: [],
+      collections: [{ id: "shoes", handle: "shoes", products: order.map(handle => ({ handle })) }],
+    }, { headers: { ETag: revision } });
+  };
+  const worker = createReaiStorefrontWorker({ cacheKey: "stock-order", storefront, market: "norway", locale: "en" });
+  const env = { REAI_SITE_TOKEN: "test-token" };
+  const request = etag => new Request("https://shop.example/reai/collections/shoes", {
+    headers: etag ? { "If-None-Match": etag } : {},
+  });
+  const first = await worker.fetch(request(), env);
+  const firstTag = first.headers.get("ETag");
+  assert.deepEqual((await first.json()).products.map(product => product.handle), order);
+  assert.equal((await worker.fetch(request(firstTag), env)).status, 304);
+  now += 61_000;
+  revision = 'W/"stock-2"';
+  order = [...order].reverse();
+  let revalidation;
+  const stale = await worker.fetch(request(firstTag), env, { waitUntil(promise) { revalidation = promise; } });
+  assert.equal(stale.status, 304);
+  await revalidation;
+  const updated = await worker.fetch(request(firstTag), env);
+  assert.equal(updated.status, 200);
+  assert.notEqual(updated.headers.get("ETag"), firstTag);
+  assert.deepEqual((await updated.json()).products.map(product => product.handle), order);
+  assert.equal((await worker.fetch(request(updated.headers.get("ETag")), env)).status, 304);
+});

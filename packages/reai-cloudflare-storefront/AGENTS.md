@@ -31,6 +31,7 @@ on the cached catalog path without stock requests.
 The Worker reads the complete `/site/v1/commerce/storefront` snapshot into Cloudflare's Cache API. A snapshot is fresh
 for 60 seconds; for the next five minutes it is served immediately while `waitUntil` revalidates its ETag in the
 background. The cache entry is retained for a day so a transient ReAI failure can still serve the last snapshot.
+Conditional JSON responses include the upstream snapshot ETag, since stock-driven collection order can change without a catalog-version increment.
 Catalog, product, and collection JSON routes use the same snapshot and expose `X-ReAI-Storefront-Cache` as `MISS`,
 `HIT`, `STALE`, `REVALIDATED`, `REFRESH`, or `STALE_IF_ERROR`. This is an application Cache API hit; Worker-generated
 responses do not report it as `Cf-Cache-Status: HIT`.
