@@ -1,4 +1,4 @@
-import { SIZE_CHARTS } from './size-guide-data.mjs';
+import { SIZE_CHARTS, SIZE_GUIDE_SOURCE } from './size-guide-data.mjs';
 
 const escape = (value = '') => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
 const audiences = { all: 'All sizes', women: 'Women', men: 'Men' };
@@ -31,8 +31,9 @@ export function renderSizeGuide(context = {}) {
   const rows = chart.rows.filter(row => audience === 'women' ? row.eu >= 35 && row.eu <= 42 : audience === 'men' ? row.eu >= 39 && row.eu <= 48 : true);
   const columns = audience === 'women' ? [['US', 'usWomen'], ['UK', 'ukWomen']] : audience === 'men' ? [['US', 'usMen'], ['UK', 'ukMen']] : [['US women', 'usWomen'], ['US men', 'usMen'], ['UK women', 'ukWomen'], ['UK men', 'ukMen']];
   if (audience === 'all' && chart.ukShared) columns.splice(2, 2, ['UK', 'ukWomen']);
-  const lengthReady = chart.lengthMeaning === 'foot' || chart.lengthMeaning === 'internal' || chart.lengthMeaning === 'last';
-  if (lengthReady) columns.push([chart.lengthMeaning === 'foot' ? 'Foot length · cm' : chart.lengthMeaning === 'internal' ? 'Internal length · cm' : 'Last length · cm', 'lengthCm']);
+  const lengthMeaning = chart.lengthMeaning || SIZE_GUIDE_SOURCE.lengthMeaning;
+  const lengthReady = ['foot', 'internal', 'last'].includes(lengthMeaning);
+  if (lengthReady) columns.push([lengthMeaning === 'foot' ? 'Foot length · cm' : lengthMeaning === 'internal' ? 'Internal length · cm' : 'Last length · cm', 'lengthCm']);
   const link = (style, view) => escape(sizeGuideUrl(style, view));
   return `<div class="size-guide-content" data-size-guide-content>
     <header class="sg-heading"><p class="eyebrow">A little guidance goes a long way</p><h1>Find your fit.</h1><p>Choose your style. Compare your size. Make room for movement.</p></header>
@@ -40,9 +41,10 @@ export function renderSizeGuide(context = {}) {
     <section class="sg-chart" aria-labelledby="sg-chart-title"><header><p class="eyebrow">Size chart</p><h2 id="sg-chart-title">${escape(chart.label)}</h2><p class="sg-models">${chart.models.map(escape).join(' · ')}</p></header>
     <nav class="sg-audiences" aria-label="Size conversion">${Object.entries(audiences).map(([key, label]) => `<a href="${link(chart.id, key)}"${key === audience ? ' aria-current="page"' : ''}>${label}</a>`).join('')}</nav>
     <div class="sg-table-scroll" role="region" aria-label="${escape(chart.label)} size conversions" tabindex="0"><table class="sg-table"><caption class="sr-only">${escape(chart.label)} · ${escape(audiences[audience])}</caption><thead><tr><th scope="col">EU</th>${columns.map(([label]) => `<th scope="col">${escape(label)}</th>`).join('')}</tr></thead><tbody>${rows.map(row => `<tr><th scope="row">${row.eu}</th>${columns.map(([, key]) => `<td>${row[key] == null ? '<span aria-label="Conversion not listed">—</span>' : escape(row[key])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
+    ${lengthMeaning === 'foot' ? '<p class="sg-measure-note">Compare the heel-to-toe measurement of your longer foot with the chart. Measurements are an approximate guide; fit varies by style.</p>' : ''}
     <p class="sg-chart-note">EU is the size you select when ordering. A dash means a conversion is not listed. Available sizes are shown on each product.</p>
     <a class="sg-help-link" href="mailto:store@newmovements.com?subject=${encodeURIComponent(`Size advice: ${chart.label}`)}">Between sizes or need advice? Ask our team →</a></section></div>
-    <section class="sg-measure" aria-labelledby="sg-measure-heading"><div class="sg-measure-art">${measureIllustration}</div><div><p class="eyebrow">Start with your feet</p><h2 id="sg-measure-heading">A good fit starts here.</h2><ol><li>Wear the socks you plan to wear with your shoes.</li><li>Stand on paper with your heel gently against a wall.</li><li>Mark your longest toe, then measure from the wall to the mark.</li><li>Measure both feet. Send the longer measurement and your chosen model to our team for fit advice.</li></ol><p>Different styles fit differently. If your model or size isn’t listed, we’re happy to help.</p></div></section>
+    <section class="sg-measure" aria-labelledby="sg-measure-heading"><div class="sg-measure-art">${measureIllustration}</div><div><p class="eyebrow">Start with your feet</p><h2 id="sg-measure-heading">A good fit starts here.</h2><ol><li>Wear the socks you plan to wear with your shoes.</li><li>Stand on paper with your heel gently against a wall.</li><li>Mark your longest toe, then measure from the wall to the mark.</li><li>Measure both feet and compare the longer measurement with your style’s chart. Between sizes? Ask our team for advice.</li></ol><p>Different styles fit differently. If your model or size isn’t listed, we’re happy to help.</p></div></section>
     <section class="sg-support"><div><h2>Try them at home.</h2><p>Try your shoes indoors on a clean surface, keeping the soles and packaging in their original condition.</p><a href="/pages/returns">Free returns within 30 days · Free exchanges →</a></div><div><h2>Here to help.</h2><p>Share your usual size, foot measurement and the style you have in mind.</p><a href="mailto:store@newmovements.com">store@newmovements.com →</a></div></section>
   </div>`;
 }

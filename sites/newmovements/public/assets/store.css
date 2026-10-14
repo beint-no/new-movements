@@ -733,3 +733,7 @@ body[data-view="women"] .collection-layout .product-shot picture{
  .sg-support{grid-template-columns:1fr;gap:24px;margin-top:32px;padding-top:24px}
  .sg-dialog-header{padding:12px 20px}.sg-dialog-body{padding:24px 20px}
 }
+
+.sg-measure-note{margin:18px 0 0;font-size:14px;line-height:1.6;color:#555}
+.sg-table:has(thead th:last-child:nth-child(4)){min-width:0}
+@media(max-width:480px){.sg-table:has(thead th:last-child:nth-child(4)) th,.sg-table:has(thead th:last-child:nth-child(4)) td{padding-inline:8px}.sg-table:has(thead th:last-child:nth-child(4)) thead th:last-child{max-width:105px;white-space:normal;line-height:1.3}}

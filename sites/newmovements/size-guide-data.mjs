@@ -4,7 +4,9 @@ export const SIZE_GUIDE_SOURCE = {
   "sheet": "Last Sizes",
   "sha256": "cd8afeec5b276d14d84def47cfd9089404f2bfe694e4ee26052d6e22d197d3b0",
   "importedOn": "2026-10-14",
-  "lengthMeaning": "unconfirmed",
+  "lengthMeaning": "foot",
+  "lengthConfirmed": false,
+  "lengthAssumption": "Merchant authorized publication on 2026-10-14 using approximate heel-to-toe foot lengths. Existing public Original/Allrounder guide labels matching CM values as foot measurements; this interpretation is provisionally applied to all five workbook charts pending the New Movements team review.",
   "unitNotes": "Classic and Sandals numeric values are cm; Sneakers, Boots and Loafers numeric values are mm, despite inconsistent source headings. Original values preserved by converting mm to cm. No missing conversions or sizes extrapolated."
 };
 
