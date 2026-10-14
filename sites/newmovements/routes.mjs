@@ -46,6 +46,13 @@ export function redirectStorefrontRequest({ request, url }) {
   if (pathname === url.pathname && hostname === url.hostname) return null;
   const destination = new URL(url.href);
   destination.pathname = pathname;
+  const sizeGuideStyles = {
+    '/pages/size-guide-original-allrounder-y-ns-zen': 'sneakers',
+    '/pages/size-guide-flow-cloud-boots': 'boots',
+    '/pages/size-guide-moss': 'boots',
+    '/pages/size-guide-loafers': 'loafers',
+  };
+  if (sizeGuideStyles[url.pathname] && !destination.searchParams.has('style')) destination.searchParams.set('style', sizeGuideStyles[url.pathname]);
   destination.hostname = hostname;
   return new Response(null, {
     status: hostname === url.hostname ? 301 : 308,
