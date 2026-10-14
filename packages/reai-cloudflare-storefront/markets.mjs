@@ -67,6 +67,9 @@ export function createReaiMarketStorefrontWorker(options) {
         return new Response('The store is temporarily unavailable. Please try again.', { status: 503, headers: { 'Cache-Control': 'no-store', 'Content-Type': 'text/plain; charset=utf-8' } });
       }
       const requested = url.searchParams.get('market');
+      const requestedCountry = url.searchParams.get('country');
+      const countryMarket = requestedCountry && markets.find((market) => market.countries?.includes(requestedCountry));
+      if (requestedCountry && (!countryMarket || (requested && !markets.find((market) => market.handle === requested)?.countries?.includes(requestedCountry)))) return new Response('This delivery country is unavailable.', { status: 400, headers: { 'Cache-Control': 'no-store' } });
       if (requested && !markets.some((market) => market.handle === requested)) return new Response('This market is unavailable.', { status: 400, headers: { 'Cache-Control': 'no-store' } });
       if (url.pathname === '/reai/market') {
         if (request.method !== 'POST') return new Response(null, { status: 405, headers: { Allow: 'POST' } });
@@ -81,13 +84,14 @@ export function createReaiMarketStorefrontWorker(options) {
         catch { return new Response(null, { status: 400 }); }
         if (returnTo.origin !== url.origin) return new Response(null, { status: 400 });
         returnTo.searchParams.delete('market');
+        returnTo.searchParams.delete('country');
         returnTo.searchParams.delete('filter.v.price.gte');
         returnTo.searchParams.delete('filter.v.price.lte');
         return new Response(null, { status: 303, headers: { Location: returnTo.href, 'Set-Cookie': choiceCookie(market.handle, country), 'Cache-Control': 'no-store' } });
       }
       const geoCountry = request.cf?.country || request.headers.get('CF-IPCountry');
       const [saved, savedCountry] = cookieValue(request);
-      const destination = selectDestination(markets, { requested, saved, savedCountry, country: geoCountry });
+      const destination = selectDestination(markets, { requested: requested || countryMarket?.handle, saved: requestedCountry ? undefined : saved, savedCountry, country: requestedCountry || geoCountry });
       if (!destination) return new Response('This market is unavailable.', { status: 503 });
       const { market, country } = destination;
       const renderer = Object.fromEntries(Object.entries(options.storefront).map(([name, value]) => [name,

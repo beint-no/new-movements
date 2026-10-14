@@ -35,6 +35,7 @@ const product = {
 const store = {
   currency: "NOK", catalogVersion: 1, products: [
     product,
+    { ...product, id: "00000000-0000-4000-8000-000000000003", handle: "zen-white", title: "Zen (White)", productType: "Zen" },
     { ...product, id: "00000000-0000-4000-8000-000000000002", handle: "allrounder-y-black", title: "Allrounder Y (Black)" },
   ],
   collections: [
@@ -252,7 +253,7 @@ console.log("New Movements storefront checks passed.");
 
 const womenContext = { url: new URL("https://shop.example/search?q=white&view=women") };
 const search = renderPage(store, "/search", womenContext);
-assert.match(search, /1 result for/);
+assert.match(search, /3 results for/);
 assert.match(search, /href="\/products\/allrounder-y-white\?view=women"/);
 assert.match(search, /name="view" value="women"/);
 assert.match(search, /href="\/search\?view=men&amp;q=white"/);
@@ -287,5 +288,5 @@ assert.doesNotMatch(carePage, /Unisex footwear designed|class="product-promises"
 assert.equal(renderCollectionPage(store, "archive"), null);
 const emptyArchiveStore = { ...store, collections: [...store.collections, { id: "empty", handle: "archive", title: "Archive", products: [] }] };
 assert.doesNotMatch(renderCollectionPage(emptyArchiveStore, "archive"), /class="product-card"/);
-assert.match(renderPage(emptyArchiveStore, "/collections"), /href="\/collections\/archive"/);
+assert.doesNotMatch(renderPage(emptyArchiveStore, "/collections"), /href="\/collections\/archive"/);
 assert.match(renderSitemap(emptyArchiveStore), /<loc>https:\/\/newmovements.com\/collections\/archive<\/loc>/);
