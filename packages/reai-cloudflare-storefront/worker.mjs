@@ -312,6 +312,7 @@ export function createReaiStorefrontWorker({
     await writeCachedStorefront(refreshed.store, refreshed.etag);
     return {
       store: refreshed.store,
+      etag: refreshed.etag,
       cacheStatus: refreshed.revalidated ? "REVALIDATED" : cached ? "REFRESH" : "MISS",
     };
   }
@@ -321,19 +322,19 @@ export function createReaiStorefrontWorker({
     if (!cached) return refreshStorefront(env, null);
     const age = Date.now() - cached.cachedAt;
     if (age <= STOREFRONT_FRESH_MILLISECONDS) {
-      return { store: cached.store, cacheStatus: "HIT" };
+      return { store: cached.store, etag: cached.etag, cacheStatus: "HIT" };
     }
     if (
       age <= STOREFRONT_FRESH_MILLISECONDS + STOREFRONT_STALE_WHILE_REVALIDATE_MILLISECONDS &&
       executionContext?.waitUntil
     ) {
       executionContext.waitUntil(refreshStorefront(env, cached));
-      return { store: cached.store, cacheStatus: "STALE" };
+      return { store: cached.store, etag: cached.etag, cacheStatus: "STALE" };
     }
     try {
       return await refreshStorefront(env, cached);
     } catch {
-      return { store: cached.store, cacheStatus: "STALE_IF_ERROR" };
+      return { store: cached.store, etag: cached.etag, cacheStatus: "STALE_IF_ERROR" };
     }
   }
 
@@ -403,8 +404,9 @@ export function createReaiStorefrontWorker({
     return null;
   }
 
-  function cacheEntityTag(key, store) {
-    return `W/"${cacheKey}:${key}:${store.catalogVersion}:${store.marketId}:${store.locale}"`;
+  function cacheEntityTag(key, store, snapshotEtag) {
+    // Stock-driven collection order can change without a catalog edit.
+    return `W/"${cacheKey}:${key}:${store.catalogVersion}:${store.marketId}:${store.locale}:${encodeURIComponent(snapshotEtag || "")}"`;
   }
 
   function matchesEntityTag(request, entityTag) {
@@ -425,7 +427,7 @@ export function createReaiStorefrontWorker({
     const cached = await getStorefront(env, executionContext);
     const resolved = cachedCommerceBody(route, cached.store, new URL(request.url));
     if (!resolved) return null;
-    const entityTag = cacheEntityTag(resolved.key, cached.store);
+    const entityTag = cacheEntityTag(resolved.key, cached.store, cached.etag);
     const headers = securityHeaders(new Headers({
       "Cache-Control": "public, max-age=60, stale-while-revalidate=300",
       "Content-Language": canonicalLocale,
