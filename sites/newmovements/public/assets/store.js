@@ -837,3 +837,64 @@ document.querySelectorAll('[data-stock-form]').forEach((form) => form.addEventLi
 
 const viewed=document.querySelector('[data-add-to-cart][data-id]');
 if(viewed) track('product_view',{productId:viewed.dataset.id});
+
+// The guide is ordinary server-rendered content. Product pages progressively
+// enhance its link into a native modal; it still works without JavaScript.
+const sizeGuideDialog = document.querySelector('[data-size-guide-dialog]');
+if (sizeGuideDialog && typeof sizeGuideDialog.showModal === 'function') {
+  const body = sizeGuideDialog.querySelector('[data-size-guide-body]');
+  const close = sizeGuideDialog.querySelector('[data-size-guide-close]');
+  let controller;
+  let trigger;
+  let generation = 0;
+  const load = async (href) => {
+    const current = ++generation;
+    controller?.abort();
+    controller = new AbortController();
+    const active = controller;
+    const timeout = setTimeout(() => active.abort(), 8000);
+    body.setAttribute('aria-busy', 'true');
+    if (!body.querySelector('[data-size-guide-content]')) body.innerHTML = '<p class="sg-loading" role="status">Opening your size guide…</p>';
+    try {
+      const response = await fetch(href, { signal: active.signal });
+      if (!response.ok) throw new Error('Size guide unavailable');
+      const content = new DOMParser().parseFromString(await response.text(), 'text/html').querySelector('[data-size-guide-content]');
+      if (!content) throw new Error('Size guide unavailable');
+      if (current !== generation || !sizeGuideDialog.open) return;
+      body.replaceChildren(content);
+      body.scrollTop = 0;
+    } catch {
+      if (current === generation && sizeGuideDialog.open) window.location.assign(href);
+    } finally {
+      clearTimeout(timeout);
+      if (current === generation) body.removeAttribute('aria-busy');
+    }
+  };
+  document.querySelector('[data-size-guide-open]')?.addEventListener('click', event => {
+    if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button !== 0) return;
+    event.preventDefault();
+    trigger = event.currentTarget;
+    sizeGuideDialog.showModal();
+    document.body.classList.add('size-guide-open');
+    close.focus();
+    load(trigger.href);
+  });
+  body.addEventListener('click', event => {
+    const link = event.target.closest('a');
+    if (!link || !link.closest('.sg-styles, .sg-audiences') || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button !== 0) return;
+    event.preventDefault();
+    load(link.href);
+  });
+  close.addEventListener('click', () => sizeGuideDialog.close());
+  sizeGuideDialog.addEventListener('click', event => {
+    const box = sizeGuideDialog.getBoundingClientRect();
+    if (event.target === sizeGuideDialog && (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom)) sizeGuideDialog.close();
+  });
+  sizeGuideDialog.addEventListener('close', () => {
+    generation++;
+    controller?.abort();
+    document.body.classList.remove('size-guide-open');
+    body.removeAttribute('aria-busy');
+    trigger?.focus({ preventScroll: true });
+  });
+}

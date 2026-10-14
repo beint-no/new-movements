@@ -217,3 +217,23 @@ welcome/post-purchase stages use longer delays and retain consent checks.
 The legacy 2021 sneakers-and-fashion article is preserved as a dated archive with
 local editorial images. Its Shopify URL redirects to the canonical journal article.
 It remains in the sitemap, without joining the curated current Stories listing.
+
+## Size guide (2026-10-14)
+
+`size-guide-data.mjs` contains the five brand charts transcribed from the supplied
+SHOE LASTS + SIZE CHART + LACE LENGTH workbook, Last Sizes sheet. Its provenance
+includes the source checksum and exact ranges. All 88 rows retain their supplied
+EU/US/UK conversions, half sizes and blanks; never extrapolate a missing size.
+Length values are normalized to cm and retained in the data, but their meaning
+(foot, internal shoe, or last length) awaits merchant confirmation. Do not expose
+them as foot-length recommendations or invent toe allowance. The source has
+inconsistent cm/mm headings and length jumps around EU 40/40.5 in boots/loafers.
+Lace tables also have overlapping/missing ranges and are not published.
+
+`size-guide.mjs` renders the standalone `/pages/size-guide` with `style` and `view`
+queries. Product pages use the same content in a native side dialog, loaded only
+when requested. Navigation works without JavaScript; Escape and close return
+focus to the product link. Model matching uses explicit known brand families.
+Allrounder S, High Flow and Zipper Boot lack an explicit chart in the workbook and
+open the general guide without assigning another model's fit. Size guidance does
+not alter ReAI variants, stock, merchandising ranges, cart state or checkout.
