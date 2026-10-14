@@ -21,3 +21,8 @@ Structured facets match stable taxonomy IDs or entry IDs/aliases, never product
 titles. Counts are distinct products matching the other facets. Supply live
 availability only when filtering stock; missing stock remains unknown. Keep
 store-specific facet definitions and URL parameter names in the storefront.
+
+search.mjs is the shared deterministic search helper. Match every bounded normalized token across
+identity, public attributes, category and descriptions; numeric option terms must match the same
+variant. Rank identity matches ahead of body text and return the explicit numeric selection.
+No arbitrary regex, network calls, inferred product claims or second search index.

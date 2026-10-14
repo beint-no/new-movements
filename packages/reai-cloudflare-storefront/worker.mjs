@@ -1,3 +1,4 @@
+import { searchProducts } from "../reai-site-client/search.mjs";
 // @ts-check
 
 import { ReaiSiteClient } from "../reai-site-client/client.mjs";
@@ -365,7 +366,7 @@ export function createReaiStorefrontWorker({
   }
 
   function catalogProducts(store, url) {
-    return storefront.catalogProductsForRequest?.(store.products || [], { ...renderContext, url }) ?? store.products;
+    return storefront.catalogProductsForRequest?.(store.products || [], { ...renderContext, url, collections: store.collections }) ?? store.products;
   }
 
   function cachedCommerceBody(route, store, url) {
@@ -376,6 +377,18 @@ export function createReaiStorefrontWorker({
       locale: store.locale,
       currency: store.currency,
     };
+    if (route === "/reai/search") {
+      const query = (url.searchParams.get("q") || "").slice(0, 200);
+      const products = searchProducts(catalogProducts(store, url), query, 6).map((product) => {
+        const image = storefront.searchImage?.(product) || product.images?.[0];
+        const rendition = image?.renditions?.find((entry) => entry.width >= 160) || image;
+        const productUrl = new URL(product.url || `/products/${product.handle}`, url.origin);
+        if (product.selectedVariantId) productUrl.searchParams.set("variant", product.selectedVariantId);
+        return { title: product.title, url: productUrl.pathname + productUrl.search, image: rendition?.url,
+          price: Math.min(...product.variants.map((variant) => Number(variant.price))) };
+      });
+      return { key: `search:${encodeURIComponent(url.search)}`, body: { currency: store.currency, products } };
+    }
     if (route === "/reai/catalog") {
       return {
         key: storefront.catalogProductsForRequest ? `catalog:${encodeURIComponent(url.search)}` : "catalog",
@@ -419,7 +432,8 @@ export function createReaiStorefrontWorker({
   async function cachedCommerceResponse(request, env, route, executionContext) {
     if (request.method !== "GET") return null;
     if (
-      route !== "/reai/catalog"
+      route !== "/reai/search"
+      && route !== "/reai/catalog"
       && route !== "/reai/collections"
       && !route.startsWith("/reai/products/")
       && !route.startsWith("/reai/collections/")
@@ -449,6 +463,8 @@ export function createReaiStorefrontWorker({
     const client = siteClient(env);
     let upstreamResult;
     let cacheControl = "public, max-age=60, stale-while-revalidate=300";
+
+    if (route === "/reai/search") return jsonResponse({ error: messages.temporarilyUnavailable }, 503, env);
 
     if (request.method === "GET" && route === "/reai/site") {
       upstreamResult = client.site();
@@ -723,7 +739,7 @@ export function createReaiStorefrontWorker({
           return htmlResponse(storefront.renderNotFoundPage(store, pageContext, route.canonicalPath), env, error.status === 404 ? 404 : 502);
         }
       }
-      const availability = await variantAvailability(env, product.variants);
+      const availability = await variantAvailability(env, storefront.productAvailabilityVariants?.(store, product, pageContext) || product.variants);
       const response = htmlResponse(storefront.renderProductPage(store, product, availability, pageContext), env);
       response.headers.set("X-ReAI-Storefront-Cache", cacheStatus);
       return response;

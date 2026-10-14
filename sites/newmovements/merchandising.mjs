@@ -1,9 +1,9 @@
 import { composeProductView, imageMatchesTokens } from "../../packages/reai-site-client/merchandising.mjs";
 
 export const CART_UPSELL_HANDLES = [
-  "organotex-leather-wax",
   "organotex-shoe-cleaner",
   "organotex-waterproofing-spray",
+  "organotex-leather-wax",
 ];
 
 export const VIEWS = {

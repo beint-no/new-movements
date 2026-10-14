@@ -266,3 +266,30 @@ configured in ReAI, not the Norway-only dynamic booking/pickup-point integration
 Taxes and duties remain included everywhere. Footer Vipps appears for Norwegian
 destinations, reusing the optimized payment mark already used by checkout.
 Product help links are underlined with a visible keyboard focus indicator.
+
+## Shopping polish (2026-10-14)
+
+Search uses the shared bounded literal token/ranking helper over names, product type, category,
+managed attributes, variant selections and collection labels. Predictive search uses /reai/search
+(six compact suggestions) from the same cached snapshot; never download the full catalog for search.
+Typing is debounced, stale requests abort, and the full GET results work without JavaScript.
+Cards prefer existing neutral studio shots; audience-specific galleries remain unchanged.
+
+An exact size filter checks current availability by default, with an explicit Include sold-out
+sizes option. Product links and quick-add retain that explicit variant; changing colour retains
+an exact matching selection. Family identity uses a specific merchant product type or exact model
+name, never a title prefix. Recommendations show other models with live stock, respecting an
+explicit selected size; no personalization engine or inferred material claims.
+
+Search and bag use native modal dialogs with focus containment and restoration. Purchased lines
+and editable quantities precede at most two stocked care suggestions. Mobile products have a
+compact swatch/thumb row and a sticky Choose size / Add to bag / Notify me action. Image zoom
+loads only on intent. Product facts come from managed attributes, and Google reviews are labelled
+as brand reviews, never product ratings. Keep size measurement assumptions unchanged.
+
+The collection directory hides empty collections and the duplicate Shoe Care card while keeping
+managed collections and legacy links. /collections/new-arrivals redirects to /collections/new-in;
+/collections/shoe-care-1 redirects to the consolidated /collections/shoe-care. Country/market
+landing queries are validated against enabled markets; product offers have exact variant URLs
+and merchant return-policy metadata. Review hostnames send noindex and disallow crawling;
+newmovements.com becomes indexable only when the user separately approves domain cutover.

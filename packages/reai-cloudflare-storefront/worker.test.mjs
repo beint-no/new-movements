@@ -614,3 +614,25 @@ test("collection conditional responses follow inventory-driven order without a c
   assert.deepEqual((await updated.json()).products.map(product => product.handle), order);
   assert.equal((await worker.fetch(request(updated.headers.get("ETag")), env)).status, 304);
 });
+
+test('search returns a bounded compact response from the shared snapshot and preserves ranking context', async (context) => {
+  const originalFetch = globalThis.fetch;
+  const originalCaches = globalThis.caches;
+  context.after(() => { globalThis.fetch = originalFetch; globalThis.caches = originalCaches; });
+  const cache = new Map();
+  globalThis.caches = { default: { match: async (request) => cache.get(request.url)?.clone(), put: async (request, response) => { cache.set(request.url, response.clone()); } } };
+  let calls = 0;
+  globalThis.fetch = async () => { calls++; return Response.json({ catalogVersion: 1, marketHandle: 'default', locale: 'en', currency: 'NOK', products: Array.from({ length: 20 }, (_, id) => ({ id: `p${id}`, handle: `boot-${id}`, title: `Black Boot ${id}`, images: [{ url: 'https://app.reai.no/example.avif' }], variants: [{ id: `v${id}`, price: 100, options: [] }], description: 'A large description must not enter the search response.' })), collections: [] }); };
+  const worker = createReaiStorefrontWorker({ cacheKey: 'compact-search', storefront: { ...storefront, catalogProductsForRequest: (products, context) => products.map((product) => ({ ...product, url: `/products/${product.handle}?view=${context.url.searchParams.get('view')}` })) }, market: 'default', locale: 'en' });
+  const response = await worker.fetch(new Request('https://shop.example/reai/search?q=black+boots&view=men'), { REAI_SITE_TOKEN: 'test-token' });
+  const result = await response.json();
+  assert.equal(result.products.length, 6);
+  assert.equal(result.products[0].url, '/products/boot-0?view=men');
+  assert.equal(result.products[0].price, 100);
+  assert.equal(result.products[0].variants, undefined);
+  assert.equal(result.products[0].description, undefined);
+  assert.equal(result.products[0].id, undefined);
+  const second = await worker.fetch(new Request('https://shop.example/reai/search?q=no-match'), { REAI_SITE_TOKEN: 'test-token' });
+  assert.equal((await second.json()).products.length, 0);
+  assert.equal(calls, 1);
+});

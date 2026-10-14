@@ -108,3 +108,10 @@ Keep the default policy restricted to the site and ReAI media, configure only re
 and never derive CSP sources from browser input or widen script/form permissions.
 
 Merchant address suggestions are optional, authenticated through the typed Site client, private/no-store and rate limited alongside checkout writes. Reject cross-site fetches and oversized queries; provider credentials stay in ReAI. Pickup filtering is local to the browser after one selected-option discovery.
+
+GET /reai/search?q= returns at most six compact suggestions from the same snapshot/projection.
+Full-result renderers reuse searchProducts. Optional searchImage selects an existing card image;
+no descriptions, variant arrays or credentials enter suggestions. Numeric option selection keeps
+its public variant URL. Optional productAvailabilityVariants selects a bounded batch for related
+products without per-product calls. Explicit country query choices are validated against enabled
+markets and take precedence over saved/geographic preferences.
