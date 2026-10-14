@@ -164,7 +164,7 @@ export const SIZE_CHARTS = [
   },
   {
     "id": "boots",
-    "label": "Boots & Moss",
+    "label": "Boots",
     "models": [
       "Flow Boot",
       "Cloud Boot",

@@ -148,7 +148,7 @@ exact-size restock, purchase care/reviews/recycling and annual winback. The welc
 5% offer uses existing CC; no automatic code creation. Sunset is deliberately not
 ported. Anonymous analytics do not send browsing/cart recovery emails.
 
-Bring/Posten/PostNord are Norway-only. International markets expose fixed DHL
+Dynamic Bring/Posten/PostNord booking remains Norway-only. Sweden and Denmark use fixed merchant-fulfilled PostNord/Bring delivery; other international markets expose fixed DHL
 Express alternatives with country restrictions and carrier branding from the Site
 API. This is merchant-fulfilled shipping, not new automatic international DHL
 booking or Webshipper carrier quotes. Configure the actual customer delivery price

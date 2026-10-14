@@ -121,7 +121,7 @@ Review URL: https://newmovements.respiro.workers.dev
 As checked on 2026-10-13, tenant 3157's Site is named New Movements, has no
 active domain, and uses the existing review Worker. All enabled market shipping
 methods are free without a minimum order: Bring/Posten and PostNord in Norway,
-DHL Express internationally. Taxes and duties are included in every destination,
+PostNord/Bring in Sweden and Denmark (merchant-fulfilled), and DHL Express for other supported destinations. Taxes and duties are included in every destination,
 as the merchant explicitly confirmed. On 2026-10-13, the merchant confirmed that
 international orders will use the existing DHL/Webshipper fulfillment setup with
 duties and taxes billed to New Movements. ReAI's current DHL booking adapter
@@ -251,3 +251,18 @@ not another chart or a foot-to-size calculator. Guide navigation retains chosen
 size/unit, works as ordinary links without JS, and stays inside the drawer with JS.
 All style choices wrap on mobile; never clip them in a hidden horizontal rail.
 Purchase reassurance uses the confirmed delivery/returns policy beside Add to cart.
+
+## Merchant review (2026-10-14)
+
+Martin requested Boots as the guide heading, with Moss retained among its models.
+Only Original/Allrounder, Boots and Loafers are active guide choices. Classic/Cruiser
+and Everyday Sandals source tables remain archived in size-guide-data.mjs for
+provenance and are not offered in shopper navigation. Do not reintroduce them
+without merchant approval. The generic Features copy does not say Unisex.
+
+Free delivery uses PostNord/Bring in Norway, Sweden and Denmark; other supported
+destinations use DHL Express. Sweden/Denmark use fixed, merchant-fulfilled delivery
+configured in ReAI, not the Norway-only dynamic booking/pickup-point integration.
+Taxes and duties remain included everywhere. Footer Vipps appears for Norwegian
+destinations, reusing the optimized payment mark already used by checkout.
+Product help links are underlined with a visible keyboard focus indicator.
