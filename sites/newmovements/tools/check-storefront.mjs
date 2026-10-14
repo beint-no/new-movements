@@ -290,3 +290,8 @@ const emptyArchiveStore = { ...store, collections: [...store.collections, { id: 
 assert.doesNotMatch(renderCollectionPage(emptyArchiveStore, "archive"), /class="product-card"/);
 assert.doesNotMatch(renderPage(emptyArchiveStore, "/collections"), /href="\/collections\/archive"/);
 assert.match(renderSitemap(emptyArchiveStore), /<loc>https:\/\/newmovements.com\/collections\/archive<\/loc>/);
+
+const unknownStockPage = renderProductPage(store, product, { [product.variants[0].id]: null });
+assert.match(unknownStockPage, /Live availability could not be checked/);
+assert.match(unknownStockPage, /data-available="unknown"/);
+assert.doesNotMatch(unknownStockPage, /Sold out\. Get notified/);
