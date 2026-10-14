@@ -759,3 +759,8 @@ body[data-view="women"] .collection-layout .product-shot picture{
  .sg-styles{flex-wrap:wrap;overflow:visible;gap:12px 20px}
  .sg-chart-controls{gap:12px}.sg-chart-controls .sg-audiences{gap:20px}
 }
+
+/* Inline product help must look like a link before a shopper taps it. */
+.product-accordions a{text-decoration:underline;text-underline-offset:4px;text-decoration-thickness:1px}
+.product-accordions a:hover{text-decoration-thickness:2px}
+.product-accordions a:focus-visible{outline:2px solid #111;outline-offset:4px}

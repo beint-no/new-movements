@@ -12,9 +12,9 @@ const marks = {
   "linkedin": "<svg focusable=\"false\" aria-hidden=\"true\" xmlns=\"http://www.w3.org/2000/svg\" aria-hidden=\"true\" viewBox=\"0 0 20 20\"><path fill=\"currentColor\" fill-rule=\"evenodd\" d=\"M16.841 2H3.206C2.554 2 2 2.516 2 3.151v13.697C2 17.484 2.363 18 3.016 18H16.65c.653 0 1.349-.516 1.349-1.152V3.151C18 2.516 17.494 2 16.841 2M8.095 8.095h2.154v1.098h.024C10.6 8.601 11.57 8 12.77 8c2.302 0 2.944 1.222 2.944 3.486v4.228H13.43v-3.812c0-1.013-.405-1.902-1.351-1.902-1.15 0-1.697.778-1.697 2.055v3.66H8.095zm-3.81 7.62h2.286v-7.62H4.286zM6.858 5.428a1.428 1.428 0 1 1-2.856 0 1.428 1.428 0 0 1 2.856 0\" clip-rule=\"evenodd\"/></svg>"
 };
 
-export function renderPaymentMarks() {
+export function renderPaymentMarks(norway = true) {
   return `<div class="payment-methods" aria-label="Accepted payment methods">${[
-    ["american-express", "American Express"], ["apple-pay", "Apple Pay"], ["google-pay", "Google Pay"], ["mastercard", "Mastercard"], ["visa", "Visa"],
+    ...(norway ? [["vipps", "Vipps"]] : []), ["american-express", "American Express"], ["apple-pay", "Apple Pay"], ["google-pay", "Google Pay"], ["mastercard", "Mastercard"], ["visa", "Visa"],
   ].map(([key, label]) => `<span role="img" aria-label="${label}">${marks[key]}</span>`).join("")}</div>`;
 }
 
