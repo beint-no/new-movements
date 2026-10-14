@@ -342,6 +342,8 @@ const syncVariant = () => {
       card.querySelectorAll('a').forEach((link) => { const url = new URL(link.href); url.searchParams.delete('variant'); if (match) url.searchParams.set('variant', match.id); link.href = url.href; });
     } catch { /* Static recommendations remain usable. */ }
   });
+  const recommendations = document.querySelector('.recommendations');
+  if (recommendations) recommendations.hidden = ![...recommendations.querySelectorAll('.product-card')].some((card) => !card.hidden);
   const notify = document.querySelector('[data-stock-notification]');
   const notifySize = notify?.querySelector('select[name="variantId"]');
   const canNotify = notifySize && [...notifySize.options].some(item => item.value === add.dataset.variant);
