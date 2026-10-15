@@ -9,6 +9,10 @@ const worker = createReaiMarketStorefrontWorker({
   storefront,
   market: "default",
   locale: "en",
+  locales: [
+    { pathPrefix: "", locale: "en" },
+    { pathPrefix: "/nb", locale: "nb-NO" },
+  ],
   imageOrigins: ["https://cdn.shopify.com"],
   merchantCheckoutPath: "/checkout",
   checkoutReturnPath: "/order/complete",
@@ -19,8 +23,10 @@ const worker = createReaiMarketStorefrontWorker({
 // The review hostname must never compete with the eventual production storefront.
 export default {
   async fetch(request, env, context) {
-    const review = !["newmovements.com", "www.newmovements.com"].includes(new URL(request.url).hostname);
-    if (review && new URL(request.url).pathname === "/robots.txt") return new Response("User-agent: *\nDisallow: /\n", { headers: { "Content-Type": "text/plain", "X-Robots-Tag": "noindex, nofollow" } });
+    const requestUrl = new URL(request.url);
+    const review = !["newmovements.com", "www.newmovements.com"].includes(requestUrl.hostname);
+    if (review && /^(?:\/nb)?\/robots\.txt$/.test(requestUrl.pathname)) return new Response("User-agent: *\nDisallow: /\n", { headers: { "Content-Type": "text/plain", "X-Robots-Tag": "noindex, nofollow" } });
+    if (!review && /^(?:\/nb)?\/robots\.txt$/.test(requestUrl.pathname)) return new Response("User-agent: *\nAllow: /\nSitemap: https://newmovements.com/sitemap.xml\nSitemap: https://newmovements.com/nb/sitemap.xml\n", { headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=3600" } });
     const response = await worker.fetch(request, env, context);
     if (!review) return response;
     const headers = new Headers(response.headers); headers.set("X-Robots-Tag", "noindex, nofollow");

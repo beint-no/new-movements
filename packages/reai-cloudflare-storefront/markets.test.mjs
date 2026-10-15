@@ -84,3 +84,24 @@ test('country form stores destination and checkout ignores browser country overr
   assert.equal(response.status, 201);
   assert.equal(checkout.countryCode, 'FR');
 });
+
+test('locale prefixes select one shared worker and scope API delivery by locale', async (context) => {
+  const originalFetch = globalThis.fetch;
+  context.after(() => { globalThis.fetch = originalFetch; });
+  const requests = [];
+  globalThis.fetch = async (url) => {
+    requests.push(String(url));
+    if (String(url).endsWith('/site/v1/site')) return Response.json({ markets: [{ ...markets[0], defaultLocale: 'en', locales: ['en', 'nb-NO'] }] });
+    return Response.json({ catalogVersion: 1, marketHandle: 'default', locale: 'nb-NO', currency: 'NOK', products: [], collections: [] });
+  };
+  const storefront = { HANDLE: /^[a-z0-9-]+$/, matchRoute: (pathname) => pathname === '/' ? { type: 'home' } : null };
+  const worker = createReaiMarketStorefrontWorker({
+    storefront,
+    cacheKey: 'localized',
+    locales: [{ pathPrefix: '', locale: 'en' }, { pathPrefix: '/nb', locale: 'nb-NO' }],
+  });
+  const response = await worker.fetch(new Request('https://shop.example/nb/reai/catalog'), { REAI_SITE_TOKEN: 'test' });
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('Content-Language'), 'nb-NO');
+  assert.match(requests.at(-1), /market=default&locale=nb-NO$/);
+});

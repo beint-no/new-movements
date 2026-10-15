@@ -3,7 +3,7 @@
 ## Public business context
 
 - New Movements is an Oslo footwear brand focused on unisex, repairable and recyclable shoes.
-- The public storefront is English-language. Norway uses NOK, Germany EUR and Switzerland CHF; the server selects the configured ReAI market.
+- The public storefront defaults to English. Norwegian is available under `/nb` with `nb-NO` catalog/checkout delivery; additional locales should use the same shared Worker locale map. Norway uses NOK, Germany EUR and Switzerland CHF; the server selects the configured ReAI market.
 - The reference domain is `https://newmovements.com`.
 
 ## Site constraints
@@ -145,7 +145,7 @@ only when requested. Native published collection membership takes precedence ove
 legacy presentation fallbacks. Product type preserves a source merchant label for the existing shopper filter; it is not a second canonical category or a new ReAI admin field. Women use EU 35–42 and men EU 39–48, including half
 sizes and the same opaque variant IDs. Do not infer attribute choices from titles.
 
-Collection controls progressively enhance the GET form: checkboxes update immediately; price input is debounced; sort, individual removal and Clear all use the same server-rendered collection. Keep URL/history, focus and the mobile drawer intact, abort superseded requests, and retain native navigation/no-JS submission as fallback. No client-side filtering or second catalog. Checkout inherits this English storefront's configured Site delivery locale; the session carries it through hosted checkout and payment widgets.
+Collection controls progressively enhance the GET form: checkboxes update immediately; price input is debounced; sort, individual removal and Clear all use the same server-rendered collection. Keep URL/history, focus and the mobile drawer intact, abort superseded requests, and retain native navigation/no-JS submission as fallback. No client-side filtering or second catalog. Checkout inherits the active locale's configured Site delivery context; the session carries it through hosted checkout and payment widgets.
 
 ## Built-in email flows
 
