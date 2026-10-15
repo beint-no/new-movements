@@ -1,6 +1,7 @@
 {
   "$schema": "../../node_modules/wrangler/config-schema.json",
   "name": "newmovements",
+  "account_id": "7ff7737df4a569ad04e6c7c91b607582",
   "compatibility_date": "2026-08-29",
   "workers_dev": true,
   "routes": [
