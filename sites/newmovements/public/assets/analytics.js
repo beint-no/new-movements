@@ -1,4 +1,6 @@
 let session;
+const pathPrefix = document.body?.dataset.pathPrefix || '';
+const sitePath = (path) => `${pathPrefix}${path === '/' ? '/' : path}`;
 let timer;
 let inFlight = false;
 const queue = [];
@@ -36,7 +38,7 @@ async function flush() {
   batch.forEach(item => item.attempts++);
   let retry = false;
   try {
-    const response = await fetch('/reai/analytics/events', {
+    const response = await fetch(sitePath('/reai/analytics/events'), {
       method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({events: batch.map(item => item.event)}), keepalive: true,
     });
@@ -66,7 +68,7 @@ export function track(kind, details = {}) {
 }
 
 track('page_view');
-if (location.pathname.replace(/^\/no(?=\/)/, '') === '/checkout') track('checkout_view');
+if (location.pathname.replace(new RegExp(`^${pathPrefix}(?=\\/)`), '') === '/checkout') track('checkout_view');
 window.addEventListener('load', () => schedule(), {once: true});
 window.addEventListener('online', () => schedule());
 document.addEventListener('visibilitychange', () => {

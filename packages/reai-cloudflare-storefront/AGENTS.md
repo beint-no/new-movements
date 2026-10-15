@@ -22,6 +22,8 @@ export default createReaiStorefrontWorker({
 
 `storefront` must export `HANDLE`, `matchRoute`, `collectionByHandle`, `productByHandle`, the page renderers and the sitemap renderer. `market` and `locale` are required because they select the ReAI delivery context. Every commerce delivery call, including availability and checkout, sends both values and isolates cached catalogs by the same pair. `beforeRequest` can implement canonical-domain or legacy-path redirects without forking the shared integration.
 
+For a storefront with more than one public language, pass `locales: [{ pathPrefix: "", locale: "en" }, { pathPrefix: "/nb", locale: "nb-NO" }]`. The shared market wrapper selects the longest matching prefix, keeps one Worker and one cache/security boundary, strips the prefix for route matching and Assets, and forwards the selected locale on every Site API and checkout request. Public locale prefixes are canonical; query parameters remain for market/API context and preview use.
+
 Optional `collectionAvailabilityVariants(store, handle, context)` selects variants
 whose live stock the collection renderer needs. They are fetched through the
 existing batch availability client, passed as `context.availability`, and the HTML

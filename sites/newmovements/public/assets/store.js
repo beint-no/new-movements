@@ -1,6 +1,9 @@
 import {track} from './analytics.js';
 document.documentElement.classList.add('has-store-js');
 const CART_KEY = 'newmovements-cart-v1';
+const pathPrefix = document.body.dataset.pathPrefix || '';
+const sitePath = (path) => `${pathPrefix}${path === '/' ? '/' : path}`;
+const localHref = (href) => typeof href === 'string' && href.startsWith('/') && !href.startsWith(`${pathPrefix}/`) ? sitePath(href) : href;
 const activeCurrency = document.body.dataset.currency || 'NOK';
 const activeMarket = document.body.dataset.market || 'default';
 let cartRepricing = false;
@@ -53,10 +56,10 @@ const cartStockNotice = (item) => {
   const issue = checkoutStockIssues.get(item.variant);
   if (!issue) return '';
   const hasSize = item.options?.some((option) => /^(size|størrelse)$/i.test(option.name)) || item.label;
-  return `<p class="cart-stock-notice">${escapeHtml(cartStockMessage(issue))}</p>${issue.maximumQuantity > 0 ? `<button type="button" data-cart-stock-adjust="${escapeHtml(item.variant)}">Change quantity to ${issue.maximumQuantity}</button>` : `<a class="cart-stock-action" href="${escapeHtml(item.url || `/products/${item.handle}`)}">${hasSize ? 'Choose another size' : 'View product'}</a>`}`;
+  return `<p class="cart-stock-notice">${escapeHtml(cartStockMessage(issue))}</p>${issue.maximumQuantity > 0 ? `<button type="button" data-cart-stock-adjust="${escapeHtml(item.variant)}">Change quantity to ${issue.maximumQuantity}</button>` : `<a class="cart-stock-action" href="${escapeHtml(localHref(item.url || `/products/${item.handle}`))}">${hasSize ? 'Choose another size' : 'View product'}</a>`}`;
 };
 if (!document.querySelector('[data-drawer-backdrop]')) {
-  document.querySelector('.site-header')?.insertAdjacentHTML('afterend', '<div class="drawer-backdrop" data-drawer-backdrop hidden></div><dialog class="store-drawer search-drawer" aria-label="Search" data-search-drawer><header><h2>Search</h2><button type="button" data-drawer-close>Close</button></header><form role="search" data-predictive-search><label class="sr-only" for="predictive-query">Search products</label><input id="predictive-query" name="q" type="search" autocomplete="off" placeholder="Search shoes, styles, materials"><button type="submit">View all</button></form><p data-predictive-status role="status" aria-live="polite">Start typing to search the live catalog.</p><div class="predictive-results" data-predictive-results></div></dialog><dialog class="store-drawer cart-drawer" aria-label="Shopping bag" data-cart-drawer><header><h2>Your bag</h2><button type="button" data-drawer-close>Close</button></header><div data-drawer-cart-items></div><footer><p><span>Subtotal</span><strong data-drawer-subtotal>NOK 0</strong></p><a href="/cart">View bag</a></footer></dialog>');
+  document.querySelector('.site-header')?.insertAdjacentHTML('afterend', `<div class="drawer-backdrop" data-drawer-backdrop hidden></div><dialog class="store-drawer search-drawer" aria-label="Search" data-search-drawer><header><h2>Search</h2><button type="button" data-drawer-close>Close</button></header><form role="search" data-predictive-search><label class="sr-only" for="predictive-query">Search products</label><input id="predictive-query" name="q" type="search" autocomplete="off" placeholder="Search shoes, styles, materials"><button type="submit">View all</button></form><p data-predictive-status role="status" aria-live="polite">Start typing to search the live catalog.</p><div class="predictive-results" data-predictive-results></div></dialog><dialog class="store-drawer cart-drawer" aria-label="Shopping bag" data-cart-drawer><header><h2>Your bag</h2><button type="button" data-drawer-close>Close</button></header><div data-drawer-cart-items></div><footer><p><span>Subtotal</span><strong data-drawer-subtotal>NOK 0</strong></p><a href="${sitePath('/cart')}">View bag</a></footer></dialog>`);
 }
 const showToast = (message) => {
   const toast = document.querySelector('[data-cart-toast]');
@@ -194,8 +197,8 @@ const openDrawer = (drawer, opener) => {
   document.body.classList.add('drawer-open');
   drawer?.querySelector('input,button,a')?.focus();
 };
-document.querySelectorAll('[data-search-open], .utility-nav a[href="/search"]').forEach((button) => button.addEventListener('click', (event) => { event.preventDefault(); openDrawer(searchDrawer, button); }));
-document.querySelectorAll('[data-cart-open], .utility-nav a[href="/cart"], .site-nav>a[href="/cart"]').forEach((button) => button.addEventListener('click', (event) => { event.preventDefault(); renderDrawerCart(); openDrawer(cartDrawer, button); refreshUpsellStock(); }));
+document.querySelectorAll('[data-search-open], .utility-nav a[href$="/search"]').forEach((button) => button.addEventListener('click', (event) => { event.preventDefault(); openDrawer(searchDrawer, button); }));
+document.querySelectorAll('[data-cart-open], .utility-nav a[href$="/cart"], .site-nav>a[href$="/cart"]').forEach((button) => button.addEventListener('click', (event) => { event.preventDefault(); renderDrawerCart(); openDrawer(cartDrawer, button); refreshUpsellStock(); }));
 [searchDrawer, cartDrawer].forEach((drawer) => {
   drawer?.addEventListener('keydown', (event) => {
     if (event.key !== 'Tab') return;
@@ -218,7 +221,7 @@ function renderDrawerCart() {
   const subtotal = document.querySelector('[data-drawer-subtotal]');
   if (!list) return;
   const items = readCart();
-  list.innerHTML = items.length ? items.map((item, index) => `<article class="drawer-cart-line${checkoutStockIssues.has(item.variant) ? ' has-stock-issue' : ''}" data-drawer-cart-index="${index}">${item.image ? `<img src="${escapeHtml(item.image)}" alt="">` : '<div class="drawer-cart-placeholder"></div>'}<div><a href="${escapeHtml(item.url || `/products/${item.handle}`)}">${escapeHtml(item.title)}</a><span>${cartOptions(item) ? `${escapeHtml(cartOptions(item))} · ` : ''}${item.quantity} × ${money(item.price, item.currency || 'NOK')}</span>${cartStockNotice(item)}<label class="drawer-quantity">Quantity<input data-drawer-quantity type="number" min="1" max="20" inputmode="numeric" value="${item.quantity}" aria-label="Quantity for ${escapeHtml(item.title)}"></label><button type="button" data-drawer-remove>Remove</button></div></article>`).join('') : '<div class="drawer-empty"><p>Your bag is empty.</p><a href="/collections/all">Continue shopping</a></div>';
+  list.innerHTML = items.length ? items.map((item, index) => `<article class="drawer-cart-line${checkoutStockIssues.has(item.variant) ? ' has-stock-issue' : ''}" data-drawer-cart-index="${index}">${item.image ? `<img src="${escapeHtml(item.image)}" alt="">` : '<div class="drawer-cart-placeholder"></div>'}<div><a href="${escapeHtml(localHref(item.url || `/products/${item.handle}`))}">${escapeHtml(item.title)}</a><span>${cartOptions(item) ? `${escapeHtml(cartOptions(item))} · ` : ''}${item.quantity} × ${money(item.price, item.currency || 'NOK')}</span>${cartStockNotice(item)}<label class="drawer-quantity">Quantity<input data-drawer-quantity type="number" min="1" max="20" inputmode="numeric" value="${item.quantity}" aria-label="Quantity for ${escapeHtml(item.title)}"></label><button type="button" data-drawer-remove>Remove</button></div></article>`).join('') : `<div class="drawer-empty"><p>Your bag is empty.</p><a href="${sitePath('/collections/all')}">Continue shopping</a></div>`;
   if (subtotal) subtotal.textContent = cartRepricing ? 'Updating prices…' : cartPriceFailed || items.some((item) => unavailableMarketVariants.has(item.variant)) ? 'Price unavailable' : money(items.reduce((sum, item) => sum + item.price * item.quantity, 0));
   syncCartUpsells(items);
   cartDrawer.querySelectorAll('[data-checkout-start]').forEach((button) => { button.disabled = !items.length || checkoutPending || cartRepricing || cartPriceFailed || items.some((item) => unavailableMarketVariants.has(item.variant)); });
@@ -250,7 +253,7 @@ async function refreshUpsellStock() {
   syncCartUpsells();
   try {
     const query = new URLSearchParams(upsellChoices.map(({ variant }) => ['variantId', variant.id]));
-    const response = await fetch(`/reai/availability?${query}`, { cache: 'no-store' });
+    const response = await fetch(sitePath(`/reai/availability?${query}`), { cache: 'no-store' });
     if (!response.ok) throw new Error('Availability unavailable');
     const result = await response.json();
     upsellAvailability = new Set((result.variants || []).filter((variant) => variant.status === 'AVAILABLE').map((variant) => variant.variantId));
@@ -443,7 +446,7 @@ const openQuickAdd = async (button) => {
   quickAddVariant = null;
   if (quickAddTitle) {
     quickAddTitle.textContent = quickAddProduct.title;
-    quickAddTitle.href = quickAddProduct.url || `/products/${quickAddProduct.handle}`;
+    quickAddTitle.href = localHref(quickAddProduct.url || `/products/${quickAddProduct.handle}`);
   }
   if (quickAddPrice) quickAddPrice.textContent = plainMoney(Math.min(...variants.map((variant) => Number(variant.price))));
   if (quickAddMedia) {
@@ -476,7 +479,7 @@ const openQuickAdd = async (button) => {
   document.body.classList.add('quick-add-open');
   try {
     const query = new URLSearchParams(variants.map((variant) => ['variantId', variant.id]));
-    const response = await fetch(`/reai/availability?${query}`, { cache: 'no-store' });
+    const response = await fetch(sitePath(`/reai/availability?${query}`), { cache: 'no-store' });
     if (!response.ok) throw new Error('Availability unavailable');
     const result = await response.json();
     if (quickAddProduct !== requestedProduct || !quickAddDialog?.open) return;
@@ -538,9 +541,9 @@ const renderCart = () => {
   const list = cartRoot.querySelector('[data-cart-items]');
   const subtotal = cartRoot.querySelector('[data-cart-subtotal]');
   if (!items.length) {
-    list.innerHTML = '<div class="message-page"><h2>Your bag is empty</h2><p><a href="/collections/all">Continue shopping</a></p></div>';
+    list.innerHTML = `<div class="message-page"><h2>Your bag is empty</h2><p><a href="${sitePath('/collections/all')}">Continue shopping</a></p></div>`;
   } else {
-    list.innerHTML = items.map((item, index) => `<article class="cart-line${checkoutStockIssues.has(item.variant) ? ' has-stock-issue' : ''}" data-cart-index="${index}">${item.image ? `<img src="${escapeHtml(item.image)}" alt="">` : '<div></div>'}<div><h2><a href="${escapeHtml(item.url || `/products/${item.handle}`)}">${escapeHtml(item.title)}</a></h2>${cartOptions(item) ? `<p>${escapeHtml(cartOptions(item))}</p>` : ''}<p>${money(item.price, item.currency || 'NOK')}</p><label>Qty <input type="number" min="1" max="20" value="${item.quantity}" data-cart-quantity></label>${cartStockNotice(item)}<button type="button" data-cart-remove>Remove</button></div><strong>${money(item.price * item.quantity, item.currency || 'NOK')}</strong></article>`).join('');
+    list.innerHTML = items.map((item, index) => `<article class="cart-line${checkoutStockIssues.has(item.variant) ? ' has-stock-issue' : ''}" data-cart-index="${index}">${item.image ? `<img src="${escapeHtml(item.image)}" alt="">` : '<div></div>'}<div><h2><a href="${escapeHtml(localHref(item.url || `/products/${item.handle}`))}">${escapeHtml(item.title)}</a></h2>${cartOptions(item) ? `<p>${escapeHtml(cartOptions(item))}</p>` : ''}<p>${money(item.price, item.currency || 'NOK')}</p><label>Qty <input type="number" min="1" max="20" value="${item.quantity}" data-cart-quantity></label>${cartStockNotice(item)}<button type="button" data-cart-remove>Remove</button></div><strong>${money(item.price * item.quantity, item.currency || 'NOK')}</strong></article>`).join('');
   }
   const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   if (subtotal) subtotal.textContent = cartRepricing ? 'Updating prices…' : cartPriceFailed || items.some((item) => unavailableMarketVariants.has(item.variant)) ? 'Price unavailable' : money(total);
@@ -583,7 +586,7 @@ checkoutButtons.forEach((checkout) => checkout.addEventListener('click', async (
   checkout.textContent = 'Opening secure checkout…';
   if (checkoutError) checkoutError.hidden = true;
   try {
-    const response = await fetch('/reai/checkout/start', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': crypto.randomUUID() }, body: JSON.stringify({ lines }) });
+    const response = await fetch(sitePath('/reai/checkout/start'), { method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': crypto.randomUUID() }, body: JSON.stringify({ lines }) });
     const payload = await response.json().catch(() => ({}));
     if (submittedRevision !== cartRevision) throw new Error('Your bag changed. Please check out again.');
     if (response.status === 409 && payload.code === 'INSUFFICIENT_STOCK' && Array.isArray(payload.stockIssues)) {
@@ -614,7 +617,7 @@ checkoutButtons.forEach((checkout) => checkout.addEventListener('click', async (
 }));
 
 const activeView = document.body.dataset.view || '';
-const searchUrl = (query) => `/search?${new URLSearchParams({ q: query, ...(activeView ? { view: activeView } : {}) })}`;
+const searchUrl = (query) => sitePath(`/search?${new URLSearchParams({ q: query, ...(activeView ? { view: activeView } : {}) })}`);
 
 const predictiveForm = document.querySelector('[data-predictive-search]');
 const predictiveInput = predictiveForm?.querySelector('input[name="q"]');
@@ -636,13 +639,13 @@ const renderPredictiveSearch = async () => {
   }
   if (predictiveStatus) predictiveStatus.textContent = 'Searching…';
   try {
-    const response = await fetch(`/reai/search?${new URLSearchParams({ q: query, ...(activeView ? { view: activeView } : {}) })}`, { signal: controller.signal });
+    const response = await fetch(sitePath(`/reai/search?${new URLSearchParams({ q: query, ...(activeView ? { view: activeView } : {}) })}`), { signal: controller.signal });
     if (!response.ok) throw new Error('Search unavailable');
     const store = await response.json();
     if (sequence !== predictiveSequence) return;
     const products = store.products;
     if (predictiveStatus) predictiveStatus.textContent = products.length ? `${products.length} suggested product${products.length === 1 ? '' : 's'}` : `No results for “${query}”`;
-    if (predictiveResults) predictiveResults.innerHTML = products.map((item) => `<a class="predictive-item" href="${escapeHtml(item.url || `/products/${item.handle}`)}">${item.image ? `<img src="${escapeHtml(item.image)}" alt="" width="80" height="100">` : '<span></span>'}<b>${escapeHtml(item.title)}</b><small>${money(item.price, store.currency || 'NOK')}</small></a>`).join('');
+    if (predictiveResults) predictiveResults.innerHTML = products.map((item) => `<a class="predictive-item" href="${escapeHtml(localHref(item.url || `/products/${item.handle}`))}">${item.image ? `<img src="${escapeHtml(item.image)}" alt="" width="80" height="100">` : '<span></span>'}<b>${escapeHtml(item.title)}</b><small>${money(item.price, store.currency || 'NOK')}</small></a>`).join('');
   } catch {
     if (sequence !== predictiveSequence || controller.signal.aborted) return;
     if (predictiveStatus) predictiveStatus.textContent = 'The live catalog is temporarily unavailable.';
@@ -788,7 +791,7 @@ async function refreshCartPrices() {
   cartRepricing = true;
   renderCart(); renderDrawerCart();
   try {
-    const response = await fetch('/reai/catalog');
+    const response = await fetch(sitePath('/reai/catalog'));
     if (!response.ok) throw new Error('Catalog unavailable');
     const store = await response.json();
     if (requestId !== cartPriceRequest) return;
@@ -870,7 +873,7 @@ document.querySelectorAll('[data-newsletter-form]').forEach((newsletterForm) => 
   button.textContent = 'Signing up…';
   status.hidden = true;
   try {
-    const response = await fetch('/reai/newsletter/subscribe', {
+    const response = await fetch(sitePath('/reai/newsletter/subscribe'), {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: String(data.get('email') || '').trim(), ...(name ? { name } : {}), consent: true, ...(welcomeDiscount ? { welcomeDiscount: true } : {}) }),
     });
@@ -898,7 +901,7 @@ document.querySelectorAll('[data-stock-form]').forEach((form) => form.addEventLi
   button.disabled = true;
   status.textContent = 'Saving your request…';
   try {
-    const response = await fetch('/reai/stock/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ variantId: data.get('variantId'), email: data.get('email'), consent: data.get('consent') === 'true' }) });
+    const response = await fetch(sitePath('/reai/stock/subscribe'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ variantId: data.get('variantId'), email: data.get('email'), consent: data.get('consent') === 'true' }) });
     if (!response.ok) throw new Error(response.status === 429 ? 'Please wait a minute before trying again.' : 'We could not save your request. Refresh the page and try again.');
     status.textContent = 'You’re on the list. We’ll email you once when this size is available.';
     form.elements.email.value = '';

@@ -9,6 +9,7 @@ import { canonicalPath } from "./routes.mjs";
 import { renderSizeGuide, renderSizeGuideDialog, sizeChartForProduct, sizeGuideUrl } from "./size-guide.mjs";
 import { renderCompactLegalFooter } from "../../packages/reai-cloudflare-storefront/footer.mjs";
 import { filterCollection, parseCollectionFilters } from "../../packages/reai-site-client/filtering.mjs";
+import { isNorwegian, translateStorefrontHtml } from "./locales.mjs";
 
 export const SITE_ORIGIN = "https://newmovements.com";
 export const HANDLE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -175,11 +176,22 @@ function documentHtml({ title, description, path, body, store, schema = "", imag
   title = `${title} | New Movements`;
   description = metaDescription(description);
   const { header, footer } = chrome(store, view);
-  const canonicalUrl = new URL(path, SITE_ORIGIN);
+  const prefix = store?.pathPrefix || "";
+  const publicPath = `${prefix}${path === "/" ? "/" : path}`;
+  const canonicalUrl = new URL(publicPath, SITE_ORIGIN);
   if (store?.marketHandle && store.marketHandle !== "default") canonicalUrl.searchParams.set("market", store.marketHandle);
   const canonical = canonicalUrl.href;
   const robots = NON_INDEXABLE_PATHS.has(path) ? '<meta name="robots" content="noindex,follow">' : "";
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title><meta name="description" content="${escapeHtml(description)}"><meta name="theme-color" content="#ffffff">${robots}<link rel="canonical" href="${escapeHtml(canonical)}"><link rel="icon" href="${FAVICON_ICO}" sizes="16x16 32x32 48x48"><link rel="icon" href="${FAVICON_SVG}" type="image/svg+xml"><link rel="apple-touch-icon" href="${TOUCH_ICON}" sizes="180x180"><link rel="preconnect" href="https://app.reai.no" crossorigin><meta property="og:title" content="${escapeHtml(title)}"><meta property="og:description" content="${escapeHtml(description)}"><meta property="og:url" content="${escapeHtml(canonical)}"><meta property="og:type" content="${type}">${image ? `<meta property="og:image" content="${escapeHtml(image)}">` : ""}<link rel="stylesheet" href="${STORE_STYLE}"><script type="module" src="${STORE_SCRIPT}"></script>${schema}</head><body data-view="${view}" data-market="${escapeHtml(store?.marketHandle || "default")}" data-currency="${escapeHtml(store?.currency || "NOK")}">${header}<main id="main">${body}</main>${footer}</body></html>`;
+  const alternateLinks = (store?.localeRoutes || []).map((route) => {
+    const href = new URL(`${route.pathPrefix || ""}${path === "/" ? "/" : path}`, SITE_ORIGIN).href;
+    return `<link rel="alternate" hreflang="${escapeHtml(route.locale)}" href="${escapeHtml(href)}">`;
+  }).join("");
+  const html = `<!doctype html><html lang="${escapeHtml(isNorwegian(store?.locale) ? "nb" : "en")}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title><meta name="description" content="${escapeHtml(description)}"><meta name="theme-color" content="#ffffff">${robots}<link rel="canonical" href="${escapeHtml(canonical)}">${alternateLinks}<link rel="icon" href="${FAVICON_ICO}" sizes="16x16 32x32 48x48"><link rel="icon" href="${FAVICON_SVG}" type="image/svg+xml"><link rel="apple-touch-icon" href="${TOUCH_ICON}" sizes="180x180"><link rel="preconnect" href="https://app.reai.no" crossorigin><meta property="og:title" content="${escapeHtml(title)}"><meta property="og:description" content="${escapeHtml(description)}"><meta property="og:url" content="${escapeHtml(canonical)}"><meta property="og:type" content="${type}">${image ? `<meta property="og:image" content="${escapeHtml(image)}">` : ""}<link rel="stylesheet" href="${STORE_STYLE}"><script type="module" src="${STORE_SCRIPT}"></script>${schema}</head><body data-view="${view}" data-market="${escapeHtml(store?.marketHandle || "default")}" data-currency="${escapeHtml(store?.currency || "NOK")}" data-path-prefix="${escapeHtml(prefix)}">${header}<main id="main">${body}</main>${footer}</body></html>`;
+  // Renderers intentionally keep canonical paths and assets root-relative. The
+  // shared locale router owns the public prefix, so apply it once at the
+  // document boundary and keep component code locale-agnostic.
+  const localized = prefix ? html.replaceAll('href="/', `href="${prefix}/`).replaceAll('src="/', `src="${prefix}/`).replaceAll('action="/', `action="${prefix}/`) : html;
+  return translateStorefrontHtml(localized, store?.locale);
 }
 
 function productCard(product, currency = "NOK", priority = false, includeCurrency = true) {
@@ -613,7 +625,8 @@ export const renderUnavailablePage = (store) => renderMessagePage(store, { title
 
 export function renderSitemap(store) {
   const paths = [...STATIC_PATHS, "/collections/all", ...publishedCollections(store).map((item) => `/collections/${item.handle}`), ...(store.products || []).map((item) => `/products/${item.handle}`)];
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${[...new Set(paths.map(canonicalPath))].filter((path) => !NON_INDEXABLE_PATHS.has(path)).map((path) => `  <url><loc>${SITE_ORIGIN}${path}</loc></url>`).join("\n")}\n</urlset>\n`;
+  const prefix = store?.pathPrefix || "";
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${[...new Set(paths.map(canonicalPath))].filter((path) => !NON_INDEXABLE_PATHS.has(path)).map((path) => `  <url><loc>${SITE_ORIGIN}${prefix}${path === "/" ? "/" : path}</loc></url>`).join("\n")}\n</urlset>\n`;
 }
 
 export const catalogProductsForRequest = (products, context) => productsForView(products, selectedView(context)).map((product) => ({

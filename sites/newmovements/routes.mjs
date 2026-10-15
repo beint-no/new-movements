@@ -43,18 +43,20 @@ export function canonicalPath(pathname) {
 
 export function redirectStorefrontRequest({ request, url }) {
   if (!["GET", "HEAD"].includes(request.method) || url.pathname.startsWith("/reai/")) return null;
-  const pathname = canonicalPath(url.pathname);
+  const localePrefix = url.pathname === "/nb" || url.pathname.startsWith("/nb/") ? "/nb" : "";
+  const localePath = localePrefix ? (url.pathname.slice(localePrefix.length) || "/") : url.pathname;
+  const pathname = canonicalPath(localePath);
   const hostname = url.hostname === "www.newmovements.com" ? "newmovements.com" : url.hostname;
-  if (pathname === url.pathname && hostname === url.hostname) return null;
+  if (`${localePrefix}${pathname === "/" ? "/" : pathname}` === url.pathname && hostname === url.hostname) return null;
   const destination = new URL(url.href);
-  destination.pathname = pathname;
+  destination.pathname = `${localePrefix}${pathname === "/" ? "/" : pathname}`;
   const sizeGuideStyles = {
     '/pages/size-guide-original-allrounder-y-ns-zen': 'sneakers',
     '/pages/size-guide-flow-cloud-boots': 'boots',
     '/pages/size-guide-moss': 'boots',
     '/pages/size-guide-loafers': 'loafers',
   };
-  if (sizeGuideStyles[url.pathname] && !destination.searchParams.has('style')) destination.searchParams.set('style', sizeGuideStyles[url.pathname]);
+  if (sizeGuideStyles[localePath] && !destination.searchParams.has('style')) destination.searchParams.set('style', sizeGuideStyles[localePath]);
   destination.hostname = hostname;
   return new Response(null, {
     status: hostname === url.hostname ? 301 : 308,

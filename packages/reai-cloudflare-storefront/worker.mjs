@@ -655,7 +655,7 @@ export function createReaiStorefrontWorker({
         return new Response(request.method === "HEAD" ? null : JSON.stringify(details), { status: upstream.status, headers });
       }
       headers.set("Content-Type", "text/html; charset=utf-8");
-      return new Response(request.method === "HEAD" ? null : storefront.renderCheckoutPage(details, { completed: path === checkoutReturnPath }), { headers });
+      return new Response(request.method === "HEAD" ? null : storefront.renderCheckoutPage(details, { completed: path === checkoutReturnPath, pathPrefix }), { headers });
     } catch {
       return new Response("Checkout is temporarily unavailable. Please refresh to try again.", { status: 503, headers });
     }
@@ -764,7 +764,12 @@ export function createReaiStorefrontWorker({
         return rendered;
       }
 
-      const response = await env.ASSETS.fetch(request);
+      // Locale-prefixed storefronts share the same static asset bundle. Strip
+      // the public locale prefix before asking the Assets binding for a file.
+      const assetRequest = storefrontPath !== url.pathname
+        ? new Request(new URL(storefrontPath || "/", url.origin), request)
+        : request;
+      const response = await env.ASSETS.fetch(assetRequest);
       const headers = securityHeaders(new Headers(response.headers), env);
       const localPath = storefrontPath || url.pathname;
       const path = localPath.endsWith("/") ? localPath : `${localPath}/`;

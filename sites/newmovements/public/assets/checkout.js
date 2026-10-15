@@ -1,5 +1,7 @@
 import './analytics.js';
 const root = document.body;
+const pathPrefix = root.dataset.pathPrefix || '';
+const sitePath = (path) => `${pathPrefix}${path === '/' ? '/' : path}`;
 let state = JSON.parse(root.dataset.checkout);
 const no = /^no|^nb|^nn/.test(state.locale);
 const t = (en, nb) => no ? nb : en;
@@ -13,7 +15,7 @@ const customerFields = ['email','phone','name','countryCode','addressPart1','add
 let chain = Promise.resolve(), timer, conflict = false, submitting = false, lastSentCustomer = null;
 let options = [], discovery = 0, choosingOption = null;
 const deliveryAddress = c => JSON.stringify(['name','countryCode','addressPart1','addressPart2','postalCode','city','province'].map(n=>c[n]));
-const apiPath = `/reai/checkout/${state.id}`;
+const apiPath = sitePath(`/reai/checkout/${state.id}`);
 const customer = () => Object.fromEntries(customerFields.map(name => [name, form?.elements.namedItem(name)?.value.trim() || '']));
 const equal = (a,b) => JSON.stringify(a) === JSON.stringify(b);
 // Tab-scoped contact drafts bridge navigation and new quotes, without keeping
@@ -317,7 +319,7 @@ const discountForm=document.querySelector('[data-discount-form]');
 discountForm?.addEventListener('submit',async e=>{e.preventDefault();const code=discountForm.elements.discountCode.value.trim();if(!code)return;const btn=discountForm.querySelector('button');btn.disabled=true;text('[data-discount-status]','');try{await save({discountCode:code});discountForm.reset();warmPayment();}catch(e){text('[data-discount-status]',e.message);}finally{btn.disabled=false;}});
 document.querySelector('[data-remove-discount]')?.addEventListener('click',async()=>{try{await save({discountCode:''});warmPayment();}catch(e){error(e);}});
 if (form) {
-  if (!state.editable) { form.hidden=true; const p=document.createElement('p');p.textContent=state.phase==='expired'?t('This checkout has expired. Your bag is still available.','Denne kassen har utløpt. Handlekurven din er bevart.'):t('Payment is in progress. Continue on the secure payment page.','Betalingen er i gang. Fortsett på den sikre betalingssiden.');const link=document.createElement('a');link.className='co-button';link.href=state.phase==='expired'?'/cart':state.paymentUrl;link.textContent=state.phase==='expired'?t('Return to bag','Tilbake til handlekurven'):t('Continue payment','Fortsett betaling');form.before(p,link); }
+  if (!state.editable) { form.hidden=true; const p=document.createElement('p');p.textContent=state.phase==='expired'?t('This checkout has expired. Your bag is still available.','Denne kassen har utløpt. Handlekurven din er bevart.'):t('Payment is in progress. Continue on the secure payment page.','Betalingen er i gang. Fortsett på den sikre betalingssiden.');const link=document.createElement('a');link.className='co-button';link.href=state.phase==='expired'?sitePath('/cart'):state.paymentUrl;link.textContent=state.phase==='expired'?t('Return to bag','Tilbake til handlekurven'):t('Continue payment','Fortsett betaling');form.before(p,link); }
   else {
     if(restoredDraft)save().then(()=>{if(state.dynamicShipping&&addressComplete(customer()))return discover(state.selectedOptionToken||undefined,true);}).then(warmPayment).catch(error);
     else if(state.dynamicShipping&&addressComplete(customer())) {

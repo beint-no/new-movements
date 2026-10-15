@@ -10,6 +10,42 @@ const cookieValue = (request) => {
 };
 const choiceCookie = (handle, country) => `${COOKIE}=${encodeURIComponent(`${handle}:${country}`)}; Path=/; Max-Age=31536000; HttpOnly; Secure; SameSite=Lax`;
 
+function normalizePathPrefix(pathPrefix = "") {
+  const value = String(pathPrefix).trim();
+  if (!value || value === "/") return "";
+  if (!value.startsWith("/") || value.endsWith("/") || value.includes("//") || value.includes("?") || value.includes("#")) {
+    throw new TypeError(`Invalid locale pathPrefix: ${pathPrefix}`);
+  }
+  return value;
+}
+
+function stripPathPrefix(pathname, pathPrefix) {
+  if (!pathPrefix) return pathname;
+  if (pathname === pathPrefix) return "/";
+  if (!pathname.startsWith(`${pathPrefix}/`)) return null;
+  return pathname.slice(pathPrefix.length);
+}
+
+function localeRoutes(options) {
+  const configured = Array.isArray(options.locales) && options.locales.length
+    ? options.locales
+    : [{ pathPrefix: options.pathPrefix || "", locale: options.locale || "en" }];
+  const routes = configured.map((entry) => {
+    if (!entry || typeof entry !== "object") throw new TypeError("locales must contain objects");
+    const pathPrefix = normalizePathPrefix(entry.pathPrefix || "");
+    if (typeof entry.locale !== "string" || !entry.locale.trim()) throw new TypeError("locale is required");
+    return { ...entry, pathPrefix, locale: entry.locale.trim() };
+  });
+  const prefixes = new Set(routes.map((entry) => entry.pathPrefix));
+  if (prefixes.size !== routes.length) throw new TypeError("locale pathPrefix values must be unique");
+  if (!routes.some((entry) => entry.pathPrefix === "")) throw new TypeError("locales must include a default pathPrefix");
+  return routes.sort((left, right) => right.pathPrefix.length - left.pathPrefix.length);
+}
+
+function localeRouteFor(routes, pathname) {
+  return routes.find((entry) => stripPathPrefix(pathname, entry.pathPrefix) !== null) || null;
+}
+
 /** Country selects an enabled market; currency alone cannot identify a destination or price list. */
 /** @param {Market[]} markets @param {{ requested?: string | null | undefined, saved?: string | undefined, country?: string | null | undefined }} context */
 export function selectMarket(markets, { requested, saved, country } = {}) {
@@ -33,6 +69,7 @@ export function selectDestination(markets, { requested, saved, savedCountry, cou
 
 /** Wrap the static worker with Site API market discovery and server-side preference handling. */
 export function createReaiMarketStorefrontWorker(options) {
+  const routes = localeRoutes(options);
   /** @type {{ markets: Market[], expiresAt: number, token: string, baseUrl: string } | undefined} */
   let configuration;
   /** @type {Promise<Market[]> | undefined} */
@@ -57,9 +94,12 @@ export function createReaiMarketStorefrontWorker(options) {
   return {
     async fetch(request, env, executionContext) {
       const url = new URL(request.url);
+      const localeRoute = localeRouteFor(routes, url.pathname);
+      const routedPath = localeRoute ? stripPathPrefix(url.pathname, localeRoute.pathPrefix) : null;
+      const localeOptions = localeRoute ? { ...options, ...localeRoute, pathPrefix: localeRoute.pathPrefix } : options;
       // Assets need neither market discovery nor personalized response headers.
-      if (!options.storefront.matchRoute(url.pathname) && !url.pathname.startsWith('/reai/')) {
-        return createReaiStorefrontWorker(options).fetch(request, env, executionContext);
+      if (!localeRoute || (!options.storefront.matchRoute(routedPath) && !routedPath.startsWith('/reai/'))) {
+        return createReaiStorefrontWorker(localeOptions).fetch(request, env, executionContext);
       }
       let markets;
       try { markets = await marketsFor(env); }
@@ -71,7 +111,7 @@ export function createReaiMarketStorefrontWorker(options) {
       const countryMarket = requestedCountry && markets.find((market) => market.countries?.includes(requestedCountry));
       if (requestedCountry && (!countryMarket || (requested && !markets.find((market) => market.handle === requested)?.countries?.includes(requestedCountry)))) return new Response('This delivery country is unavailable.', { status: 400, headers: { 'Cache-Control': 'no-store' } });
       if (requested && !markets.some((market) => market.handle === requested)) return new Response('This market is unavailable.', { status: 400, headers: { 'Cache-Control': 'no-store' } });
-      if (url.pathname === '/reai/market') {
+      if (routedPath === '/reai/market') {
         if (request.method !== 'POST') return new Response(null, { status: 405, headers: { Allow: 'POST' } });
         if (request.headers.get('Origin') && request.headers.get('Origin') !== url.origin) return new Response(null, { status: 403 });
         const form = await request.formData();
@@ -96,10 +136,17 @@ export function createReaiMarketStorefrontWorker(options) {
       const { market, country } = destination;
       const renderer = Object.fromEntries(Object.entries(options.storefront).map(([name, value]) => [name,
         name.startsWith('render') && typeof value === 'function'
-          ? (store, ...args) => value(store ? { ...store, markets, countryCode: country, marketReturnTo: url.pathname + url.search } : store, ...args)
+          ? (store, ...args) => value(store ? {
+            ...store,
+            markets,
+            countryCode: country,
+            marketReturnTo: url.pathname + url.search,
+            pathPrefix: localeRoute?.pathPrefix || "",
+            localeRoutes: routes,
+          } : store, ...args)
           : value,
       ]));
-      const response = await createReaiStorefrontWorker({ ...options, storefront: renderer, market: market.handle, countryCode: country, locale: options.locale || market.defaultLocale }).fetch(request, env, executionContext);
+      const response = await createReaiStorefrontWorker({ ...localeOptions, storefront: renderer, market: market.handle, countryCode: country, locale: localeRoute?.locale || options.locale || market.defaultLocale }).fetch(request, env, executionContext);
       const headers = new Headers(response.headers);
       headers.set('Cache-Control', 'private, no-store');
       headers.set('Vary', 'Cookie, CF-IPCountry');
