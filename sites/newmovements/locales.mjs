@@ -195,8 +195,10 @@ export function localizeStorefront(store, locale) {
     products: (store.products || []).map((product) => ({
       ...product,
       title: translateProductTitle(product.title, locale),
-      productType: translateProductTitle(product.productType, locale),
-      material: translateProductTitle(product.material, locale),
+      // Keep canonical taxonomy values stable for filtering, search and API
+      // consumers. Display labels are localized separately.
+      displayProductType: translateProductTitle(product.productType, locale),
+      displayMaterial: translateProductTitle(product.material, locale),
       variants: (product.variants || []).map((variant) => ({
         ...variant,
         options: (variant.options || []).map((option) => ({
@@ -209,7 +211,7 @@ export function localizeStorefront(store, locale) {
       })),
       attributes: (product.attributes || []).map((attribute) => ({
         ...attribute,
-        label: translateProductTitle(attribute.label, locale),
+        displayName: translateProductTitle(attribute.name, locale),
         values: (attribute.values || []).map((value) => ({
           ...value,
           label: translateProductTitle(value.label, locale),
