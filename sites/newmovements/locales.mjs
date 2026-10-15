@@ -201,7 +201,9 @@ export function localizeStorefront(store, locale) {
         ...variant,
         options: (variant.options || []).map((option) => ({
           ...option,
-          name: OPTION_NAMES.get(option.name) || option.name,
+          // Keep canonical option names for filtering, variant matching, and
+          // cart payloads. Consumers can use displayName for localized UI.
+          displayName: OPTION_NAMES.get(option.name) || option.name,
           value: translateProductTitle(option.value, locale),
         })),
       })),
