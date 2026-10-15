@@ -119,3 +119,45 @@ export function translateStorefrontHtml(html, locale) {
   return replacements.reduce((value, [from, to]) => value.replaceAll(from, to), html);
 }
 
+const PRODUCT_WORDS = new Map([
+  ["White", "Hvit"], ["Black", "Sort"], ["Grey", "Grå"], ["Gray", "Grå"],
+  ["Olive", "Oliven"], ["Brown", "Brun"], ["Blue", "Blå"], ["Green", "Grønn"],
+  ["Orange", "Oransje"], ["Pink", "Rosa"], ["Forest", "Skoggrønn"], ["Nordic", "Nordisk"],
+  ["Dark", "Mørk"], ["Full", "Hel"], ["Natural", "Natur"], ["Sand", "Sand"],
+  ["Camel", "Kamel"], ["Burgundy", "Burgunder"], ["Earth", "Jord"], ["Turquoise", "Turkis"],
+  ["Wool", "Ull"], ["Leather", "Skinn"], ["Technical", "Tekstil"], ["Textile", "Tekstil"],
+  ["Nubuck", "Nubuck"], ["Smooth", "Glatt"], ["Beige", "Beige"], ["Gold", "Gull"],
+  ["Certified", "Sertifisert"], ["Shoe", "Sko"], ["Shoes", "Sko"], ["Care", "Pleie"],
+  ["Insole", "Såle"], ["Insoles", "Såler"], ["Spray", "Spray"], ["Cleaner", "Rengjøring"],
+  ["Wax", "Voks"], ["Boots", "Boots"], ["Boot", "Boots"], ["Sneaker", "Sneakers"],
+  ["Sandals", "Sandaler"], ["Sandal", "Sandal"], ["Loafer", "Loafer"], ["Low", "Lav"],
+]);
+
+export function translateProductTitle(title, locale) {
+  if (!isNorwegian(locale)) return title;
+  return String(title).replace(/\b[A-Za-z]+\b/g, (word) => PRODUCT_WORDS.get(word) || word);
+}
+
+export function localizeStorefront(store, locale) {
+  if (!isNorwegian(locale) || !store) return store;
+  return {
+    ...store,
+    products: (store.products || []).map((product) => ({
+      ...product,
+      title: translateProductTitle(product.title, locale),
+      variants: (product.variants || []).map((variant) => ({
+        ...variant,
+        options: (variant.options || []).map((option) => ({
+          ...option,
+          name: option.name === "Size" ? "Størrelse" : option.name,
+          value: translateProductTitle(option.value, locale),
+        })),
+      })),
+    })),
+    collections: (store.collections || []).map((collection) => ({
+      ...collection,
+      title: translateProductTitle(collection.title, locale),
+    })),
+  };
+}
+
