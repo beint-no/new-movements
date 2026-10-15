@@ -72,6 +72,7 @@ assert.match(home, new RegExp(STORE_STYLE.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 assert.match(home, /data-mega-menu data-open="false" aria-hidden="true"/);
 assert.match(home, /data-mega-backdrop aria-hidden="true"/);
 assert.doesNotMatch(home, /data-mega-menu hidden/);
+assert.match(home, /aria-label="Klarna"/);
 
 const story = renderStoryPage(store);
 assert.match(story, /<h1>Our Story<\/h1>/);

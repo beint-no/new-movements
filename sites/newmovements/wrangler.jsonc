@@ -3,6 +3,10 @@
   "name": "newmovements",
   "compatibility_date": "2026-08-29",
   "workers_dev": true,
+  "routes": [
+    { "pattern": "newmovements.com/*", "zone_name": "newmovements.com" },
+    { "pattern": "www.newmovements.com/*", "zone_name": "newmovements.com" }
+  ],
   "main": "worker.js",
   "vars": {
     "REAI_BASE_URL": "https://app.reai.no"
