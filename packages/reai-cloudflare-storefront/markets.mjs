@@ -135,7 +135,7 @@ export function createReaiMarketStorefrontWorker(options) {
       if (!destination) return new Response('This market is unavailable.', { status: 503 });
       const { market, country } = destination;
       const renderer = Object.fromEntries(Object.entries(options.storefront).map(([name, value]) => [name,
-        name.startsWith('render') && typeof value === 'function'
+        (name.startsWith('render') || name === 'localizeStorefront') && typeof value === 'function'
           ? (store, ...args) => value(store ? {
             ...store,
             markets,
