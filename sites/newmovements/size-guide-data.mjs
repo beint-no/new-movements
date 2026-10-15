@@ -1,13 +1,13 @@
 // Brand sizing reference. Commerce variants and stock remain owned by ReAI.
 export const SIZE_GUIDE_SOURCE = {
-  "file": "SHOE LASTS + SIZE CHART + LACE LENGTH. CM, EU, US, UK.xlsx",
+  "file": "SHOE LASTS + SIZE CHART + LACE LENGTH. CM, EU, US, UK 15.53.20.xlsx",
   "sheet": "Last Sizes",
-  "sha256": "cd8afeec5b276d14d84def47cfd9089404f2bfe694e4ee26052d6e22d197d3b0",
-  "importedOn": "2026-10-14",
+  "sha256": "7a9d58fb60188a8ead2b141a936314c3e22620de8534297b32e3aa6d16dd73cb",
+  "importedOn": "2026-10-15",
   "lengthMeaning": "foot",
   "lengthConfirmed": false,
   "lengthAssumption": "Merchant authorized publication on 2026-10-14 using approximate heel-to-toe foot lengths. Existing public Original/Allrounder guide labels matching CM values as foot measurements; this interpretation is provisionally applied to all five workbook charts pending the New Movements team review.",
-  "unitNotes": "Classic and Sandals numeric values are cm; Sneakers, Boots and Loafers numeric values are mm, despite inconsistent source headings. Original values preserved by converting mm to cm. No missing conversions or sizes extrapolated."
+  "unitNotes": "Classic and Sandals numeric values are cm; Sneakers, Boots and Loafers numeric values are mm, despite inconsistent source headings. The new workbook is semantically unchanged from the previously published size rows; values are preserved by converting mm to cm. No missing conversions or sizes extrapolated. Lace-length tables remain source-only until the team confirms they should be published."
 };
 
 export const SIZE_CHARTS = [
