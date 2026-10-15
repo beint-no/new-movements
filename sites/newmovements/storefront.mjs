@@ -9,11 +9,12 @@ import { canonicalPath } from "./routes.mjs";
 import { renderSizeGuide, renderSizeGuideDialog, sizeChartForProduct, sizeGuideUrl } from "./size-guide.mjs";
 import { renderCompactLegalFooter } from "../../packages/reai-cloudflare-storefront/footer.mjs";
 import { filterCollection, parseCollectionFilters } from "../../packages/reai-site-client/filtering.mjs";
-import { isNorwegian, translateStorefrontHtml } from "./locales.mjs";
+import { isNorwegian, localizeStorefront as localizeData, translateStorefrontHtml } from "./locales.mjs";
 
 export const SITE_ORIGIN = "https://newmovements.com";
 export const HANDLE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 export { STORE_SCRIPT, STORE_STYLE };
+export const localizeStorefront = (store, context = {}) => localizeData(store, context.locale || store?.locale);
 const BRAND_LOGO = "/brand-assets/logo.png";
 const HOME_HERO_IMAGES = [
   "/brand-assets/hero-women.jpg",

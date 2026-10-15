@@ -584,9 +584,14 @@ export function createReaiStorefrontWorker({
       responseHeaders.set("Cache-Control", upstream.ok ? cacheControl : "no-store");
       responseHeaders.set("Content-Language", canonicalLocale);
       let body = upstream.body;
-      if (upstream.ok && route === "/reai/catalog" && storefront.catalogProductsForRequest) {
-        const store = await upstream.json();
-        body = JSON.stringify({ ...store, products: catalogProducts(store, url) });
+      if (upstream.ok && ["/reai/catalog", "/reai/collections"].includes(route)) {
+        let store = await upstream.json();
+        if (storefront.localizeStorefront) store = storefront.localizeStorefront(store, { ...renderContext, url });
+        if (route === "/reai/catalog" && storefront.catalogProductsForRequest) {
+          body = JSON.stringify({ ...store, products: catalogProducts(store, url) });
+        } else {
+          body = JSON.stringify(store);
+        }
       }
       return new Response(body, {
         status: upstream.status,
@@ -681,6 +686,7 @@ export function createReaiStorefrontWorker({
       const cached = await getStorefront(env, executionContext);
       store = cached.store;
       cacheStatus = cached.cacheStatus;
+      if (storefront.localizeStorefront) store = storefront.localizeStorefront(store, pageContext);
     } catch (error) {
       console.error("Storefront snapshot failed", error);
       if (route.type === "home") return null;
