@@ -5,8 +5,8 @@
   "compatibility_date": "2026-08-29",
   "workers_dev": true,
   "routes": [
-    { "pattern": "newmovements.com", "custom_domain": true },
-    { "pattern": "www.newmovements.com", "custom_domain": true }
+    { "pattern": "newmovements.com/*", "zone_name": "newmovements.com" },
+    { "pattern": "www.newmovements.com/*", "zone_name": "newmovements.com" }
   ],
   "main": "worker.js",
   "vars": {
