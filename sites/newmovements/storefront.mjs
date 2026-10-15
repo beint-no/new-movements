@@ -569,14 +569,50 @@ function safeDescription(value) {
 
 function productSchema(product, availability, currency, market = "default", countries = ["NO"], pathPrefix = "") {
   const publicUrl = (path) => `${SITE_ORIGIN}${pathPrefix}${path}`;
-  return `<script type="application/ld+json">${JSON.stringify({
-    "@context": "https://schema.org", "@type": "Product", name: product.title,
-    image: (product.images || []).map((item) => item.url), description: stripHtml(product.description || product.seoDescription || ""),
+  const productUrl = publicUrl(`/products/${product.handle}`);
+  const returnPolicy = {
+    "@type": "MerchantReturnPolicy",
+    applicableCountry: countries,
+    returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow",
+    merchantReturnDays: 30,
+    returnMethod: "https://schema.org/ReturnByMail",
+    returnFees: "https://schema.org/FreeReturn",
+    merchantReturnLink: publicUrl("/pages/returns"),
+  };
+  const offers = (product.variants || []).flatMap((variant) => {
+    const price = Number(variant.price);
+    if (!Number.isFinite(price) || price < 0 || !variant.id) return [];
+    const variantUrl = `${productUrl}?${market !== "default" ? `market=${encodeURIComponent(market)}&` : ""}variant=${encodeURIComponent(variant.id)}`;
+    const size = variant.options?.find((option) => /size/i.test(option.name))?.value;
+    return [{
+      "@type": "Offer",
+      url: variantUrl,
+      price,
+      priceCurrency: currency,
+      ...(variant.sku ? { sku: variant.sku } : {}),
+      ...(availability[variant.id] == null ? {} : {
+        availability: availability[variant.id] ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+      }),
+      itemCondition: "https://schema.org/NewCondition",
+      name: [product.title, size].filter(Boolean).join(" · "),
+      ...(size ? { size } : {}),
+      ...(productColor(product) ? { color: productColor(product) } : {}),
+      hasMerchantReturnPolicy: returnPolicy,
+    }];
+  });
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    "@id": `${productUrl}#product`,
+    url: productUrl,
+    name: product.title,
+    image: (product.images || []).map((item) => item.url).filter(Boolean),
+    description: stripHtml(product.description || product.seoDescription || ""),
     brand: { "@type": "Brand", name: product.brand || "New Movements" },
-    offers: (product.variants || []).map((variant) => ({ "@type": "Offer", price: variant.price, priceCurrency: currency, ...(availability[variant.id] == null ? {} : { availability: availability[variant.id] ? "https://schema.org/InStock" : "https://schema.org/OutOfStock" }), url: `${publicUrl(`/products/${product.handle}`)}?${market !== "default" ? `market=${encodeURIComponent(market)}&` : ""}variant=${variant.id}`, sku: variant.sku || undefined,
-      itemOffered: { "@type": "Product", name: product.title, sku: variant.sku || undefined, color: productColor(product), size: variant.options?.find((option) => option.name.toLowerCase() === "size")?.value },
-      hasMerchantReturnPolicy: { "@type": "MerchantReturnPolicy", applicableCountry: countries, returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow", merchantReturnDays: 30, returnMethod: "https://schema.org/ReturnByMail", returnFees: "https://schema.org/FreeReturn", merchantReturnLink: publicUrl("/pages/returns") } })),
-  }).replaceAll("<", "\\u003c")}</script>`;
+    ...(product.productType ? { category: product.productType } : {}),
+    offers,
+  };
+  return `<script type="application/ld+json">${JSON.stringify(schema).replaceAll("<", "\\u003c")}</script>`;
 }
 
 export function renderProductPage(store, product, availability = {}, context = {}) {
