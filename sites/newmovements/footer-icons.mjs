@@ -14,7 +14,7 @@ const marks = {
 
 export function renderPaymentMarks(norway = true) {
   return `<div class="payment-methods" aria-label="Accepted payment methods">${[
-    ...(norway ? [["vipps", "Vipps"]] : []), ["american-express", "American Express"], ["apple-pay", "Apple Pay"], ["google-pay", "Google Pay"], ["mastercard", "Mastercard"], ["visa", "Visa"],
+    ...(norway ? [["vipps", "Vipps"]] : []), ["klarna", "Klarna"], ["american-express", "American Express"], ["apple-pay", "Apple Pay"], ["google-pay", "Google Pay"], ["mastercard", "Mastercard"], ["visa", "Visa"],
   ].map(([key, label]) => `<span role="img" aria-label="${label}">${marks[key]}</span>`).join("")}</div>`;
 }
 
