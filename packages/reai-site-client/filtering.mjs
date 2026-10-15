@@ -4,7 +4,7 @@
 /** @typedef {{ id: string, label: string, taxonomyValues?: TaxonomyValue[], colors?: string[], aliases?: string[] }} AttributeValue */
 /** @typedef {{ key: string, name: string, values: AttributeValue[] }} Attribute */
 /** @typedef {{ id: string, price: string | number, options?: {name: string, value: string}[], attributes?: Attribute[] }} FilterVariant */
-/** @typedef {{ id: string, title: string, productType?: string | null, brand?: string | null, attributes?: Attribute[], variants: FilterVariant[] }} FilterProduct */
+/** @typedef {{ id: string, title: string, productType?: string | null, displayProductType?: string | null, brand?: string | null, displayBrand?: string | null, attributes?: Attribute[], variants: FilterVariant[] }} FilterProduct */
 /** @typedef {{ key: string, label: string, parameter: string, kind: 'availability' | 'option' | 'attribute' | 'product', optionName?: string, attributeKey?: string, productField?: 'productType' | 'brand' }} FacetDefinition */
 /** @typedef {{ id: string, label: string, colors: string[], aliases: string[], count: number | null, selected: boolean, inputValue: string }} FacetValue */
 /** @typedef {{ values: Map<string, string[]>, minimum?: number, maximum?: number, sort: string, errors: string[] }} FilterRequest */
@@ -50,7 +50,10 @@ function candidateValues(product, variant, definition, availability) {
     .map((option) => ({ id: option.value, label: option.value, colors: [], aliases: [] }));
   if (definition.kind === 'product') {
     const value = definition.productField ? product[definition.productField] : null;
-    return value ? [{ id: value, label: value, colors: [], aliases: [] }] : [];
+    const displayField = definition.productField === 'productType' ? 'displayProductType'
+      : definition.productField === 'brand' ? 'displayBrand' : null;
+    const label = displayField && product[displayField] ? product[displayField] : value;
+    return value ? [{ id: value, label, colors: [], aliases: [] }] : [];
   }
   const entries = [...(product.attributes || []), ...(variant.attributes || [])]
     .filter((attribute) => attribute.key === definition.attributeKey).flatMap((attribute) => attribute.values);

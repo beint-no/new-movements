@@ -3,7 +3,7 @@ import { access } from "node:fs/promises";
 import path from "node:path";
 import {
   STORE_SCRIPT, STORE_STYLE, imageCandidates, imageUrl, matchRoute, priceRange,
-  renderCollectionPage, renderHomePage, renderPage, renderProductPage, renderSitemap, renderStoryPage,
+  localizeStorefront, renderCollectionPage, renderHomePage, renderPage, renderProductPage, renderSitemap, renderStoryPage,
 } from "../storefront.mjs";
 
 const image = {
@@ -279,6 +279,19 @@ assert.match(renderCollectionPage(store, "women"), /<title>Women&#39;s Shoes \| 
 assert.match(renderCollectionPage(store, "men"), /<title>Men&#39;s Shoes \| New Movements<\/title>/);
 assert.match(renderPage(store, "/search"), /name="robots" content="noindex,follow"/);
 assert.doesNotMatch(sitemap, /<loc>[^<]*\/(?:cart|search|order\/complete)<\/loc>/);
+
+// Locale projections must preserve canonical machine fields while changing
+// display copy, otherwise size views and collection filters silently empty.
+const norwegianStore = localizeStorefront({ ...store, locale: "nb-NO", pathPrefix: "/nb" }, "nb-NO");
+assert.equal(norwegianStore.products[0].variants[0].options[0].name, "Size");
+assert.equal(norwegianStore.products[0].variants[0].options[0].displayName, "Størrelse");
+assert.equal(norwegianStore.products[0].productType, product.productType);
+assert.equal(norwegianStore.products[0].displayProductType, product.productType);
+const norwegianCollection = renderCollectionPage(norwegianStore, "women", { locale: "nb-NO", pathPrefix: "/nb", url: new URL("https://newmovements.com/nb/collections/women") });
+assert.match(norwegianCollection, /<title>Damesko \| New Movements<\/title>/);
+assert.match(norwegianCollection, /class="product-card/);
+const norwegianProduct = renderProductPage(norwegianStore, norwegianStore.products[0], { [product.variants[0].id]: true }, { locale: "nb-NO", pathPrefix: "/nb", url: new URL("https://newmovements.com/nb/products/allrounder-y-white") });
+assert.match(norwegianProduct, /https:\/\/newmovements\.com\/nb\/products\/allrounder-y-white\?variant=/);
 
 const careProduct = { ...product, title: "Shoe Cleaner", variants: [{ ...product.variants[0], options: [{ name: "Size", value: "One size" }] }] };
 const carePage = renderProductPage(store, careProduct);
