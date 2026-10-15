@@ -133,9 +133,59 @@ const PRODUCT_WORDS = new Map([
   ["Sandals", "Sandaler"], ["Sandal", "Sandal"], ["Loafer", "Loafer"], ["Low", "Lav"],
 ]);
 
+const COLLECTION_NAMES = new Map([
+  ["Accessories", "Tilbehør"],
+  ["Allrounder E sneaker", "Allrounder E-sneakers"],
+  ["Allrounder S sneaker", "Allrounder S-sneakers"],
+  ["Allrounder series", "Allrounder-serien"],
+  ["Allrounder Sneakers", "Allrounder-sneakers"],
+  ["Apparel", "Klær"],
+  ["Archive", "Arkiv"],
+  ["Autumn & Winter", "Høst og vinter"],
+  ["Classic Sneakers", "Klassiske sneakers"],
+  ["Cloud Boots", "Cloud boots"],
+  ["Circular Collection", "Den sirkulære kolleksjonen"],
+  ["Footwear", "Fottøy"],
+  ["Flow Boots", "Flow boots"],
+  ["Gift Card", "Gavekort"],
+  ["Lav Hikers & Loafers", "Lave hikers og loafers"],
+  ["Men", "Herre"],
+  ["New Arrivals", "Nyheter"],
+  ["Norwegian Sneakers", "Norske sneakers"],
+  ["Original sneaker", "Original-sneakers"],
+  ["Shoe Care", "Skopleie"],
+  ["Sko Pleie", "Skopleie"],
+  ["Skinn shoes", "Skinnsko"],
+  ["Space Boots", "Space boots"],
+  ["Spring & Summer", "Vår og sommer"],
+  ["Technical Textile Shoes", "Tekstilsko"],
+  ["Tekstil Tekstil Sko", "Tekstilsko"],
+  ["Top picks", "Utvalgte favoritter"],
+  ["Water-resistant shoes", "Vannavvisende sko"],
+  ["Waterproof shoes", "Vanntette sko"],
+  ["White sneakers", "Hvite sneakers"],
+  ["Women", "Dame"],
+  ["Women & Men New Arrivals", "Nyheter for dame og herre"],
+  ["Wool lined shoes", "Ullfôrede sko"],
+  ["Zen sneaker", "Zen-sneakers"],
+  ["Zipper Boots", "Boots med glidelås"],
+]);
+
+const OPTION_NAMES = new Map([
+  ["Size", "Størrelse"],
+  ["Color", "Farge"],
+  ["Colour", "Farge"],
+  ["Material", "Materiale"],
+]);
+
 export function translateProductTitle(title, locale) {
-  if (!isNorwegian(locale)) return title;
+  if (title == null || !isNorwegian(locale)) return title;
   return String(title).replace(/\b[A-Za-z]+\b/g, (word) => PRODUCT_WORDS.get(word) || word);
+}
+
+export function translateCollectionTitle(title, locale) {
+  if (title == null || !isNorwegian(locale)) return title;
+  return COLLECTION_NAMES.get(String(title)) || translateProductTitle(title, locale);
 }
 
 export function localizeStorefront(store, locale) {
@@ -145,18 +195,28 @@ export function localizeStorefront(store, locale) {
     products: (store.products || []).map((product) => ({
       ...product,
       title: translateProductTitle(product.title, locale),
+      productType: translateProductTitle(product.productType, locale),
+      material: translateProductTitle(product.material, locale),
       variants: (product.variants || []).map((variant) => ({
         ...variant,
         options: (variant.options || []).map((option) => ({
           ...option,
-          name: option.name === "Size" ? "Størrelse" : option.name,
+          name: OPTION_NAMES.get(option.name) || option.name,
           value: translateProductTitle(option.value, locale),
+        })),
+      })),
+      attributes: (product.attributes || []).map((attribute) => ({
+        ...attribute,
+        label: translateProductTitle(attribute.label, locale),
+        values: (attribute.values || []).map((value) => ({
+          ...value,
+          label: translateProductTitle(value.label, locale),
         })),
       })),
     })),
     collections: (store.collections || []).map((collection) => ({
       ...collection,
-      title: translateProductTitle(collection.title, locale),
+      title: translateCollectionTitle(collection.title, locale),
     })),
   };
 }
