@@ -17,7 +17,9 @@ const worker = createReaiMarketStorefrontWorker({
   merchantCheckoutPath: "/checkout",
   checkoutReturnPath: "/order/complete",
   beforeRequest: handleStorefrontRequest,
-  noStorePaths: ["/cart/", "/search/", "/order/complete/"],
+  // Root documents are dynamic catalog renders. Keep an upstream failure from
+  // being cached as the static unavailable shell in a browser or edge cache.
+  noStorePaths: ["/", "/cart/", "/search/", "/order/complete/"],
 });
 
 // The review hostname must never compete with the eventual production storefront.
