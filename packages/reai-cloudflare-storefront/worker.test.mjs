@@ -270,6 +270,32 @@ test("catalog projections share the snapshot but isolate views and conditional r
   assert.deepEqual((await fallback.json()).products.map((p) => p.id), ["35", "42"]);
 });
 
+test("cold storefront render falls back when the consolidated endpoint returns a server error", async (context) => {
+  const originalFetch = globalThis.fetch;
+  context.after(() => { globalThis.fetch = originalFetch; });
+  globalThis.fetch = async (input) => {
+    const url = String(input);
+    if (url.includes("/commerce/storefront")) return new Response(null, { status: 502 });
+    if (url.includes("/commerce/catalog")) return Response.json({ catalogVersion: 3, marketId: "market", locale: "en", currency: "NOK", products: [], collections: [] });
+    if (url.includes("/commerce/collections")) return Response.json({ collections: [] });
+    throw new Error(`Unexpected upstream request: ${url}`);
+  };
+  const worker = createReaiStorefrontWorker({
+    cacheKey: "storefront-5xx-fallback",
+    storefront: {
+      ...storefront,
+      matchRoute: (path) => path === "/" ? { type: "home" } : null,
+      renderHomePage: () => "<title>Fallback home</title>",
+      homeAvailabilityVariants: () => [],
+    },
+    market: "default",
+    locale: "en",
+  });
+  const response = await worker.fetch(new Request("https://shop.example/"), { REAI_SITE_TOKEN: "test-token" });
+  assert.equal(response.status, 200);
+  assert.match(await response.text(), /Fallback home/);
+});
+
 test("loads live product availability in one batch request", async (context) => {
   const originalFetch = globalThis.fetch;
   context.after(() => {

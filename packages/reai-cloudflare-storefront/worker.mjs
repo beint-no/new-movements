@@ -270,6 +270,13 @@ export function createReaiStorefrontWorker({
       return { store: cached.store, etag: cached.etag, revalidated: true };
     }
     if (!response.ok) {
+      // The consolidated storefront endpoint can be briefly unavailable while
+      // the catalog endpoints remain healthy. Keep cold requests renderable by
+      // falling back to the older, independently served catalog projection on
+      // upstream server errors; the fallback is only used for 5xx responses.
+      if (response.status >= 500) {
+        try { return await legacyStorefront(env, cached); } catch {}
+      }
       throw Object.assign(new Error(`Site API ${response.status}`), { status: response.status });
     }
     const store = await result.json();
