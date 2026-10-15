@@ -83,6 +83,7 @@ const addCartItem = (product, variant, quantity = 1) => {
     url: product.url || `/products/${product.handle}`,
     label: variant.label || '',
     image: product.image || '',
+    imageAlt: product.imageAlt || product.title || 'New Movements product image',
     price: Number(variant.price),
     currency: activeCurrency,
     market: activeMarket,
@@ -221,7 +222,7 @@ function renderDrawerCart() {
   const subtotal = document.querySelector('[data-drawer-subtotal]');
   if (!list) return;
   const items = readCart();
-  list.innerHTML = items.length ? items.map((item, index) => `<article class="drawer-cart-line${checkoutStockIssues.has(item.variant) ? ' has-stock-issue' : ''}" data-drawer-cart-index="${index}">${item.image ? `<img src="${escapeHtml(item.image)}" alt="">` : '<div class="drawer-cart-placeholder"></div>'}<div><a href="${escapeHtml(localHref(item.url || `/products/${item.handle}`))}">${escapeHtml(item.title)}</a><span>${cartOptions(item) ? `${escapeHtml(cartOptions(item))} · ` : ''}${item.quantity} × ${money(item.price, item.currency || 'NOK')}</span>${cartStockNotice(item)}<label class="drawer-quantity">Quantity<input data-drawer-quantity type="number" min="1" max="20" inputmode="numeric" value="${item.quantity}" aria-label="Quantity for ${escapeHtml(item.title)}"></label><button type="button" data-drawer-remove>Remove</button></div></article>`).join('') : `<div class="drawer-empty"><p>Your bag is empty.</p><a href="${sitePath('/collections/all')}">Continue shopping</a></div>`;
+  list.innerHTML = items.length ? items.map((item, index) => `<article class="drawer-cart-line${checkoutStockIssues.has(item.variant) ? ' has-stock-issue' : ''}" data-drawer-cart-index="${index}">${item.image ? `<img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.imageAlt || `${item.title} product image`)}">` : '<div class="drawer-cart-placeholder"></div>'}<div><a href="${escapeHtml(localHref(item.url || `/products/${item.handle}`))}">${escapeHtml(item.title)}</a><span>${cartOptions(item) ? `${escapeHtml(cartOptions(item))} · ` : ''}${item.quantity} × ${money(item.price, item.currency || 'NOK')}</span>${cartStockNotice(item)}<label class="drawer-quantity">Quantity<input data-drawer-quantity type="number" min="1" max="20" inputmode="numeric" value="${item.quantity}" aria-label="Quantity for ${escapeHtml(item.title)}"></label><button type="button" data-drawer-remove>Remove</button></div></article>`).join('') : `<div class="drawer-empty"><p>Your bag is empty.</p><a href="${sitePath('/collections/all')}">Continue shopping</a></div>`;
   if (subtotal) subtotal.textContent = cartRepricing ? 'Updating prices…' : cartPriceFailed || items.some((item) => unavailableMarketVariants.has(item.variant)) ? 'Price unavailable' : money(items.reduce((sum, item) => sum + item.price * item.quantity, 0));
   syncCartUpsells(items);
   cartDrawer.querySelectorAll('[data-checkout-start]').forEach((button) => { button.disabled = !items.length || checkoutPending || cartRepricing || cartPriceFailed || items.some((item) => unavailableMarketVariants.has(item.variant)); });
@@ -375,7 +376,7 @@ add?.addEventListener('click', () => {
   if (add.dataset.notify === 'true') { const notify = document.querySelector('[data-stock-notification]'); if (notify) { notify.open = true; notify.querySelector('input[type=email]')?.focus(); } return; }
   if (!UUID.test(add.dataset.variant || '')) return;
   const quantity = Math.max(1, Math.min(20, Number(document.querySelector('[data-quantity]')?.value || 1)));
-  addCartItem({ id: add.dataset.id, handle: add.dataset.handle, title: add.dataset.title, url: add.dataset.url, image: add.dataset.image }, { id: add.dataset.variant, price: Number(add.dataset.price), label: add.dataset.label }, quantity);
+  addCartItem({ id: add.dataset.id, handle: add.dataset.handle, title: add.dataset.title, url: add.dataset.url, image: add.dataset.image, imageAlt: add.dataset.imageAlt }, { id: add.dataset.variant, price: Number(add.dataset.price), label: add.dataset.label }, quantity);
 });
 
 const setCardSlide = (card, requestedIndex) => {
@@ -454,7 +455,7 @@ const openQuickAdd = async (button) => {
     (quickAddProduct.images?.length ? quickAddProduct.images : [quickAddProduct.image]).filter(Boolean).forEach((src, index) => {
       const image = document.createElement('img');
       image.src = src;
-      image.alt = index === 0 ? (quickAddProduct.imageAlt || quickAddProduct.title) : '';
+      image.alt = quickAddProduct.imageAlts?.[index] || (index === 0 ? (quickAddProduct.imageAlt || quickAddProduct.title) : `${quickAddProduct.title} product image ${index + 1}`);
       image.decoding = 'async';
       quickAddMedia.append(image);
     });
@@ -543,7 +544,7 @@ const renderCart = () => {
   if (!items.length) {
     list.innerHTML = `<div class="message-page"><h2>Your bag is empty</h2><p><a href="${sitePath('/collections/all')}">Continue shopping</a></p></div>`;
   } else {
-    list.innerHTML = items.map((item, index) => `<article class="cart-line${checkoutStockIssues.has(item.variant) ? ' has-stock-issue' : ''}" data-cart-index="${index}">${item.image ? `<img src="${escapeHtml(item.image)}" alt="">` : '<div></div>'}<div><h2><a href="${escapeHtml(localHref(item.url || `/products/${item.handle}`))}">${escapeHtml(item.title)}</a></h2>${cartOptions(item) ? `<p>${escapeHtml(cartOptions(item))}</p>` : ''}<p>${money(item.price, item.currency || 'NOK')}</p><label>Qty <input type="number" min="1" max="20" value="${item.quantity}" data-cart-quantity></label>${cartStockNotice(item)}<button type="button" data-cart-remove>Remove</button></div><strong>${money(item.price * item.quantity, item.currency || 'NOK')}</strong></article>`).join('');
+    list.innerHTML = items.map((item, index) => `<article class="cart-line${checkoutStockIssues.has(item.variant) ? ' has-stock-issue' : ''}" data-cart-index="${index}">${item.image ? `<img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.imageAlt || `${item.title} product image`)}">` : '<div></div>'}<div><h2><a href="${escapeHtml(localHref(item.url || `/products/${item.handle}`))}">${escapeHtml(item.title)}</a></h2>${cartOptions(item) ? `<p>${escapeHtml(cartOptions(item))}</p>` : ''}<p>${money(item.price, item.currency || 'NOK')}</p><label>Qty <input type="number" min="1" max="20" value="${item.quantity}" data-cart-quantity></label>${cartStockNotice(item)}<button type="button" data-cart-remove>Remove</button></div><strong>${money(item.price * item.quantity, item.currency || 'NOK')}</strong></article>`).join('');
   }
   const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   if (subtotal) subtotal.textContent = cartRepricing ? 'Updating prices…' : cartPriceFailed || items.some((item) => unavailableMarketVariants.has(item.variant)) ? 'Price unavailable' : money(total);
@@ -645,7 +646,7 @@ const renderPredictiveSearch = async () => {
     if (sequence !== predictiveSequence) return;
     const products = store.products;
     if (predictiveStatus) predictiveStatus.textContent = products.length ? `${products.length} suggested product${products.length === 1 ? '' : 's'}` : `No results for “${query}”`;
-    if (predictiveResults) predictiveResults.innerHTML = products.map((item) => `<a class="predictive-item" href="${escapeHtml(localHref(item.url || `/products/${item.handle}`))}">${item.image ? `<img src="${escapeHtml(item.image)}" alt="" width="80" height="100">` : '<span></span>'}<b>${escapeHtml(item.title)}</b><small>${money(item.price, store.currency || 'NOK')}</small></a>`).join('');
+    if (predictiveResults) predictiveResults.innerHTML = products.map((item) => `<a class="predictive-item" href="${escapeHtml(localHref(item.url || `/products/${item.handle}`))}">${item.image ? `<img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.imageAlt || `${item.title} product image`)}" width="80" height="100">` : '<span></span>'}<b>${escapeHtml(item.title)}</b><small>${money(item.price, store.currency || 'NOK')}</small></a>`).join('');
   } catch {
     if (sequence !== predictiveSequence || controller.signal.aborted) return;
     if (predictiveStatus) predictiveStatus.textContent = 'The live catalog is temporarily unavailable.';
@@ -801,7 +802,7 @@ async function refreshCartPrices() {
     const items = readCart().map((item) => {
       const current = variants.get(item.variant);
       if (!current) { unavailableMarketVariants.add(item.variant); return item; }
-      return { ...item, title: current.product.title, price: Number(current.variant.price), options: current.variant.options, currency: activeCurrency, market: activeMarket };
+      return { ...item, title: current.product.title, imageAlt: current.product.imageAlt || item.imageAlt || current.product.title, price: Number(current.variant.price), options: current.variant.options, currency: activeCurrency, market: activeMarket };
     });
     writeCart(items);
     cartPriceFailed = false;
