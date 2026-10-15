@@ -612,6 +612,7 @@ export function createReaiStorefrontWorker({
     const isPage = path === merchantCheckoutPath || path === checkoutReturnPath;
     if (!api && !isPage) return null;
     const headers = securityHeaders(new Headers({ "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow" }), env);
+    headers.set("Content-Language", canonicalLocale);
     headers.set("Referrer-Policy", "no-referrer");
     try {
       const id = api?.[1] || url.searchParams.get("checkout");
