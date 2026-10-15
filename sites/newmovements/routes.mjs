@@ -66,7 +66,15 @@ export function redirectStorefrontRequest({ request, url }) {
 
 export async function handleStorefrontRequest(context) {
   const { request, env, url } = context;
-  if (url.protocol === "http:" && !url.pathname.startsWith("/reai/")) {
+  let forwardedScheme = request.headers.get("X-Forwarded-Proto");
+  if (!forwardedScheme) {
+    try {
+      forwardedScheme = JSON.parse(request.headers.get("CF-Visitor") || "{}").scheme;
+    } catch {
+      forwardedScheme = null;
+    }
+  }
+  if ((url.protocol === "http:" || forwardedScheme === "http") && !url.pathname.startsWith("/reai/")) {
     const destination = new URL(url.href);
     destination.protocol = "https:";
     return new Response(null, { status: 308, headers: { Location: destination.href, "Cache-Control": "public, max-age=3600" } });
