@@ -251,6 +251,7 @@ assert.match(page, /application\/ld\+json/);
 assert.match(page, /schema\.org\/InStock/);
 assert.match(page, /data-gallery-srcset/);
 assert.match(page, /White leather sneaker/);
+assert.match(page, /Allrounder Y \(White Leather\) – side view/);
 assert.match(page, /You may also like/);
 assert.match(page, /purchase-assurance/);
 assert.match(page, /Four generations of shoemakers/);
@@ -294,6 +295,7 @@ assert.doesNotMatch(productMetadata, /<title>[^<]*Osl(?:<| \|)/);
 assert.match(renderCollectionPage(store, "women"), /<title>Women&#39;s Shoes \| New Movements<\/title>/);
 assert.match(renderCollectionPage(store, "men"), /<title>Men&#39;s Shoes \| New Movements<\/title>/);
 assert.match(renderPage(store, "/search"), /name="robots" content="noindex,follow"/);
+assert.match(renderCollectionPage(store, "sneakers", { url: new URL("https://newmovements.com/collections/sneakers?filter.v.availability=1") }), /name="robots" content="noindex,follow"/);
 assert.doesNotMatch(sitemap, /<loc>[^<]*\/(?:cart|search|order\/complete)<\/loc>/);
 
 // Locale projections must preserve canonical machine fields while changing
