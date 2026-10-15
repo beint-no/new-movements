@@ -458,7 +458,12 @@ export function createReaiStorefrontWorker({
 
     const route = stripPathPrefix(url.pathname, pathPrefix);
     if (route == null) return jsonResponse({ error: messages.routeNotFound }, 404, env);
-    const cachedResponse = await cachedCommerceResponse(request, env, route, executionContext).catch(() => null);
+    // A storefront projection hook may transform the JSON body per locale;
+    // bypass the response cache in that case while retaining the shared
+    // upstream storefront snapshot cache below.
+    const cachedResponse = storefront.localizeStorefront
+      ? null
+      : await cachedCommerceResponse(request, env, route, executionContext).catch(() => null);
     if (cachedResponse) return cachedResponse;
     const client = siteClient(env);
     let upstreamResult;
