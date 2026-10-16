@@ -51,8 +51,19 @@ and variant IDs; do not duplicate products, stock, prices or checkout mappings.
 Collections and product URLs use `?view=women` / `?view=men`; the default product
 URL exposes all published sizes. Cards, quick-add, related colors, recommendations, shop navigation and search
 keep that context. Search results render on the server and work without browser
-JavaScript; predictive search requests `/reai/catalog?view=women` or `men` through
-the optional catalog projection hook, using exactly the same composition rules. The bag identifies the selected size and merges by variant ID.
+JavaScript; predictive search requests `/reai/search?q=...&view=women` or `men`
+through the optional catalog projection hook, using the same composition rules.
+Bag price refreshes request `/reai/cart?variantId=...` and return only the requested
+variants' prices/options. Neither endpoint replaces live checkout validation.
+The bag identifies the selected size and merges by variant ID.
+
+Editorial photography has committed, content-addressed AVIF renditions at up to
+640/960/1440 pixels. Preserve the original photos; after changing one, run
+`npm run optimize:images` (requires ImageMagick and avifenc, available through
+`brew install imagemagick libavif`). Ordinary checks/deploys require no encoder.
+The manifest/source hashes are checked by tests. Keep brand/static URLs identical
+between EN and NB so switching language reuses browser cache. Alternate product
+card photos stay in inert templates until the shopper activates their slide.
 
 The reusable `composeProductView` in `packages/reai-site-client/merchandising.mjs`
 filters an option by allowed values and selects images using whole filename tokens.

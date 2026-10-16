@@ -662,3 +662,55 @@ test('search returns a bounded compact response from the shared snapshot and pre
   assert.equal((await second.json()).products.length, 0);
   assert.equal(calls, 1);
 });
+
+test('localized search and cart share snapshots without fetching or exposing the entire catalog', async (context) => {
+  const originalFetch = globalThis.fetch;
+  const originalCaches = globalThis.caches;
+  context.after(() => { globalThis.fetch = originalFetch; globalThis.caches = originalCaches; });
+  const cache = new Map();
+  globalThis.caches = { default: { match: async (request) => cache.get(request.url)?.clone(), put: async (request, response) => { cache.set(request.url, response.clone()); } } };
+  const id = '11111111-1111-4111-8111-111111111111';
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls++;
+    return Response.json({ catalogVersion: 1, marketHandle: 'default', locale: 'nb-NO', currency: 'NOK', collections: [], products: [
+      { id: 'boot', handle: 'black-boot', title: 'Black Boot', description: 'Large description', images: [{ url: 'https://app.reai.no/boot.avif' }], variants: [{ id, price: 2995, options: [] }, { id: 'other', price: 2995, options: [] }] },
+      { id: 'other-product', handle: 'other', title: 'Other', variants: [] },
+    ] });
+  };
+  const worker = createReaiStorefrontWorker({ cacheKey: 'localized-compact', storefront: { ...storefront,
+    localizeStorefront: (store) => ({ ...store, products: store.products.map((product) => ({ ...product, title: product.title.replace('Black Boot', 'Svart boots') })) }),
+  }, market: 'default', locale: 'nb-NO', pathPrefix: '/nb' });
+  const env = { REAI_SITE_TOKEN: 'test-token' };
+  const search = await worker.fetch(new Request('https://shop.example/nb/reai/search?q=svart'), env);
+  assert.equal(search.status, 200);
+  assert.equal((await search.json()).products[0].url, '/nb/products/black-boot');
+  const cart = await worker.fetch(new Request(`https://shop.example/nb/reai/cart?variantId=${id}`), env);
+  assert.equal(cart.status, 200);
+  const body = await cart.json();
+  assert.equal(body.marketHandle, 'default');
+  assert.equal(body.currency, 'NOK');
+  assert.equal(body.products.length, 1);
+  assert.equal(body.products[0].title, 'Svart boots');
+  assert.equal(body.products[0].variants.length, 1);
+  assert.equal(body.products[0].variants[0].price, 2995);
+  assert.equal(body.products[0].description, undefined);
+  assert.equal(body.products[0].images, undefined);
+  assert.equal(calls, 1);
+  const conditional = await worker.fetch(new Request(`https://shop.example/nb/reai/cart?variantId=${id}`, { headers: { 'If-None-Match': cart.headers.get('ETag') } }), env);
+  assert.equal(conditional.status, 304);
+  for (const suffix of ['', '?variantId=invalid', `?${Array.from({ length: 101 }, () => `variantId=${id}`).join('&')}`]) {
+    assert.equal((await worker.fetch(new Request(`https://shop.example/nb/reai/cart${suffix}`), env)).status, 400);
+  }
+  assert.equal(calls, 1);
+});
+
+test('only successful content-addressed image responses receive immutable caching', async () => {
+  const worker = createReaiStorefrontWorker({ cacheKey: 'image-cache', storefront, market: 'default', locale: 'en' });
+  for (const status of [200, 404]) {
+    const response = await worker.fetch(new Request('https://shop.example/brand-assets/hero.jpg.640.0123456789abcdef.avif'), {
+      ASSETS: { fetch: async () => new Response('asset', { status }) },
+    });
+    assert.equal(response.headers.get('Cache-Control').includes('immutable'), status === 200);
+  }
+});

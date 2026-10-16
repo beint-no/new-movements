@@ -384,12 +384,25 @@ export function createReaiStorefrontWorker({
       locale: store.locale,
       currency: store.currency,
     };
+    if (route === "/reai/cart") {
+      const ids = url.searchParams.getAll("variantId");
+      const wanted = new Set(ids);
+      return { key: `cart:${[...wanted].sort().join(",")}`, body: {
+        ...context,
+        products: store.products.flatMap((product) => {
+          const variants = product.variants.filter((variant) => wanted.has(variant.id));
+          return variants.length ? [{ id: product.id, title: product.title,
+            variants: variants.map(({ id, price, options }) => ({ id, price, options })) }] : [];
+        }),
+      } };
+    }
     if (route === "/reai/search") {
       const query = (url.searchParams.get("q") || "").slice(0, 200);
       const products = searchProducts(catalogProducts(store, url), query, 6).map((product) => {
         const image = storefront.searchImage?.(product) || product.images?.[0];
         const rendition = image?.renditions?.find((entry) => entry.width >= 160) || image;
         const productUrl = new URL(product.url || `/products/${product.handle}`, url.origin);
+        if (pathPrefix && !productUrl.pathname.startsWith(`${pathPrefix}/`)) productUrl.pathname = publicPath(productUrl.pathname);
         if (product.selectedVariantId) productUrl.searchParams.set("variant", product.selectedVariantId);
         return { title: product.title, url: productUrl.pathname + productUrl.search, image: rendition?.url,
           price: Math.min(...product.variants.map((variant) => Number(variant.price))) };
@@ -440,13 +453,17 @@ export function createReaiStorefrontWorker({
     if (request.method !== "GET") return null;
     if (
       route !== "/reai/search"
+      && route !== "/reai/cart"
       && route !== "/reai/catalog"
       && route !== "/reai/collections"
       && !route.startsWith("/reai/products/")
       && !route.startsWith("/reai/collections/")
     ) return null;
     const cached = await getStorefront(env, executionContext);
-    const resolved = cachedCommerceBody(route, cached.store, new URL(request.url));
+    const url = new URL(request.url);
+    const store = storefront.localizeStorefront
+      ? storefront.localizeStorefront(cached.store, { ...renderContext, url }) : cached.store;
+    const resolved = cachedCommerceBody(route, store, url);
     if (!resolved) return null;
     const entityTag = cacheEntityTag(resolved.key, cached.store, cached.etag);
     const headers = securityHeaders(new Headers({
@@ -465,18 +482,22 @@ export function createReaiStorefrontWorker({
 
     const route = stripPathPrefix(url.pathname, pathPrefix);
     if (route == null) return jsonResponse({ error: messages.routeNotFound }, 404, env);
-    // A storefront projection hook may transform the JSON body per locale;
-    // bypass the response cache in that case while retaining the shared
-    // upstream storefront snapshot cache below.
-    const cachedResponse = storefront.localizeStorefront
-      ? null
-      : await cachedCommerceResponse(request, env, route, executionContext).catch(() => null);
+    if (route === "/reai/cart") {
+      const ids = url.searchParams.getAll("variantId");
+      if (request.method !== "GET") return jsonResponse({ error: messages.methodNotAllowed }, 405, env);
+      if (!ids.length || ids.length > 100 || ids.some((id) => !VARIANT_ID.test(id))) {
+        return jsonResponse({ error: "Provide 1–100 valid variant IDs." }, 400, env);
+      }
+    }
+    // Project the cached snapshot before serializing: localization must not
+    // bypass compact search/cart responses or issue a second catalog fetch.
+    const cachedResponse = await cachedCommerceResponse(request, env, route, executionContext).catch(() => null);
     if (cachedResponse) return cachedResponse;
     const client = siteClient(env);
     let upstreamResult;
     let cacheControl = "public, max-age=60, stale-while-revalidate=300";
 
-    if (route === "/reai/search") return jsonResponse({ error: messages.temporarilyUnavailable }, 503, env);
+    if (["/reai/search", "/reai/cart"].includes(route)) return jsonResponse({ error: messages.temporarilyUnavailable }, 503, env);
 
     if (request.method === "GET" && route === "/reai/site") {
       upstreamResult = client.site();
@@ -797,6 +818,8 @@ export function createReaiStorefrontWorker({
         "Cache-Control",
         noStorePaths.includes(path)
           ? "no-store"
+          : response.ok && /\.\d+\.[a-f0-9]{16}\.avif$/.test(url.pathname)
+            ? "public, max-age=31536000, immutable"
           : STATIC_ASSET.test(url.pathname)
             ? "public, max-age=3600, stale-while-revalidate=86400"
             : "public, max-age=300, stale-while-revalidate=3600",

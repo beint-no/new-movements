@@ -112,6 +112,12 @@ and never derive CSP sources from browser input or widen script/form permissions
 Merchant address suggestions are optional, authenticated through the typed Site client, private/no-store and rate limited alongside checkout writes. Reject cross-site fetches and oversized queries; provider credentials stay in ReAI. Pickup filtering is local to the browser after one selected-option discovery.
 
 GET /reai/search?q= returns at most six compact suggestions from the same snapshot/projection.
+Locale projection runs on that snapshot before JSON is serialized; a localization
+hook must not bypass search or force another upstream catalog request.
+GET /reai/cart?variantId=... accepts 1–100 UUIDs and returns only matching variants'
+IDs, prices and options plus parent IDs/titles and delivery context. Unknown IDs
+are omitted so callers can block checkout for unpublished/unavailable items.
+It carries no availability guarantee: stock and checkout remain live API calls.
 Full-result renderers reuse searchProducts. Optional searchImage selects an existing card image;
 no descriptions, variant arrays or credentials enter suggestions. Numeric option selection keeps
 its public variant URL. Optional productAvailabilityVariants selects a bounded batch for related

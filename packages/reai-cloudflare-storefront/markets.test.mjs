@@ -105,3 +105,24 @@ test('locale prefixes select one shared worker and scope API delivery by locale'
   assert.equal(response.headers.get('Content-Language'), 'nb-NO');
   assert.match(requests.at(-1), /market=default&locale=nb-NO$/);
 });
+
+test('a stalled market lookup cannot hold another request or credential hostage', async (context) => {
+  const originalFetch = globalThis.fetch;
+  context.after(() => { globalThis.fetch = originalFetch; });
+  let releaseFirst;
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls++;
+    if (calls === 1) await new Promise((resolve) => { releaseFirst = resolve; });
+    return Response.json({ markets });
+  };
+  const worker = createReaiMarketStorefrontWorker({ storefront: { HANDLE: /^[a-z0-9-]+$/, matchRoute: () => null }, cacheKey: 'independent-markets' });
+  const request = () => new Request('https://shop.example/reai/market', { method: 'POST', body: new URLSearchParams({ country: 'NO' }) });
+  const first = worker.fetch(request(), { REAI_SITE_TOKEN: 'first' });
+  try {
+    const second = await worker.fetch(request(), { REAI_SITE_TOKEN: 'second' });
+    assert.equal(second.status, 303);
+    assert.equal(calls, 2);
+  } finally { releaseFirst(); }
+  assert.equal((await first).status, 303);
+});
