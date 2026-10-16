@@ -154,21 +154,18 @@ API. This is merchant-fulfilled shipping, not new automatic international DHL
 booking or Webshipper carrier quotes. Configure the actual customer delivery price
 and thresholds separately; do not invent prices from carrier names.
 
-## Production execution and the domain relay
+## Worker account and CPU budget
 
-The New Movements Cloudflare account is on Workers Free (10 ms CPU/request), which
-cannot reliably render this catalog. Its `wrangler.jsonc` deploys only `proxy.js` on
-`newmovements.com` and `www.newmovements.com`. `wrangler.runtime.jsonc` deploys the
-full storefront to the existing paid Respiro account with a 1,000 ms ceiling.
-`npm run deploy` checks both bundles, deploys the runtime first, then the relay.
-Both commands explicitly select their account: the operator environment's default
-CLOUDFLARE_ACCOUNT_ID must never silently select another account.
+Production uses one full storefront Worker in the New Movements Cloudflare
+account (`7ff7737df4a569ad04e6c7c91b607582`), which must have Workers Paid enabled.
+The Free plan's 10 ms CPU budget cannot reliably render the live catalog.
+`limits.cpu_ms` is 1,000 ms, providing headroom for cold catalog rendering while
+remaining bounded. Normal rendering is substantially below this ceiling.
+`npm run deploy` explicitly selects the merchant account so an operator's shared
+CLOUDFLARE_ACCOUNT_ID cannot deploy into the Respiro account by mistake.
+No cross-account relay or forwarding secret is required. Do not add one back.
 
-Both Workers require the same server-side `STOREFRONT_PROXY_TOKEN` secret. Retain
-it during deployments. The runtime accepts original origin, country and client IP
-only with this token; this preserves merchant URLs, cookies, redirects, checkout
-return URLs and per-visitor rate limits. Direct review traffic remains noindex.
-The relay streams requests/responses and follows no redirects. Secrets are not in
-Git or browser output. Preview tooling uses the full runtime configuration.
-If moving execution back into the merchant account, first enable Workers Paid,
-remove the relay deliberately and verify cold requests and CPU metrics.
+When migrating from the temporary outage relay, first verify that Cloudflare
+accepts the paid CPU limit, then deploy this revision and test cold EN/NB routes,
+checkout reads/redirects, assets and sitemaps. Only after production is verified,
+remove the retired Respiro runtime and both STOREFRONT_PROXY_TOKEN secrets.

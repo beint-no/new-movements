@@ -14,10 +14,9 @@
       "zone_name": "newmovements.com"
     }
   ],
-  "main": "proxy.js",
+  "main": "worker.js",
   "vars": {
-    "REAI_BASE_URL": "https://app.reai.no",
-    "STOREFRONT_RUNTIME_URL": "https://newmovements.respiro.workers.dev"
+    "REAI_BASE_URL": "https://app.reai.no"
   },
   "assets": {
     "directory": "./dist/public",
@@ -69,5 +68,8 @@
       "REAI_BASE_URL": "https://app.reai.no",
       "CHECKOUT_ENABLED": "false"
     }
+  },
+  "limits": {
+    "cpu_ms": 1000
   }
 }
