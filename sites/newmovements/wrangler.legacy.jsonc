@@ -1,0 +1,8 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "newmovements",
+  "account_id": "d7c5a90b75a693cc738d69f92808f451",
+  "compatibility_date": "2026-08-29",
+  "main": "legacy-redirect.js",
+  "workers_dev": true
+}

@@ -169,3 +169,10 @@ When migrating from the temporary outage relay, first verify that Cloudflare
 accepts the paid CPU limit, then deploy this revision and test cold EN/NB routes,
 checkout reads/redirects, assets and sitemaps. Only after production is verified,
 remove the retired Respiro runtime and both STOREFRONT_PROXY_TOKEN secrets.
+
+The retired `newmovements.respiro.workers.dev` address has a standalone, permanent
+GET/HEAD 308 redirect (`legacy-redirect.js`, `wrangler.legacy.jsonc`) because
+already-sent emails contain that URL. It has no credentials or storefront logic,
+is not on the production path, and is not deployed by normal storefront releases.
+Do not delete it while historical links are in circulation. Deploy an intentional
+redirect change with the legacy config and the explicit Respiro account ID.
