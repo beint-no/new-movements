@@ -2,6 +2,9 @@ import {track} from './analytics.js';
 document.documentElement.classList.add('has-store-js');
 const CART_KEY = 'newmovements-cart-v1';
 const pathPrefix = document.body.dataset.pathPrefix || '';
+// The document language decides the copy this script writes; the server renders the rest.
+const norwegian = /^(?:nb|no|nn)\b/i.test(document.documentElement.lang || '');
+const t = (en, nb) => (norwegian && nb !== undefined ? nb : en);
 const sitePath = (path) => `${pathPrefix}${path === '/' ? '/' : path}`;
 const localHref = (href) => typeof href === 'string' && href.startsWith('/') && !href.startsWith(`${pathPrefix}/`) ? sitePath(href) : href;
 const activeCurrency = document.body.dataset.currency || 'NOK';
@@ -49,17 +52,19 @@ const plainMoney = (value) => new Intl.NumberFormat('nb-NO', { maximumFractionDi
 const escapeHtml = (value) => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
 const cartOptions = (item) => Array.isArray(item.options)
   ? item.options.filter((option) => option.name && option.value && option.value !== 'Default Title').map((option) => `${option.name}: ${option.value}`).join(' · ')
-  : item.label ? `Size ${item.label}` : '';
-const cartStockMessage = (issue) => issue.maximumQuantity === 0 ? 'Sold out — remove this item to continue.' : `Only ${issue.maximumQuantity} available for this bag. Reduce the quantity to continue.`;
+  : item.label ? t(`Size ${item.label}`, `Størrelse ${item.label}`) : '';
+const cartStockMessage = (issue) => issue.maximumQuantity === 0
+  ? t('Sold out — remove this item to continue.', 'Utsolgt – fjern varen for å gå videre.')
+  : t(`Only ${issue.maximumQuantity} available for this bag. Reduce the quantity to continue.`, `Bare ${issue.maximumQuantity} på lager. Reduser antallet for å gå videre.`);
 const cartStockNotice = (item) => {
-  if (unavailableMarketVariants.has(item.variant)) return '<p class="cart-stock-issue" role="alert">Unavailable for this delivery country — remove this item to continue.</p>';
+  if (unavailableMarketVariants.has(item.variant)) return `<p class="cart-stock-issue" role="alert">${t('Unavailable for this delivery country — remove this item to continue.', 'Ikke tilgjengelig for dette leveringslandet – fjern varen for å gå videre.')}</p>`;
   const issue = checkoutStockIssues.get(item.variant);
   if (!issue) return '';
   const hasSize = item.options?.some((option) => /^(size|størrelse)$/i.test(option.name)) || item.label;
-  return `<p class="cart-stock-notice">${escapeHtml(cartStockMessage(issue))}</p>${issue.maximumQuantity > 0 ? `<button type="button" data-cart-stock-adjust="${escapeHtml(item.variant)}">Change quantity to ${issue.maximumQuantity}</button>` : `<a class="cart-stock-action" href="${escapeHtml(localHref(item.url || `/products/${item.handle}`))}">${hasSize ? 'Choose another size' : 'View product'}</a>`}`;
+  return `<p class="cart-stock-notice">${escapeHtml(cartStockMessage(issue))}</p>${issue.maximumQuantity > 0 ? `<button type="button" data-cart-stock-adjust="${escapeHtml(item.variant)}">${t(`Change quantity to ${issue.maximumQuantity}`, `Endre antallet til ${issue.maximumQuantity}`)}</button>` : `<a class="cart-stock-action" href="${escapeHtml(localHref(item.url || `/products/${item.handle}`))}">${hasSize ? t('Choose another size', 'Velg en annen størrelse') : t('View product', 'Se produktet')}</a>`}`;
 };
 if (!document.querySelector('[data-drawer-backdrop]')) {
-  document.querySelector('.site-header')?.insertAdjacentHTML('afterend', `<div class="drawer-backdrop" data-drawer-backdrop hidden></div><dialog class="store-drawer search-drawer" aria-label="Search" data-search-drawer><header><h2>Search</h2><button type="button" data-drawer-close>Close</button></header><form role="search" data-predictive-search><label class="sr-only" for="predictive-query">Search products</label><input id="predictive-query" name="q" type="search" autocomplete="off" placeholder="Search shoes, styles, materials"><button type="submit">View all</button></form><p data-predictive-status role="status" aria-live="polite">Start typing to search the live catalog.</p><div class="predictive-results" data-predictive-results></div></dialog><dialog class="store-drawer cart-drawer" aria-label="Shopping bag" data-cart-drawer><header><h2>Your bag</h2><button type="button" data-drawer-close>Close</button></header><div data-drawer-cart-items></div><footer><p><span>Subtotal</span><strong data-drawer-subtotal>NOK 0</strong></p><a href="${sitePath('/cart')}">View bag</a></footer></dialog>`);
+  document.querySelector('.site-header')?.insertAdjacentHTML('afterend', `<div class="drawer-backdrop" data-drawer-backdrop hidden></div><dialog class="store-drawer search-drawer" aria-label="${t('Search', 'Søk')}" data-search-drawer><header><h2>${t('Search', 'Søk')}</h2><button type="button" data-drawer-close>${t('Close', 'Lukk')}</button></header><form role="search" data-predictive-search><label class="sr-only" for="predictive-query">${t('Search products', 'Søk etter produkter')}</label><input id="predictive-query" name="q" type="search" autocomplete="off" placeholder="${t('Search shoes, styles, materials', 'Søk etter sko, stiler og materialer')}"><button type="submit">${t('View all', 'Se alle')}</button></form><p data-predictive-status role="status" aria-live="polite">${t('Start typing to search the live catalog.', 'Skriv for å søke i den oppdaterte katalogen.')}</p><div class="predictive-results" data-predictive-results></div></dialog><dialog class="store-drawer cart-drawer" aria-label="${t('Shopping bag', 'Handlekurv')}" data-cart-drawer><header><h2>${t('Your bag', 'Handlekurven din')}</h2><button type="button" data-drawer-close>${t('Close', 'Lukk')}</button></header><div data-drawer-cart-items></div><footer><p><span>${t('Subtotal', 'Delsum')}</span><strong data-drawer-subtotal>NOK 0</strong></p><a href="${sitePath('/cart')}">${t('View bag', 'Se handlekurven')}</a></footer></dialog>`);
 }
 const showToast = (message) => {
   const toast = document.querySelector('[data-cart-toast]');
@@ -83,7 +88,7 @@ const addCartItem = (product, variant, quantity = 1) => {
     url: product.url || `/products/${product.handle}`,
     label: variant.label || '',
     image: product.image || '',
-    imageAlt: product.imageAlt || product.title || 'New Movements product image',
+    imageAlt: product.imageAlt || product.title || t('New Movements product image', 'Produktbilde fra New Movements'),
     price: Number(variant.price),
     currency: activeCurrency,
     market: activeMarket,
@@ -222,8 +227,8 @@ function renderDrawerCart() {
   const subtotal = document.querySelector('[data-drawer-subtotal]');
   if (!list) return;
   const items = readCart();
-  list.innerHTML = items.length ? items.map((item, index) => `<article class="drawer-cart-line${checkoutStockIssues.has(item.variant) ? ' has-stock-issue' : ''}" data-drawer-cart-index="${index}">${item.image ? `<img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.imageAlt || `${item.title} product image`)}">` : '<div class="drawer-cart-placeholder"></div>'}<div><a href="${escapeHtml(localHref(item.url || `/products/${item.handle}`))}">${escapeHtml(item.title)}</a><span>${cartOptions(item) ? `${escapeHtml(cartOptions(item))} · ` : ''}${item.quantity} × ${money(item.price, item.currency || 'NOK')}</span>${cartStockNotice(item)}<label class="drawer-quantity">Quantity<input data-drawer-quantity type="number" min="1" max="20" inputmode="numeric" value="${item.quantity}" aria-label="Quantity for ${escapeHtml(item.title)}"></label><button type="button" data-drawer-remove>Remove</button></div></article>`).join('') : `<div class="drawer-empty"><p>Your bag is empty.</p><a href="${sitePath('/collections/all')}">Continue shopping</a></div>`;
-  if (subtotal) subtotal.textContent = cartRepricing ? 'Updating prices…' : cartPriceFailed || items.some((item) => unavailableMarketVariants.has(item.variant)) ? 'Price unavailable' : money(items.reduce((sum, item) => sum + item.price * item.quantity, 0));
+  list.innerHTML = items.length ? items.map((item, index) => `<article class="drawer-cart-line${checkoutStockIssues.has(item.variant) ? ' has-stock-issue' : ''}" data-drawer-cart-index="${index}">${item.image ? `<img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.imageAlt || t(`${item.title} product image`, `Produktbilde av ${item.title}`))}">` : '<div class="drawer-cart-placeholder"></div>'}<div><a href="${escapeHtml(localHref(item.url || `/products/${item.handle}`))}">${escapeHtml(item.title)}</a><span>${cartOptions(item) ? `${escapeHtml(cartOptions(item))} · ` : ''}${item.quantity} × ${money(item.price, item.currency || 'NOK')}</span>${cartStockNotice(item)}<label class="drawer-quantity">${t('Quantity', 'Antall')}<input data-drawer-quantity type="number" min="1" max="20" inputmode="numeric" value="${item.quantity}" aria-label="${escapeHtml(t(`Quantity for ${item.title}`, `Antall for ${item.title}`))}"></label><button type="button" data-drawer-remove>${t('Remove', 'Fjern')}</button></div></article>`).join('') : `<div class="drawer-empty"><p>${t('Your bag is empty.', 'Handlekurven din er tom.')}</p><a href="${sitePath('/collections/all')}">${t('Continue shopping', 'Fortsett å handle')}</a></div>`;
+  if (subtotal) subtotal.textContent = cartRepricing ? t('Updating prices…', 'Oppdaterer priser …') : cartPriceFailed || items.some((item) => unavailableMarketVariants.has(item.variant)) ? t('Price unavailable', 'Pris utilgjengelig') : money(items.reduce((sum, item) => sum + item.price * item.quantity, 0));
   syncCartUpsells(items);
   cartDrawer.querySelectorAll('[data-checkout-start]').forEach((button) => { button.disabled = !items.length || checkoutPending || cartRepricing || cartPriceFailed || items.some((item) => unavailableMarketVariants.has(item.variant)); });
 }
@@ -241,7 +246,9 @@ function syncCartUpsells(items = readCart()) {
   });
   if (cartUpsells) cartUpsells.hidden = !items.length || !upsellChoices.some(({ row }) => !row.hidden);
   if (upsellStatus) {
-    upsellStatus.textContent = checkingUpsellStock ? 'Checking shoe-care availability…' : upsellStockFailed ? 'We could not check shoe-care stock. Reopen your bag to try again.' : '';
+    upsellStatus.textContent = checkingUpsellStock
+      ? t('Checking shoe-care availability…', 'Sjekker lagerstatus for skopleie …')
+      : upsellStockFailed ? t('We could not check shoe-care stock. Reopen your bag to try again.', 'Vi klarte ikke å sjekke lagerstatus for skopleie. Åpne handlekurven igjen for å prøve på nytt.') : '';
     upsellStatus.hidden = !checkingUpsellStock && !upsellStockFailed;
   }
 }
@@ -312,12 +319,12 @@ const syncVariant = () => {
   add.disabled = option?.dataset.available !== 'true' || !UUID.test(add.dataset.variant);
   const unavailable = add.disabled;
   const unknown = option?.dataset.available === 'unknown';
-  add.textContent = !option?.value ? 'Select your size' : unknown ? 'Check availability' : unavailable ? 'Notify me' : 'Add to cart';
+  add.textContent = !option?.value ? t('Select your size', 'Velg størrelse') : unknown ? t('Check availability', 'Sjekk tilgjengelighet') : unavailable ? t('Notify me', 'Varsle meg') : t('Add to cart', 'Legg i handlekurv');
   add.dataset.checkStock = String(unknown);
   add.disabled = !option?.value;
   add.dataset.notify = String(unavailable && !!option?.value);
   const mobileAction = document.querySelector('[data-mobile-purchase-action]');
-  if (mobileAction) mobileAction.textContent = !option?.value ? 'Choose size' : unknown ? 'Check availability' : unavailable ? 'Notify me' : `Add to bag · ${money(option.dataset.price)}`;
+  if (mobileAction) mobileAction.textContent = !option?.value ? t('Choose size', 'Velg størrelse') : unknown ? t('Check availability', 'Sjekk tilgjengelighet') : unavailable ? t('Notify me', 'Varsle meg') : t(`Add to bag · ${money(option.dataset.price)}`, `Legg i handlekurv · ${money(option.dataset.price)}`);
   document.querySelectorAll('[data-color-link]').forEach((link) => {
     try {
       const choices = JSON.parse(link.dataset.colorVariants);
@@ -351,7 +358,11 @@ const syncVariant = () => {
   const notify = document.querySelector('[data-stock-notification]');
   const notifySize = notify?.querySelector('select[name="variantId"]');
   const canNotify = notifySize && [...notifySize.options].some(item => item.value === add.dataset.variant);
-  if (sizeStatus) sizeStatus.textContent = unknown ? 'Live stock could not be checked. Please try again.' : option?.dataset.available === 'false' ? canNotify ? 'This size is sold out. Request a one-time email below.' : 'This option is currently unavailable.' : '';
+  if (sizeStatus) sizeStatus.textContent = unknown
+    ? t('Live stock could not be checked. Please try again.', 'Vi klarte ikke å sjekke lagerstatus. Prøv igjen.')
+    : option?.dataset.available === 'false'
+      ? canNotify ? t('This size is sold out. Request a one-time email below.', 'Denne størrelsen er utsolgt. Be om én e-postvarsling nedenfor.') : t('This option is currently unavailable.', 'Dette alternativet er ikke tilgjengelig nå.')
+      : '';
   if (option?.dataset.available === 'false' && notifySize?.querySelector(`option[value="${add.dataset.variant}"]`)) {
     notify.open = true;
     notifySize.value = add.dataset.variant;
@@ -476,7 +487,7 @@ const openQuickAdd = async (button) => {
       quickAddSizes.append(size);
     });
   }
-  if (quickAddStatus) quickAddStatus.textContent = 'Checking available sizes…';
+  if (quickAddStatus) quickAddStatus.textContent = t('Checking available sizes…', 'Sjekker tilgjengelige størrelser …');
   if (quickAddSubmit) quickAddSubmit.disabled = true;
   quickAddDialog?.showModal();
   document.body.classList.add('quick-add-open');
@@ -496,9 +507,9 @@ const openQuickAdd = async (button) => {
       const selected = variants.find((variant) => variant.id === quickAddProduct.selectedVariantId);
       if (selected) selectQuickAddVariant(selected, quickAddSizes?.querySelector(`[data-quick-variant="${selected.id}"]`));
     }
-    if (quickAddStatus && !quickAddVariant) quickAddStatus.textContent = available.size ? '' : 'These sizes are currently sold out.';
+    if (quickAddStatus && !quickAddVariant) quickAddStatus.textContent = available.size ? '' : t('These sizes are currently sold out.', 'Disse størrelsene er utsolgt nå.');
   } catch {
-    if (quickAddProduct === requestedProduct && quickAddStatus) quickAddStatus.textContent = 'We could not check stock. Open the product page to try again.';
+    if (quickAddProduct === requestedProduct && quickAddStatus) quickAddStatus.textContent = t('We could not check stock. Open the product page to try again.', 'Vi klarte ikke å sjekke lagerstatus. Åpne produktsiden for å prøve på nytt.');
   }
 
   quickAddSizes?.querySelector('button:not(:disabled)')?.focus();
@@ -549,7 +560,7 @@ const renderCart = () => {
     list.innerHTML = items.map((item, index) => `<article class="cart-line${checkoutStockIssues.has(item.variant) ? ' has-stock-issue' : ''}" data-cart-index="${index}">${item.image ? `<img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.imageAlt || `${item.title} product image`)}">` : '<div></div>'}<div><h2><a href="${escapeHtml(localHref(item.url || `/products/${item.handle}`))}">${escapeHtml(item.title)}</a></h2>${cartOptions(item) ? `<p>${escapeHtml(cartOptions(item))}</p>` : ''}<p>${money(item.price, item.currency || 'NOK')}</p><label>Qty <input type="number" min="1" max="20" value="${item.quantity}" data-cart-quantity></label>${cartStockNotice(item)}<button type="button" data-cart-remove>Remove</button></div><strong>${money(item.price * item.quantity, item.currency || 'NOK')}</strong></article>`).join('');
   }
   const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  if (subtotal) subtotal.textContent = cartRepricing ? 'Updating prices…' : cartPriceFailed || items.some((item) => unavailableMarketVariants.has(item.variant)) ? 'Price unavailable' : money(total);
+  if (subtotal) subtotal.textContent = cartRepricing ? t('Updating prices…', 'Oppdaterer priser …') : cartPriceFailed || items.some((item) => unavailableMarketVariants.has(item.variant)) ? t('Price unavailable', 'Pris utilgjengelig') : money(total);
   checkoutButtons.forEach((button) => { button.disabled = !items.length || checkoutPending || cartRepricing || cartPriceFailed || items.some((item) => unavailableMarketVariants.has(item.variant)); });
 };
 cartRoot?.addEventListener('change', (event) => {
@@ -586,12 +597,12 @@ checkoutButtons.forEach((checkout) => checkout.addEventListener('click', async (
   checkoutPending = true;
   const label = checkout.textContent;
   checkoutButtons.forEach((button) => { button.disabled = true; });
-  checkout.textContent = 'Opening secure checkout…';
+  checkout.textContent = t('Opening secure checkout…', 'Åpner sikker betaling …');
   if (checkoutError) checkoutError.hidden = true;
   try {
     const response = await fetch(sitePath('/reai/checkout/start'), { method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': crypto.randomUUID() }, body: JSON.stringify({ lines }) });
     const payload = await response.json().catch(() => ({}));
-    if (submittedRevision !== cartRevision) throw new Error('Your bag changed. Please check out again.');
+    if (submittedRevision !== cartRevision) throw new Error(t('Your bag changed. Please check out again.', 'Handlekurven ble endret. Gå til kassen på nytt.'));
     if (response.status === 409 && payload.code === 'INSUFFICIENT_STOCK' && Array.isArray(payload.stockIssues)) {
       checkoutStockIssues = new Map(payload.stockIssues.filter((issue) => lines.some((line) => line.variantId === issue.variantId && line.quantity === issue.requestedQuantity) && Number.isInteger(issue.maximumQuantity) && issue.maximumQuantity >= 0 && issue.maximumQuantity < issue.requestedQuantity).map((issue) => [issue.variantId, issue]));
       const items = readCart().map((item) => {
@@ -604,10 +615,10 @@ checkoutButtons.forEach((checkout) => checkout.addEventListener('click', async (
       const affected = items.filter((item) => checkoutStockIssues.has(item.variant));
       if (affected.length) {
         const names = affected.map((item) => `${item.title}${cartOptions(item) ? ` (${cartOptions(item)})` : ''}`).join('; ');
-        throw new Error(`Please update your bag: ${names}. See the highlighted items above.`);
+        throw new Error(t(`Please update your bag: ${names}. See the highlighted items above.`, `Oppdater handlekurven: ${names}. Se de markerte varene over.`));
       }
     }
-    if (!response.ok || !payload.checkoutUrl) throw new Error(payload.detail || payload.error || 'Checkout could not be started.');
+    if (!response.ok || !payload.checkoutUrl) throw new Error(payload.detail || payload.error || t('Checkout could not be started.', 'Vi klarte ikke å starte betalingen.'));
     location.assign(payload.checkoutUrl);
   } catch (error) {
     if (checkoutError) { checkoutError.textContent = error.message; checkoutError.hidden = false; }
@@ -636,22 +647,24 @@ const renderPredictiveSearch = async () => {
   predictiveRequest = controller;
   const query = predictiveInput?.value.trim() || '';
   if (!query) {
-    if (predictiveStatus) predictiveStatus.textContent = 'Start typing to search the live catalog.';
+    if (predictiveStatus) predictiveStatus.textContent = t('Start typing to search the live catalog.', 'Skriv for å søke i den oppdaterte katalogen.');
     if (predictiveResults) predictiveResults.innerHTML = '';
     return;
   }
-  if (predictiveStatus) predictiveStatus.textContent = 'Searching…';
+  if (predictiveStatus) predictiveStatus.textContent = t('Searching…', 'Søker …');
   try {
     const response = await fetch(sitePath(`/reai/search?${new URLSearchParams({ q: query, ...(activeView ? { view: activeView } : {}) })}`), { signal: controller.signal });
     if (!response.ok) throw new Error('Search unavailable');
     const store = await response.json();
     if (sequence !== predictiveSequence) return;
     const products = store.products;
-    if (predictiveStatus) predictiveStatus.textContent = products.length ? `${products.length} suggested product${products.length === 1 ? '' : 's'}` : `No results for “${query}”`;
+    if (predictiveStatus) predictiveStatus.textContent = products.length
+      ? t(`${products.length} suggested product${products.length === 1 ? '' : 's'}`, `${products.length} ${products.length === 1 ? 'foreslått produkt' : 'foreslåtte produkter'}`)
+      : t(`No results for “${query}”`, `Ingen treff for «${query}»`);
     if (predictiveResults) predictiveResults.innerHTML = products.map((item) => `<a class="predictive-item" href="${escapeHtml(localHref(item.url || `/products/${item.handle}`))}">${item.image ? `<img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.imageAlt || `${item.title} product image`)}" width="80" height="100">` : '<span></span>'}<b>${escapeHtml(item.title)}</b><small>${money(item.price, store.currency || 'NOK')}</small></a>`).join('');
   } catch {
     if (sequence !== predictiveSequence || controller.signal.aborted) return;
-    if (predictiveStatus) predictiveStatus.textContent = 'The live catalog is temporarily unavailable.';
+    if (predictiveStatus) predictiveStatus.textContent = t('The live catalog is temporarily unavailable.', 'Katalogen er midlertidig utilgjengelig.');
   }
 };
 predictiveInput?.addEventListener('input', () => {
@@ -713,7 +726,7 @@ const updateCollection = async (url, pushHistory = true) => {
   if (!section) { location.assign(url); return; }
   section.setAttribute('aria-busy', 'true');
   const status = document.querySelector('[data-filter-status]');
-  if (status) status.textContent = 'Updating products…';
+  if (status) status.textContent = t('Updating products…', 'Oppdaterer produkter …');
   try {
     const response = await fetch(url, { signal: controller.signal, headers: { Accept: 'text/html' } });
     if (!response.ok) throw new Error('Collection unavailable');
@@ -800,7 +813,7 @@ async function refreshCartPrices() {
     if (!response.ok) throw new Error('Catalog unavailable');
     const store = await response.json();
     if (requestId !== cartPriceRequest) return;
-    if (store.currency !== activeCurrency || store.marketHandle !== activeMarket) throw new Error('Delivery country changed. Reload the page.');
+    if (store.currency !== activeCurrency || store.marketHandle !== activeMarket) throw new Error('market-changed');
     const variants = new Map((store.products || []).flatMap((product) => (product.variants || []).map((variant) => [variant.id, { product, variant }])));
     unavailableMarketVariants = new Set();
     const items = readCart().map((item) => {
@@ -813,7 +826,7 @@ async function refreshCartPrices() {
   } catch {
     if (requestId !== cartPriceRequest) return;
     cartPriceFailed = true;
-    document.querySelectorAll('[data-checkout-error]').forEach((node) => { node.hidden = false; node.textContent = 'We could not update prices for your delivery country. Refresh the page to try again.'; });
+    document.querySelectorAll('[data-checkout-error]').forEach((node) => { node.hidden = false; node.textContent = t('We could not update prices for your delivery country. Refresh the page to try again.', 'Vi klarte ikke å oppdatere prisene for leveringslandet ditt. Last siden på nytt for å prøve igjen.'); });
   } finally { if (requestId === cartPriceRequest) { cartRepricing = false; renderCart(); renderDrawerCart(); } }
 }
 const updateCountryReturn = (form) => {
@@ -875,7 +888,7 @@ document.querySelectorAll('[data-newsletter-form]').forEach((newsletterForm) => 
   const name = String(data.get('name') || '').trim();
   const welcomeDiscount = data.get('welcomeDiscount') === 'true';
   button.disabled = true;
-  button.textContent = 'Signing up…';
+  button.textContent = t('Signing up…', 'Melder deg på …');
   status.hidden = true;
   try {
     const response = await fetch(sitePath('/reai/newsletter/subscribe'), {
@@ -888,11 +901,11 @@ document.querySelectorAll('[data-newsletter-form]').forEach((newsletterForm) => 
       : "You're on the list. Thanks for joining the New Movements community.";
     newsletterForm.reset();
   } catch {
-    status.textContent = 'We could not save your signup. Please try again in a moment.';
+    status.textContent = t('We could not save your signup. Please try again in a moment.', 'Vi klarte ikke å lagre påmeldingen. Prøv igjen om litt.');
   } finally {
     status.hidden = false;
     button.disabled = false;
-    button.textContent = 'Sign up';
+    button.textContent = t('Sign up', 'Meld deg på');
   }
 }));
 
@@ -904,11 +917,13 @@ document.querySelectorAll('[data-stock-form]').forEach((form) => form.addEventLi
   const status = form.querySelector('[data-stock-status]');
   const data = new FormData(form);
   button.disabled = true;
-  status.textContent = 'Saving your request…';
+  status.textContent = t('Saving your request…', 'Lagrer forespørselen …');
   try {
     const response = await fetch(sitePath('/reai/stock/subscribe'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ variantId: data.get('variantId'), email: data.get('email'), consent: data.get('consent') === 'true' }) });
-    if (!response.ok) throw new Error(response.status === 429 ? 'Please wait a minute before trying again.' : 'We could not save your request. Refresh the page and try again.');
-    status.textContent = 'You’re on the list. We’ll email you once when this size is available.';
+    if (!response.ok) throw new Error(response.status === 429
+      ? t('Please wait a minute before trying again.', 'Vent et minutt før du prøver igjen.')
+      : t('We could not save your request. Refresh the page and try again.', 'Vi klarte ikke å lagre forespørselen. Last siden på nytt og prøv igjen.'));
+    status.textContent = t('You’re on the list. We’ll email you once when this size is available.', 'Du står på listen. Vi sender deg én e-post når størrelsen er tilgjengelig.');
     form.elements.email.value = '';
     form.elements.consent.checked = false;
   } catch (error) { status.textContent = error.message; }
@@ -934,7 +949,7 @@ if (sizeGuideDialog && typeof sizeGuideDialog.showModal === 'function') {
     const active = controller;
     const timeout = setTimeout(() => active.abort(), 8000);
     body.setAttribute('aria-busy', 'true');
-    if (!body.querySelector('[data-size-guide-content]')) body.innerHTML = '<p class="sg-loading" role="status">Opening your size guide…</p>';
+    if (!body.querySelector('[data-size-guide-content]')) body.innerHTML = `<p class="sg-loading" role="status">${t('Opening your size guide…', 'Åpner størrelsesguiden …')}</p>`;
     try {
       const response = await fetch(href, { signal: active.signal });
       if (!response.ok) throw new Error('Size guide unavailable');

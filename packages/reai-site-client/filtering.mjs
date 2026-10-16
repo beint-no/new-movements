@@ -7,6 +7,8 @@
 /** @typedef {{ id: string, title: string, productType?: string | null, displayProductType?: string | null, brand?: string | null, displayBrand?: string | null, attributes?: Attribute[], variants: FilterVariant[] }} FilterProduct */
 /** @typedef {{ key: string, label: string, parameter: string, kind: 'availability' | 'option' | 'attribute' | 'product', optionName?: string, attributeKey?: string, productField?: 'productType' | 'brand' }} FacetDefinition */
 /** @typedef {{ id: string, label: string, colors: string[], aliases: string[], count: number | null, selected: boolean, inputValue: string }} FacetValue */
+// Warnings and errors are stable codes, not sentences: the storefront renders them in the
+// shopper's language.
 /** @typedef {{ values: Map<string, string[]>, minimum?: number, maximum?: number, sort: string, errors: string[] }} FilterRequest */
 
 const priceMinimum = 'filter.v.price.gte';
@@ -28,7 +30,7 @@ export function parseCollectionFilters(parameters, definitions) {
     if (!raw?.trim()) return undefined;
     const value = Number(raw);
     if (!Number.isFinite(value) || value < 0) {
-      errors.push('Enter a valid price of zero or more.');
+      errors.push('invalid-price');
       return undefined;
     }
     return value;
@@ -91,9 +93,9 @@ export function filterCollection(products, definitions, request, availability = 
   const warnings = [...request.errors];
   const usesAvailability = definitions.some((definition) => definition.kind === 'availability' && request.values.get(definition.key)?.length);
   if (usesAvailability && products.some((product) => product.variants.some((variant) => availability[variant.id] == null))) {
-    warnings.push('Some live stock could not be checked. Retry or clear the availability filter.');
+    warnings.push('stock-unchecked');
   }
-  if (!sorts.has(request.sort)) warnings.push('This sort order is not available. Showing featured order.');
+  if (!sorts.has(request.sort)) warnings.push('sort-unavailable');
   const matched = request.errors.length ? [] : products.flatMap((product) => {
     const variants = product.variants.filter((variant) => matchesVariant(product, variant, definitions, request, availability));
     return variants.length ? [{ ...product, variants }] : [];
