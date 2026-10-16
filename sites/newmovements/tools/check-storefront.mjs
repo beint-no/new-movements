@@ -338,11 +338,14 @@ const carePage = renderProductPage(store, careProduct);
 assert.doesNotMatch(carePage, /Unisex footwear designed|class="product-promises"/);
 
 // Publication and exact membership are authoritative; unavailable collections are never inferred from product names.
-assert.equal(renderCollectionPage(store, "archive"), null);
-const emptyArchiveStore = { ...store, collections: [...store.collections, { id: "empty", handle: "archive", title: "Archive", products: [] }] };
-assert.doesNotMatch(renderCollectionPage(emptyArchiveStore, "archive"), /class="product-card"/);
-assert.doesNotMatch(renderPage(emptyArchiveStore, "/collections"), /href="\/collections\/archive"/);
-assert.match(renderSitemap(emptyArchiveStore), /<loc>https:\/\/newmovements.com\/collections\/archive<\/loc>/);
+assert.equal(renderCollectionPage(store, "seasonal"), null);
+const emptyCollectionStore = { ...store, collections: [...store.collections, { id: "empty", handle: "seasonal", title: "Seasonal", products: [] }] };
+assert.doesNotMatch(renderCollectionPage(emptyCollectionStore, "seasonal"), /class="product-card"/);
+assert.doesNotMatch(renderPage(emptyCollectionStore, "/collections"), /href="\/collections\/seasonal"/);
+// An empty collection stays crawlable, but a retired one redirects and must leave the sitemap.
+assert.match(renderSitemap(emptyCollectionStore), /<loc>https:\/\/newmovements.com\/collections\/seasonal<\/loc>/);
+const retiredCollectionStore = { ...store, collections: [...store.collections, { id: "retired", handle: "archive", title: "Archive", products: [] }] };
+assert.doesNotMatch(renderSitemap(retiredCollectionStore), /<loc>https:\/\/newmovements.com\/collections\/archive<\/loc>/);
 
 const unknownStockPage = renderProductPage(store, product, { [product.variants[0].id]: null });
 assert.match(unknownStockPage, /Live availability could not be checked/);
