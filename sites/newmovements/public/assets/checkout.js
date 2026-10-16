@@ -145,7 +145,7 @@ function combobox(input, { search, choose, draw, empty, restore }) {
     if(index<0)input.removeAttribute('aria-activedescendant');
     else {input.setAttribute('aria-activedescendant',list.children[index].id);list.children[index].scrollIntoView({block:'nearest'});}
   }
-  function select(index) { if(!items[index])return;generation++;controller?.abort();clearTimeout(pending);selecting=true;choose(items[index]);selecting=false;close(); }
+  function select(index) { const item=items[index];if(!item)return;items=[];generation++;controller?.abort();clearTimeout(pending);selecting=true;choose(item);selecting=false;close(); }
   async function update() {
     const current=++generation;controller?.abort();controller=new AbortController();
     try {
@@ -154,7 +154,21 @@ function combobox(input, { search, choose, draw, empty, restore }) {
       items=results;list.replaceChildren();active=-1;input.removeAttribute('aria-activedescendant');
       items.forEach((item,i)=> {
         const row=document.createElement('div');row.role='option';row.id=`${list.id}-${i}`;row.className='co-choice';row.setAttribute('aria-selected','false');draw(row,item);
-        row.addEventListener('pointerdown',e=>e.preventDefault());
+        // Keep mouse/pen focus, but allow native touch scrolling. A touch tap
+        // selects before blur and cancels its compatibility click, so closing
+        // the list cannot click a control underneath it on mobile WebKit.
+        let touchPress;
+        row.addEventListener('pointerdown',e=>{
+          if(e.pointerType!=='touch')e.preventDefault();
+          if(e.pointerType==='touch')touchPress={id:e.pointerId,x:e.clientX,y:e.clientY};
+        });
+        row.addEventListener('pointermove',e=>{
+          if(touchPress?.id===e.pointerId && Math.hypot(e.clientX-touchPress.x,e.clientY-touchPress.y)>10)touchPress=null;
+        });
+        row.addEventListener('pointercancel',()=>{touchPress=null;});
+        row.addEventListener('touchend',e=>{
+          if(touchPress){touchPress=null;e.preventDefault();select(i);}
+        },{passive:false});
         // Options sit inside the field's label. Cancel its default input click,
         // which would reopen the list after selection; keep keyboard focus.
         row.addEventListener('click',e=>{e.preventDefault();select(i);});list.append(row);
@@ -169,13 +183,13 @@ function combobox(input, { search, choose, draw, empty, restore }) {
   input.addEventListener('click',()=>{if(list.hidden){if(restore)input.value='';update();}});
   input.addEventListener('keydown',async e=> {
     if(e.key==='ArrowDown'&&list.hidden){e.preventDefault();if(restore)input.value='';await update();if(items.length&&!list.hidden)highlight(0);return;}
-    if(e.key==='Escape'){generation++;controller?.abort();clearTimeout(pending);close();e.preventDefault();return;}
+    if(e.key==='Escape'){generation++;controller?.abort();clearTimeout(pending);close();if(restore)input.value=restore();e.preventDefault();return;}
     if(e.key==='Enter'&&!list.hidden){e.preventDefault();if(active>=0)select(active);return;}
     if(['ArrowDown','ArrowUp','Home','End'].includes(e.key)&&!list.hidden&&items.length) {
       e.preventDefault();highlight(e.key==='Home'?0:e.key==='End'?items.length-1:e.key==='ArrowDown'?(active+1)%items.length:(active-1+items.length)%items.length);
     }
   });
-  wrap.addEventListener('focusout',()=>queueMicrotask(()=>{if(!wrap.contains(document.activeElement)){generation++;controller?.abort();clearTimeout(pending);close();if(restore)input.value=restore();}}));
+  wrap.addEventListener('focusout',()=>queueMicrotask(()=>{if(!wrap.contains(document.activeElement)){generation++;controller?.abort();clearTimeout(pending);close();if(restore&&!input.disabled)input.value=restore();}}));
   return input;
 }
 function distance(meters) {
@@ -230,7 +244,7 @@ function renderDelivery() {
         search:query=>{const q=query.trim().toLocaleLowerCase(no?'nb-NO':'en');return o.pickups.filter(p=>[p.name,p.address,p.postalCode,p.city].join(' ').toLocaleLowerCase(no?'nb-NO':'en').includes(q));},
         draw:pickupDisplay,empty:t('No matching pickup locations. Try another street or name.','Ingen hentesteder matcher. Prøv en annen gate eller et annet navn.'),
         restore:()=>selectedPickup()?.name || '',
-        choose:async p=> {search.value=p.name;search.disabled=true;message();try{await save({optionToken:o.token,pickupToken:p.token});choosingOption=null;renderDelivery();const next=delivery.querySelector(`[data-pickup-option="${CSS.escape(o.token)}"]`);if(next){next.dataset.skipOpen='true';next.focus({preventScroll:true});}warmPayment();}catch(e){error(e,true);search.disabled=false;}}
+        choose:async p=> {search.value=p.name;search.disabled=true;message();try{await save({optionToken:o.token,pickupToken:p.token});choosingOption=null;renderDelivery();const next=delivery.querySelector(`[data-pickup-option="${CSS.escape(o.token)}"]`);if(next){next.dataset.skipOpen='true';next.focus({preventScroll:true});}warmPayment();}catch(e){error(e,true);search.disabled=false;search.value=selectedPickup()?.name || '';}}
       });
       const chosen=selectedPickup();if(chosen){const address=document.createElement('p');address.className='co-selected-address';address.textContent=`${chosen.address}, ${chosen.postalCode} ${chosen.city}`;box.append(address);}
     }
