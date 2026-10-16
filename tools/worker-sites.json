@@ -1,7 +1,7 @@
 [
   {
     "id": "newmovements",
-    "config": "sites/newmovements/wrangler.runtime.jsonc",
+    "config": "sites/newmovements/wrangler.jsonc",
     "credentialBinding": "REAI_SITE_TOKEN",
     "checks": [
       "check"

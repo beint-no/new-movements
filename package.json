@@ -15,26 +15,24 @@
   },
   "scripts": {
     "dev": "wrangler dev --cwd sites/newmovements",
-    "deploy": "npm run check && npm run deploy:runtime && npm run deploy:edge",
+    "deploy": "npm run check && wrangler deploy --cwd sites/newmovements",
     "secret": "wrangler secret put REAI_SITE_TOKEN --cwd sites/newmovements",
     "generate:site-api": "node tools/generate-site-api.mjs",
-    "test": "node --test packages/reai-cloudflare-storefront/*.test.mjs packages/reai-site-client/*.test.mjs sites/newmovements/tools/*.test.mjs tools/*.test.mjs",
+    "test": "node --test packages/reai-cloudflare-storefront/*.test.mjs packages/reai-site-client/*.test.mjs sites/newmovements/tools/routes.test.mjs tools/*.test.mjs",
     "check:client-boundary": "node tools/check-site-api-boundary.mjs",
     "check:contract": "node tools/check-openapi.mjs",
     "check:dependencies": "npm audit --audit-level=high",
     "check:storefront": "node sites/newmovements/tools/check-storefront.mjs",
-    "check:worker": "wrangler deploy --dry-run --cwd sites/newmovements --config wrangler.runtime.jsonc && wrangler deploy --dry-run --cwd sites/newmovements",
+    "check:worker": "wrangler deploy --dry-run --cwd sites/newmovements",
     "typecheck": "tsc --project tsconfig.json",
     "check": "npm run typecheck && npm run check:client-boundary && npm test && npm run check:storefront && npm run check:worker && npm run check:dependencies",
     "build:assets": "node tools/build-assets.mjs",
     "pretypecheck": "npm run build:assets",
     "pretest": "npm run build:assets",
     "precheck:storefront": "npm run build:assets",
-    "deploy:local": "npm run deploy",
+    "deploy:local": "npm exec --yes --package=wrangler@4.149.0 -- node tools/worker.mjs deploy",
     "preview:deploy": "npm exec --yes --package=wrangler@4.149.0 -- node tools/worker.mjs preview",
-    "preview:remove": "npm exec --yes --package=wrangler@4.149.0 -- node tools/worker.mjs remove",
-    "deploy:runtime": "CLOUDFLARE_ACCOUNT_ID=d7c5a90b75a693cc738d69f92808f451 wrangler deploy --cwd sites/newmovements --config wrangler.runtime.jsonc",
-    "deploy:edge": "CLOUDFLARE_ACCOUNT_ID=7ff7737df4a569ad04e6c7c91b607582 wrangler deploy --cwd sites/newmovements"
+    "preview:remove": "npm exec --yes --package=wrangler@4.149.0 -- node tools/worker.mjs remove"
   },
   "browserslist": [
     "baseline 2025 with downstream"
