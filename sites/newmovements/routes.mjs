@@ -66,6 +66,11 @@ export function redirectStorefrontRequest({ request, url }) {
 
 export async function handleStorefrontRequest(context) {
   const { request, env, url } = context;
+  if (url.protocol === "http:" && !url.pathname.startsWith("/reai/")) {
+    const destination = new URL(url.href);
+    destination.protocol = "https:";
+    return new Response(null, { status: 308, headers: { Location: destination.href, "Cache-Control": "public, max-age=3600" } });
+  }
   if (url.pathname !== "/newsletter" || request.method !== "POST") return redirectStorefrontRequest(context);
   const email = String((await request.json().catch(() => ({})))?.email || "").trim();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {

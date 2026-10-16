@@ -29,3 +29,10 @@ test("validates newsletter signup before provider delivery", async () => {
   const unconfigured = await handleStorefrontRequest({ request: new Request(url, { method: "POST", body: JSON.stringify({ email: "person@example.com" }) }), url, env: {} });
   assert.equal(unconfigured.status, 503);
 });
+
+test("redirects storefront HTTP requests to HTTPS", async () => {
+  const request = new Request("http://newmovements.com/collections/women?view=women");
+  const response = await handleStorefrontRequest({ request, env: {}, url: new URL(request.url) });
+  assert.equal(response.status, 308);
+  assert.equal(response.headers.get("Location"), "https://newmovements.com/collections/women?view=women");
+});
