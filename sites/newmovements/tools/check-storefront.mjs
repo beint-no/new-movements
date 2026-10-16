@@ -309,6 +309,8 @@ assert.match(renderProductPage(store, store.products[1]), /<title>Zen \(White\) 
 // The men and women collections are their own size view, so curated metadata still describes them.
 assert.match(renderCollectionPage(store, "men"), /<title>Men\u2019s Shoes \u2013 Vegan Sneakers, Boots and Loafers \| New Movements<\/title>/);
 assert.match(renderCollectionPage(store, "men"), /name="description" content="Men\u2019s shoes in EU sizes 35\u201347\."/);
+// Curated metadata owns <title>; the page heading stays the collection's own name.
+assert.match(renderCollectionPage(store, "men"), /<h1>Men&#39;s Shoes<\/h1>/);
 assert.match(renderCollectionPage(store, "women"), /<title>Women&#39;s Shoes \| New Movements<\/title>/);
 // A view on top of another collection is a filtered variant and keeps the generated copy.
 assert.match(renderCollectionPage(store, "sneakers", { url: new URL("https://newmovements.com/collections/sneakers?view=women") }), /<title>Women&#39;s Sneakers \| New Movements<\/title>/);
@@ -319,6 +321,9 @@ assert.doesNotMatch(sitemap, /<loc>[^<]*\/(?:cart|search|order\/complete)<\/loc>
 // Locale projections must preserve canonical machine fields while changing
 // display copy, otherwise size views and collection filters silently empty.
 const norwegianStore = localizeStorefront({ ...store, locale: "nb-NO", pathPrefix: "/nb" }, "nb-NO");
+// Names and alt text are translated in ReAI, so the locale projection must leave them alone.
+assert.equal(norwegianStore.products[0].title, product.title);
+assert.equal(norwegianStore.collections.find((collection) => collection.handle === "women").title, "Women");
 assert.equal(norwegianStore.products[0].variants[0].options[0].name, "Size");
 assert.equal(norwegianStore.products[0].variants[0].options[0].displayName, "Størrelse");
 assert.equal(norwegianStore.products[0].productType, product.productType);
