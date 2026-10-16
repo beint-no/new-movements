@@ -30,9 +30,10 @@ const product = {
   id: "00000000-0000-4000-8000-000000000001", handle: "allrounder-y-white", title: "Allrounder Y (hvitt skinn)",
   brand: "New Movements", productType: "Allrounder Y", description: "<p>En vannavvisende unisex-sneaker designet i Oslo.</p>",
   attributes: [
-    { key: "color", name: "Color", values: [{ id: "c1", label: "White", taxonomyValues: [], colors: ["#ffffff"], aliases: [] }] },
-    { key: "shoe-features", name: "Shoe features", values: [{ id: "f1", label: "Waterproof", taxonomyValues: [], colors: [], aliases: [] }] },
-    { key: "footwear-material", name: "Footwear material", values: [{ id: "m1", label: "Leather", taxonomyValues: [], colors: [], aliases: [] }] },
+    // Taxonomy values are the labels the filter facets use, so they belong in the fixture.
+    { key: "color", name: "Color", values: [{ id: "c1", label: "White", taxonomyValues: [{ id: "gid://shopify/TaxonomyValue/3", name: "White" }], colors: ["#ffffff"], aliases: [] }] },
+    { key: "shoe-features", name: "Shoe features", values: [{ id: "f1", label: "Recycled materials", taxonomyValues: [{ id: "gid://shopify/TaxonomyValue/22936", name: "Recycled materials" }], colors: [], aliases: [] }] },
+    { key: "footwear-material", name: "Footwear material", values: [{ id: "m1", label: "Leather", taxonomyValues: [{ id: "gid://shopify/TaxonomyValue/9169", name: "Leather" }], colors: [], aliases: [] }] },
   ],
   images: [image, { ...image, alt: null }],
   variants: [
@@ -63,7 +64,7 @@ const STATIC_PATHS = [
 // Words that only appear in English sentences. Norwegian keeps "for", "men" and "av", so they
 // cannot be used here; everything below is either absent from Norwegian or a word this
 // storefront would have left untranslated.
-const ENGLISH = /\b(the|and|with|your|our|you|their|they|than|about|which|when|how|what|been|were|shop|search|close|women|choose|price|sort|filter|items|details|features|materials|returns|delivery|email|address|notify|quantity|select|sold|available|availability|read|view|join|discover|story|philosophy|recycle|careers|learn|change|menu|home|product|products|collection|collections|stock|image|guide|previous|next|bag|cart|checkout|shoes|shoe|care|gift|card)\b/i;
+const ENGLISH = /\b(the|and|with|your|our|you|their|they|than|about|which|when|how|what|been|were|shop|search|close|women|choose|price|sort|filter|items|details|features|materials|returns|delivery|email|address|notify|quantity|select|sold|available|availability|read|view|join|discover|story|philosophy|recycle|careers|learn|change|menu|home|product|products|collection|collections|stock|image|guide|previous|next|bag|cart|checkout|shoes|shoe|care|gift|card|white|black|blue|brown|green|grey|gray|yellow|silver|leather|rubber|polyester|wool|suede|synthetic|waterproof|lightweight|cushioned|breathable|vegan|recycled|sustainable|eco)\b/i;
 
 const norwegianText = (html) => html
   .replace(/<script[\s\S]*?<\/script>/gi, " ")

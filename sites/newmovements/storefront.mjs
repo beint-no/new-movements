@@ -312,6 +312,10 @@ const COLOR_SWATCHES = {
   gray: "#8e8e8e", grey: "#8e8e8e", green: "#08a73d", navy: "#30238f",
   olive: "#6f7040", orange: "#ff8200", pink: "#f6b8c6", turquoise: "#43a9aa",
   white: "#ffffff",
+  // Norwegian labels, because a swatch is matched on the displayed colour name.
+  svart: "#000000", blå: "#0d5dcc", brun: "#955731", grå: "#8e8e8e", grønn: "#08a73d",
+  marineblå: "#30238f", oliven: "#6f7040", olivengrønn: "#6f7040", oransje: "#ff8200",
+  rosa: "#f6b8c6", turkis: "#43a9aa", hvit: "#ffffff", sølv: "#c0c0c0", gul: "#f5c542",
 };
 // The review excerpts stay in the language the customer wrote them in; everything around
 // them is localized.
