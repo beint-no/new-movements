@@ -18,6 +18,7 @@ const TAXONOMY_LABELS = new Map([
   ["Color", "Farge"], ["Colour", "Farge"], ["Pattern", "Mønster"],
   ["Footwear material", "Materiale"], ["Shoe features", "Egenskaper"],
   ["Olive Green", "Olivengrønn"], ["Camel Brown", "Kamelbrun"], ["Macchiato Brown", "Macchiatobrun"],
+  ["Grape Grey", "Drueblå"], ["Mustard Yellow", "Sennepsgul"], ["Night Blue", "Nattblå"],
   ["Navy", "Marineblå"], ["Silver", "Sølv"], ["Yellow", "Gul"], ["Gold", "Gull"],
   ["Rubberized textile", "Gummiert tekstil"], ["Technical textile", "Teknisk tekstil"],
   ["Suede", "Semsket skinn"], ["Synthetic", "Syntetisk"], ["Rubber", "Gummi"],
@@ -89,6 +90,12 @@ export function localizeStorefront(store, locale) {
         values: (attribute.values || []).map((value) => ({
           ...value,
           label: taxonomyLabel(value.label, locale),
+          // Filter facets label themselves from the taxonomy value when a product carries one,
+          // so its name needs the same treatment. The ids that drive filtering are untouched.
+          taxonomyValues: (value.taxonomyValues || []).map((taxonomyValue) => ({
+            ...taxonomyValue,
+            name: taxonomyLabel(taxonomyValue.name, locale),
+          })),
         })),
       })),
     })),
