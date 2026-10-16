@@ -543,9 +543,13 @@ export function renderCollectionPage(store, handle, context = {}) {
   if (availableInSize) request.values.set("availability", ["1"]);
   const { products: matchedProducts, facets, warnings } = filterCollection(sourceProducts, COLLECTION_FACETS, request, context.availability || {});
   const products = matchedProducts.map((product) => ({ ...product, selectedVariantId: selectedSizes.length === 1 ? product.variants.find((variant) => variant.options?.some((option) => option.name.toLowerCase() === "size" && option.value === selectedSizes[0]))?.id : undefined }));
-  const curatedTitle = view ? "" : curatedMetaTitle(collection);
+  // The women and men collections are their own view, so their curated metadata still describes the
+  // page; a view applied on top of another collection is a filtered variant and keeps generated copy.
+  const ownView = !view || Object.hasOwn(VIEWS, handle);
+  const curatedTitle = ownView ? curatedMetaTitle(collection) : "";
   const title = curatedTitle || collectionMetaTitle(collection?.title || "All Shoes", view, context.locale || store?.locale);
-  const description = view ? `Shop ${title.toLowerCase()} in EU sizes ${VIEWS[view].minSize}–${VIEWS[view].maxSize}. Unisex styles designed in Oslo and handcrafted in Portugal.` : curatedMetaDescription(collection) || stripHtml(collection?.description) || "Shop unisex shoes designed in Oslo and handcrafted in Portugal. Explore sneakers, boots and loafers from New Movements.";
+  const curatedDescription = ownView ? curatedMetaDescription(collection) : "";
+  const description = curatedDescription || (view ? `Shop ${title.toLowerCase()} in EU sizes ${VIEWS[view].minSize}–${VIEWS[view].maxSize}. Unisex styles designed in Oslo and handcrafted in Portugal.` : stripHtml(collection?.description) || "Shop unisex shoes designed in Oslo and handcrafted in Portugal. Explore sneakers, boots and loafers from New Movements.");
   const maxPrice = Math.ceil(Math.max(0, ...sourceProducts.flatMap((product) => (product.variants || []).map((variant) => Number(variant.price) || 0))));
   const highestPrice = new Intl.NumberFormat("nb-NO", { maximumFractionDigits: 0 }).format(maxPrice);
   const priceFacet = maxPrice ? `<details name="collection-facet"><summary>Price</summary><div class="price-filter"><div class="price-fields"><label><span>${escapeHtml(store.currency || "NOK")}</span><input type="number" min="0" value="${request.minimum ?? ""}" step="any" inputmode="decimal" aria-label="Minimum price" name="filter.v.price.gte" placeholder="0"></label><span>to</span><label><span>${escapeHtml(store.currency || "NOK")}</span><input type="number" min="0" value="${request.maximum ?? ""}" step="any" inputmode="decimal" aria-label="Maximum price" name="filter.v.price.lte" placeholder="${maxPrice}"></label></div><p>The highest price is ${highestPrice}</p></div></details>` : "";

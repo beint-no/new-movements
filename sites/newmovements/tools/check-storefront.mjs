@@ -43,7 +43,7 @@ const store = {
     { id: "c2", handle: "sneakers", title: "Sneakers", seoTitle: "Sneakers \u2013 Vegan, Leather and Suede Styles", seoDescription: "Every New Movements sneaker, handcrafted in Portugal.", products: [{ handle: product.handle }] },
     { id: "c3", handle: "loafers", title: "Loafers", products: [{ handle: product.handle }] },
     { id: "c4", handle: "women", title: "Women", products: [{ handle: product.handle }] },
-    { id: "c5", handle: "men", title: "Men", products: [{ handle: product.handle }] },
+    { id: "c5", handle: "men", title: "Men", seoTitle: "Men\u2019s Shoes \u2013 Vegan Sneakers, Boots and Loafers", seoDescription: "Men\u2019s shoes in EU sizes 35\u201347.", products: [{ handle: product.handle }] },
   ],
 };
 
@@ -296,8 +296,12 @@ assert.match(renderCollectionPage(store, "sneakers"), /<title>Sneakers \u2013 Ve
 assert.match(renderCollectionPage(store, "sneakers"), /name="description" content="Every New Movements sneaker, handcrafted in Portugal\."/);
 // Without curated metadata the published name still carries the page.
 assert.match(renderProductPage(store, store.products[1]), /<title>Zen \(White\) Sneakers \| New Movements<\/title>/);
+// The men and women collections are their own size view, so curated metadata still describes them.
+assert.match(renderCollectionPage(store, "men"), /<title>Men\u2019s Shoes \u2013 Vegan Sneakers, Boots and Loafers \| New Movements<\/title>/);
+assert.match(renderCollectionPage(store, "men"), /name="description" content="Men\u2019s shoes in EU sizes 35\u201347\."/);
 assert.match(renderCollectionPage(store, "women"), /<title>Women&#39;s Shoes \| New Movements<\/title>/);
-assert.match(renderCollectionPage(store, "men"), /<title>Men&#39;s Shoes \| New Movements<\/title>/);
+// A view on top of another collection is a filtered variant and keeps the generated copy.
+assert.match(renderCollectionPage(store, "sneakers", { url: new URL("https://newmovements.com/collections/sneakers?view=women") }), /<title>Women&#39;s Sneakers \| New Movements<\/title>/);
 assert.match(renderPage(store, "/search"), /name="robots" content="noindex,follow"/);
 assert.match(renderCollectionPage(store, "sneakers", { url: new URL("https://newmovements.com/collections/sneakers?filter.v.availability=1") }), /name="robots" content="noindex,follow"/);
 assert.doesNotMatch(sitemap, /<loc>[^<]*\/(?:cart|search|order\/complete)<\/loc>/);
@@ -311,6 +315,11 @@ assert.equal(norwegianStore.products[0].productType, product.productType);
 assert.equal(norwegianStore.products[0].displayProductType, product.productType);
 const norwegianCollection = renderCollectionPage(norwegianStore, "women", { locale: "nb-NO", pathPrefix: "/nb", url: new URL("https://newmovements.com/nb/collections/women") });
 assert.match(norwegianCollection, /<title>Damesko \| New Movements<\/title>/);
+// Curated metadata arrives already translated from the Site API and is rendered as delivered.
+const norwegianCurated = { ...norwegianStore, collections: norwegianStore.collections.map((collection) => collection.handle === "men"
+  ? { ...collection, seoTitle: "Herresko \u2013 veganske sneakers, st\u00f8vler og loafers" } : collection) };
+assert.match(renderCollectionPage(norwegianCurated, "men", { locale: "nb-NO", pathPrefix: "/nb", url: new URL("https://newmovements.com/nb/collections/men") }),
+  /<title>Herresko \u2013 veganske sneakers, st\u00f8vler og loafers \| New Movements<\/title>/);
 assert.match(norwegianCollection, /class="product-card/);
 const norwegianProduct = renderProductPage(norwegianStore, norwegianStore.products[0], { [product.variants[0].id]: true }, { locale: "nb-NO", pathPrefix: "/nb", url: new URL("https://newmovements.com/nb/products/allrounder-y-white") });
 assert.match(norwegianProduct, /https:\/\/newmovements\.com\/nb\/products\/allrounder-y-white\?variant=/);
