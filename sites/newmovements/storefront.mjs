@@ -566,8 +566,11 @@ export function renderCollectionPage(store, handle, context = {}) {
   // page; a view applied on top of another collection is a filtered variant and keeps generated copy.
   const ownView = !view || Object.hasOwn(VIEWS, handle);
   const curatedTitle = ownView ? curatedMetaTitle(collection) : "";
-  // The page heading stays the collection's own name; curated metadata belongs in <title>.
-  const heading = collectionMetaTitle(collection?.title || "All Shoes", view, context.locale || store?.locale);
+  // The page heading is the collection's own name. A size view names its audience instead,
+  // because "Women" and "Sneakers" alone would not say which shoes are listed.
+  const heading = view
+    ? collectionMetaTitle(collection?.title || "All Shoes", view, context.locale || store?.locale)
+    : collection?.title || "All Shoes";
   const title = curatedTitle || heading;
   const curatedDescription = ownView ? curatedMetaDescription(collection) : "";
   const description = curatedDescription || (view ? `Shop ${title.toLowerCase()} in EU sizes ${VIEWS[view].minSize}–${VIEWS[view].maxSize}. Unisex styles designed in Oslo and handcrafted in Portugal.` : stripHtml(collection?.description) || "Shop unisex shoes designed in Oslo and handcrafted in Portugal. Explore sneakers, boots and loafers from New Movements.");
