@@ -12,6 +12,7 @@
 const priceMinimum = 'filter.v.price.gte';
 const priceMaximum = 'filter.v.price.lte';
 const sorts = new Set(['manual', 'title-ascending', 'title-descending', 'price-ascending', 'price-descending']);
+const facetCollator = new Intl.Collator('en', { numeric: true });
 
 /** @param {URLSearchParams} parameters @param {FacetDefinition[]} definitions @returns {FilterRequest} */
 export function parseCollectionFilters(parameters, definitions) {
@@ -131,7 +132,7 @@ export function filterCollection(products, definitions, request, availability = 
     }
     selected.filter((id) => ![...choices.values()].some((value) => value.id === id || value.aliases.includes(id)))
       .forEach((id) => choices.set(id, { id, label: 'Unavailable selection', colors: [], aliases: [], count: 0, selected: true, inputValue: id }));
-    return { ...definition, values: [...choices.values()].sort((left, right) => left.label.localeCompare(right.label, 'en', { numeric: true })) };
+    return { ...definition, values: [...choices.values()].sort((left, right) => facetCollator.compare(left.label, right.label)) };
   }).filter((facet) => facet.values.length);
   return { products: matched, facets, warnings: [...new Set(warnings)] };
 }

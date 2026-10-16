@@ -21,11 +21,12 @@ export const selectedView = (context, fallback = "") => {
 };
 
 export const sizeValue = (variant) => (variant.options || []).find((option) => option.name.toLowerCase() === "size")?.value || "";
+const sizeCollator = new Intl.Collator("en", { numeric: true });
 export const sortProductSizes = (product) => ({ ...product, variants: [...(product.variants || [])].sort((left, right) => {
   const a = sizeValue(left), b = sizeValue(right);
   const numeric = (value) => Number(String(value).replace(",", ".").replace("½", ".5").replace("⅓", ".333").replace("⅔", ".667"));
   const an = numeric(a), bn = numeric(b);
-  return a && b && Number.isFinite(an) && Number.isFinite(bn) ? an - bn : String(a).localeCompare(String(b), "en", { numeric: true });
+  return a && b && Number.isFinite(an) && Number.isFinite(bn) ? an - bn : sizeCollator.compare(String(a), String(b));
 }) });
 
 export function productView(product, view) {

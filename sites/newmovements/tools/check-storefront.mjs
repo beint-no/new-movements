@@ -325,6 +325,11 @@ assert.match(norwegianCollection, /href="\/nb\/products\//);
 assert.match(norwegianCollection, /href="\/assets\/store\.css\?v=/);
 assert.doesNotMatch(norwegianCollection, /(?:src|href)="\/nb\/(?:assets|brand-assets)\//);
 assert.match(collection, /<template data-card-image><picture>/);
+const seasonalHome = renderHomePage({ ...store, products: [...store.products, { ...product, handle: "cloud-boot-black" }] }, { availability: { [product.variants[0].id]: true } });
+const seasonalRail = seasonalHome.match(/class="product-grid home-product-strip"[\s\S]*?<\/section>/)?.[0];
+assert.ok(seasonalRail);
+assert.doesNotMatch(seasonalRail, /fetchpriority="high"/);
+assert.match(seasonalRail, /loading="lazy"/);
 const norwegianProduct = renderProductPage(norwegianStore, norwegianStore.products[0], { [product.variants[0].id]: true }, { locale: "nb-NO", pathPrefix: "/nb", url: new URL("https://newmovements.com/nb/products/allrounder-y-white") });
 assert.match(norwegianProduct, /https:\/\/newmovements\.com\/nb\/products\/allrounder-y-white\?variant=/);
 
