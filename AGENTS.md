@@ -153,3 +153,22 @@ Express alternatives with country restrictions and carrier branding from the Sit
 API. This is merchant-fulfilled shipping, not new automatic international DHL
 booking or Webshipper carrier quotes. Configure the actual customer delivery price
 and thresholds separately; do not invent prices from carrier names.
+
+## Production execution and the domain relay
+
+The New Movements Cloudflare account is on Workers Free (10 ms CPU/request), which
+cannot reliably render this catalog. Its `wrangler.jsonc` deploys only `proxy.js` on
+`newmovements.com` and `www.newmovements.com`. `wrangler.runtime.jsonc` deploys the
+full storefront to the existing paid Respiro account with a 1,000 ms ceiling.
+`npm run deploy` checks both bundles, deploys the runtime first, then the relay.
+Both commands explicitly select their account: the operator environment's default
+CLOUDFLARE_ACCOUNT_ID must never silently select another account.
+
+Both Workers require the same server-side `STOREFRONT_PROXY_TOKEN` secret. Retain
+it during deployments. The runtime accepts original origin, country and client IP
+only with this token; this preserves merchant URLs, cookies, redirects, checkout
+return URLs and per-visitor rate limits. Direct review traffic remains noindex.
+The relay streams requests/responses and follows no redirects. Secrets are not in
+Git or browser output. Preview tooling uses the full runtime configuration.
+If moving execution back into the merchant account, first enable Workers Paid,
+remove the relay deliberately and verify cold requests and CPU metrics.
