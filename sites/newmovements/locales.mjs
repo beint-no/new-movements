@@ -1,4 +1,10 @@
 const NB = [
+  ["Shoe features", "Egenskaper"],
+  ["Availability", "Tilgjengelighet"],
+  ["Product type", "Produkttype"],
+  ["In stock", "P\u00e5 lager"],
+  ["Material", "Materiale"],
+  ["Color", "Farge"],
   ["<h2>Learn</h2>", "<h2>L\u00e6r mer</h2>"],
   ["Prices and checkout use your country's currency.", "Priser og betaling vises i valutaen til landet ditt."],
   ["Read our customer reviews on Google \u2197", "Les kundeanmeldelsene v\u00e5re p\u00e5 Google \u2197"],
