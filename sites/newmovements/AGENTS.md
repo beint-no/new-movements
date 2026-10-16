@@ -116,6 +116,25 @@ collection. Maintain site-owned copy in Git; correct catalogue copy and
 factual inconsistencies in ReAI or the connected catalogue source, rather than
 adding per-product overrides to the Worker.
 
+## Languages
+
+`locales.mjs` exports `translator(locale)`; every renderer writes its own copy as
+`t("English", "Norsk")`. The rendered document is never post-processed: replacing English
+phrases in finished HTML produced "Herreu" from "Menu" and "Materialeer" from "Materials",
+and could not reach whole paragraphs. `public/assets/store.js` uses the same `t` helper,
+reading the language from `<html lang>`.
+
+Long-form editorial copy — the content pages, the Evensen story, the materials guide and the
+journal — lives in `content.mjs` (English) and `content.nb.mjs` (Norwegian), keyed identically;
+`tools/content.test.mjs` fails when a key is missing on either side, and also renders every
+Norwegian page and fails on English interface copy. Add a language by adding a file and a
+branch in `translator`, not by translating the document afterwards.
+
+Catalog text — names, descriptions, SEO titles and image alt text — is per-locale ReAI content
+and is never translated here. ReAI's shared taxonomy (attributes, option names, product types,
+materials) is English-only, so `locales.mjs` owns its Norwegian display labels while the
+canonical values stay untouched for filtering, search and checkout.
+
 ## Google reviews
 
 `reviews.mjs` holds a manually maintained editorial snapshot of the four featured

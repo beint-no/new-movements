@@ -3,48 +3,11 @@ import { isNorwegian, translateProductTitle } from "./locales.mjs";
 export const isFootwearProduct = (product) => (product.variants || []).some((variant) =>
   (variant.options || []).some((option) => /size/i.test(option.name) && /^\d+(?:\.\d+)?$/.test(option.value)));
 
-const NORWEGIAN_META_TITLES = new Map([
-  ["Women’s & Men’s Shoes", "Dame- og herresko"],
-  ["Shoe Collections", "Skokolleksjoner"],
-  ["Our Shoemaking Story", "Historien om skomakertradisjonen vår"],
-  ["Circular Shoes & Our Philosophy", "Sirkulære sko og vår filosofi"],
-  ["Shoe Recycling Programme", "Resirkulering av sko"],
-  ["Shoe Materials & Care", "Skopleie og materialer"],
-  ["Shoe Care Guide", "Skopleieguide"],
-  ["Shoe Design, Craft & Circularity Stories", "Historier om skodesign, håndverk og sirkularitet"],
-  ["Your Shopping Bag", "Handlekurven din"],
-  ["Search Shoes", "Søk etter sko"],
-  ["Women’s Shoe Search", "Søk etter damesko"],
-  ["Men’s Shoe Search", "Søk etter herresko"],
-  ["Thank You for Your Order", "Takk for bestillingen"],
-  ["Shoe Size Guide – EU, US & UK", "Størrelsesguide for sko – EU, US og UK"],
-  ["Page Not Found", "Siden ble ikke funnet"],
-  ["Shoe Store Temporarily Unavailable", "Skobutikken er midlertidig utilgjengelig"],
-  ["Contact Our Oslo Shoe Store", "Kontakt skobutikken vår i Oslo"],
-  ["Shoe Returns & Exchanges", "Retur og bytte av sko"],
-  ["Gift Card Help", "Hjelp med gavekort"],
-  ["Join Our Community", "Bli med i fellesskapet vårt"],
-  ["Career Opportunities", "Jobbmuligheter"],
-  ["Shoe Warranty Policy", "Garantivilkår for sko"],
-  ["Delivery & Shipping Policy", "Leverings- og fraktvilkår"],
-  ["Privacy Policy", "Personvernerklæring"],
-  ["Refund Policy", "Refusjon og retur"],
-  ["Terms & Conditions", "Vilkår og betingelser"],
-  ["Our Shoes in Finansavisen", "New Movements i Finansavisen"],
-  ["Circular Shoe Research with SINTEF", "Sirkulær skoforskning med SINTEF"],
-  ["Zen Sneakers: Design & Materials", "Zen-sneakers: design og materialer"],
-  ["NM Loafer: A Modern Classic", "NM Loafer: en moderne klassiker"],
-  ["Our Flagship Shoe Store in Oslo", "New Movements’ flaggskipbutikk i Oslo"],
-  ["A Shoemaker’s Update from Martin Evensen", "En oppdatering fra skomaker Martin Evensen"],
-  ["Introducing the Allrounder Sneaker", "Møt Allrounder-sneakeren"],
-  ["Circular Shoe Design & Recycling", "Sirkulært skodesign og resirkulering"],
-  ["Sneakers, Materials & Everyday Style", "Sneakers, materialer og hverdagsstil"],
-]);
-
+// Static pages and the journal carry their own Norwegian titles in `content.nb.mjs`, so this
+// is only the fallback for catalog titles that ReAI has no translation for.
 export function localizeMetaTitle(title, locale) {
   if (!isNorwegian(locale)) return title;
-  const value = String(title || "").replace(/\s*\|\s*New Movements\s*$/i, "");
-  return NORWEGIAN_META_TITLES.get(value) || translateProductTitle(value, locale);
+  return translateProductTitle(String(title || "").replace(/\s*\|\s*New Movements\s*$/i, ""), locale);
 }
 
 // Curated ReAI metadata wins when it exists; it is already written per locale, so it is
@@ -78,6 +41,7 @@ export function collectionMetaTitle(title, view = "", locale = "en") {
     const normalized = String(title || "").trim();
     if (/^(?:women|dame)$/i.test(normalized)) return "Damesko";
     if (/^(?:men|herre)$/i.test(normalized)) return "Herresko";
+    if (/^all shoes$/i.test(normalized)) return "Alle sko";
     return translateProductTitle(normalized, locale);
   }
   let label = title.replace(/^(women|men)$/i, (gender) => `${gender.toLowerCase() === "women" ? "Women's" : "Men's"} Shoes`);

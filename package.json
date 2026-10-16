@@ -18,7 +18,7 @@
     "deploy": "npm run check && CLOUDFLARE_ACCOUNT_ID=7ff7737df4a569ad04e6c7c91b607582 wrangler deploy --cwd sites/newmovements",
     "secret": "wrangler secret put REAI_SITE_TOKEN --cwd sites/newmovements",
     "generate:site-api": "node tools/generate-site-api.mjs",
-    "test": "node --test packages/reai-cloudflare-storefront/*.test.mjs packages/reai-site-client/*.test.mjs sites/newmovements/tools/routes.test.mjs tools/*.test.mjs",
+    "test": "node --test packages/reai-cloudflare-storefront/*.test.mjs packages/reai-site-client/*.test.mjs sites/newmovements/tools/*.test.mjs tools/*.test.mjs",
     "check:client-boundary": "node tools/check-site-api-boundary.mjs",
     "check:contract": "node tools/check-openapi.mjs",
     "check:dependencies": "npm audit --audit-level=high",
