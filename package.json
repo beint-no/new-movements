@@ -32,7 +32,8 @@
     "precheck:storefront": "npm run build:assets",
     "deploy:local": "npm run deploy",
     "preview:deploy": "npm exec --yes --package=wrangler@4.149.0 -- node tools/worker.mjs preview",
-    "preview:remove": "npm exec --yes --package=wrangler@4.149.0 -- node tools/worker.mjs remove"
+    "preview:remove": "npm exec --yes --package=wrangler@4.149.0 -- node tools/worker.mjs remove",
+    "optimize:images": "node tools/optimize-editorial-images.mjs"
   },
   "browserslist": [
     "baseline 2025 with downstream"

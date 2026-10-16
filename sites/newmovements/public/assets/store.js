@@ -386,6 +386,8 @@ const setCardSlide = (card, requestedIndex) => {
   card.dataset.cardIndex = String(index);
   slides.forEach((slide, slideIndex) => {
     const active = slideIndex === index;
+    const image = active && slide.querySelector('template[data-card-image]');
+    if (image) image.replaceWith(image.content.cloneNode(true));
     slide.classList.toggle('is-active', active);
     slide.setAttribute('aria-hidden', String(!active));
   });
@@ -792,7 +794,9 @@ async function refreshCartPrices() {
   cartRepricing = true;
   renderCart(); renderDrawerCart();
   try {
-    const response = await fetch(sitePath('/reai/catalog'));
+    const query = new URLSearchParams();
+    for (const id of new Set(readCart().map((item) => item.variant))) query.append('variantId', id);
+    const response = await fetch(sitePath(`/reai/cart?${query}`));
     if (!response.ok) throw new Error('Catalog unavailable');
     const store = await response.json();
     if (requestId !== cartPriceRequest) return;

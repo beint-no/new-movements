@@ -72,23 +72,19 @@ export function createReaiMarketStorefrontWorker(options) {
   const routes = localeRoutes(options);
   /** @type {{ markets: Market[], expiresAt: number, token: string, baseUrl: string } | undefined} */
   let configuration;
-  /** @type {Promise<Market[]> | undefined} */
-  let pending;
 
   async function marketsFor(env) {
     const baseUrl = env.REAI_BASE_URL || 'https://app.reai.no';
     if (configuration && configuration.token === env.REAI_SITE_TOKEN && configuration.baseUrl === baseUrl && configuration.expiresAt > Date.now()) return configuration.markets;
-    if (pending) return pending;
-    pending = (async () => {
-      const result = await new ReaiSiteClient({ baseUrl, token: env.REAI_SITE_TOKEN }).site();
-      if (!result.response.ok) throw new Error('Market settings are unavailable');
-      const site = await result.json();
-      const markets = (site.markets || []).filter((market) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(market.handle));
-      if (!markets.length) throw new Error('No market is configured');
-      configuration = { markets, expiresAt: Date.now() + 60_000, token: env.REAI_SITE_TOKEN, baseUrl };
-      return markets;
-    })();
-    try { return await pending; } finally { pending = undefined; }
+    // Reuse completed data, never another request's pending I/O. Cloudflare
+    // can cancel that I/O when the originating visitor disconnects.
+    const result = await new ReaiSiteClient({ baseUrl, token: env.REAI_SITE_TOKEN }).site();
+    if (!result.response.ok) throw new Error('Market settings are unavailable');
+    const site = await result.json();
+    const markets = (site.markets || []).filter((market) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(market.handle));
+    if (!markets.length) throw new Error('No market is configured');
+    configuration = { markets, expiresAt: Date.now() + 60_000, token: env.REAI_SITE_TOKEN, baseUrl };
+    return markets;
   }
 
   return {

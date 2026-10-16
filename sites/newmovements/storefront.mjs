@@ -10,6 +10,7 @@ import { renderSizeGuide, renderSizeGuideDialog, sizeChartForProduct, sizeGuideU
 import { renderCompactLegalFooter } from "../../packages/reai-cloudflare-storefront/footer.mjs";
 import { filterCollection, parseCollectionFilters } from "../../packages/reai-site-client/filtering.mjs";
 import { isNorwegian, localizeStorefront as localizeData, translateStorefrontHtml } from "./locales.mjs";
+import { optimizeEditorialImages } from "./editorial-images.mjs";
 
 export const SITE_ORIGIN = "https://newmovements.com";
 export const HANDLE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -51,9 +52,17 @@ export const stripHtml = (value = "") => String(value)
   .replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&")
   .replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/\s+/g, " ").trim();
 
-export const formatMoney = (value, currency = "NOK") => new Intl.NumberFormat("en-NO", {
-  style: "currency", currency, currencyDisplay: "code", maximumFractionDigits: Number(value) % 1 ? 2 : 0,
-}).format(Number(value));
+// Creating ICU formatters for every product/variant is expensive in a Worker.
+const moneyFormatters = new Map();
+export const formatMoney = (value, currency = "NOK") => {
+  const digits = Number(value) % 1 ? 2 : 0;
+  const key = `${currency}:${digits}`;
+  if (!moneyFormatters.has(key)) moneyFormatters.set(key, new Intl.NumberFormat("en-NO", {
+    style: "currency", currency, currencyDisplay: "code", maximumFractionDigits: digits,
+  }));
+  return moneyFormatters.get(key).format(Number(value));
+};
+const plainFormatters = [0, 2].map((digits) => new Intl.NumberFormat("nb-NO", { maximumFractionDigits: digits }));
 
 export const imageCandidates = (image) => {
   if (!image) return [];
@@ -99,7 +108,7 @@ export const priceRange = (variants = [], currency = "NOK", includeCurrency = tr
   const values = variants.map((variant) => Number(variant.price)).filter(Number.isFinite);
   const formatPrice = (value) => includeCurrency
     ? formatMoney(value, currency)
-    : new Intl.NumberFormat("nb-NO", { maximumFractionDigits: Number(value) % 1 ? 2 : 0 }).format(Number(value));
+    : plainFormatters[Number(value) % 1 ? 1 : 0].format(Number(value));
   if (!values.length) return formatPrice(0);
   const minimum = Math.min(...values);
   const maximum = Math.max(...values);
@@ -163,8 +172,14 @@ function cartUpsells(store) {
   return `<section class="cart-upsells" data-cart-upsells hidden aria-labelledby="cart-upsells-heading"><h3 id="cart-upsells-heading">Take care of your shoes</h3>${rows}<p class="cart-upsell-status" data-cart-upsell-status role="status"></p></section>`;
 }
 
+const regionNames = new Intl.DisplayNames(['en'], { type: 'region' });
+const regionLabels = new Map();
+const countryNames = { of(code) {
+  if (!regionLabels.has(code)) regionLabels.set(code, regionNames.of(code));
+  return regionLabels.get(code);
+} };
 function countrySelector(store) {
-  const names = new Intl.DisplayNames(['en'], { type: 'region' });
+  const names = countryNames;
   const countries = (store.markets || [{ handle: 'default', currency: 'NOK', countries: ['NO'] }])
     .flatMap((market) => (market.countries?.length ? market.countries : ['NO']).map((code) => ({ code, name: names.of(code), currency: market.currency })))
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -203,11 +218,14 @@ function documentHtml({ title, description, path, body, store, schema = "", imag
     const href = new URL(`${route.pathPrefix || ""}${path === "/" ? "/" : path}`, SITE_ORIGIN).href;
     return `<link rel="alternate" hreflang="${escapeHtml(route.locale)}" href="${escapeHtml(href)}">`;
   }).join("");
-  const html = `<!doctype html><html lang="${escapeHtml(isNorwegian(store?.locale) ? "nb" : "en")}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title><meta name="description" content="${escapeHtml(description)}"><meta name="theme-color" content="#ffffff">${robots}<link rel="canonical" href="${escapeHtml(canonical)}">${alternateLinks}<link rel="icon" href="${FAVICON_ICO}" sizes="16x16 32x32 48x48"><link rel="icon" href="${FAVICON_SVG}" type="image/svg+xml"><link rel="apple-touch-icon" href="${TOUCH_ICON}" sizes="180x180"><link rel="preconnect" href="https://app.reai.no" crossorigin><meta property="og:title" content="${escapeHtml(title)}"><meta property="og:description" content="${escapeHtml(description)}"><meta property="og:url" content="${escapeHtml(canonical)}"><meta property="og:type" content="${type}">${image ? `<meta property="og:image" content="${escapeHtml(image)}">` : ""}<link rel="stylesheet" href="${STORE_STYLE}"><script type="module" src="${STORE_SCRIPT}"></script>${schema}</head><body data-view="${view}" data-market="${escapeHtml(store?.marketHandle || "default")}" data-currency="${escapeHtml(store?.currency || "NOK")}" data-path-prefix="${escapeHtml(prefix)}">${header}<main id="main">${body}</main>${footer}</body></html>`;
+  const html = `<!doctype html><html lang="${escapeHtml(isNorwegian(store?.locale) ? "nb" : "en")}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title><meta name="description" content="${escapeHtml(description)}"><meta name="theme-color" content="#ffffff">${robots}<link rel="canonical" href="${escapeHtml(canonical)}">${alternateLinks}<link rel="icon" href="${FAVICON_ICO}" sizes="16x16 32x32 48x48"><link rel="icon" href="${FAVICON_SVG}" type="image/svg+xml"><link rel="apple-touch-icon" href="${TOUCH_ICON}" sizes="180x180"><link rel="preconnect" href="https://app.reai.no" crossorigin><meta property="og:title" content="${escapeHtml(title)}"><meta property="og:description" content="${escapeHtml(description)}"><meta property="og:url" content="${escapeHtml(canonical)}"><meta property="og:type" content="${type}">${image ? `<meta property="og:image" content="${escapeHtml(image)}">` : ""}<link rel="preload" href="/brand-assets/instrument-sans-regular.woff2" as="font" type="font/woff2" crossorigin><link rel="stylesheet" href="${STORE_STYLE}"><script type="module" src="${STORE_SCRIPT}"></script>${schema}</head><body data-view="${view}" data-market="${escapeHtml(store?.marketHandle || "default")}" data-currency="${escapeHtml(store?.currency || "NOK")}" data-path-prefix="${escapeHtml(prefix)}">${header}<main id="main">${body}</main>${footer}</body></html>`;
   // Renderers intentionally keep canonical paths and assets root-relative. The
   // shared locale router owns the public prefix, so apply it once at the
   // document boundary and keep component code locale-agnostic.
-  const localized = prefix ? html.replaceAll('href="/', `href="${prefix}/`).replaceAll('src="/', `src="${prefix}/`).replaceAll('action="/', `action="${prefix}/`) : html;
+  const optimized = optimizeEditorialImages(html);
+  const localized = prefix ? optimized.replace(/\b(href|action)="\/(?!\/)([^"]*)"/g, (attribute, name, path) =>
+    /^(?:assets\/|brand-assets\/|favicon\.ico(?:\?|$)|apple-touch-icon\.png(?:\?|$))/.test(path)
+      ? attribute : `${name}="${prefix}/${path}"`) : optimized;
   return translateStorefrontHtml(localized, store?.locale);
 }
 
@@ -218,12 +236,12 @@ function productCard(product, currency = "NOK", priority = false, includeCurrenc
   const productUrl = selectedUrl.pathname + selectedUrl.search;
   const images = shoppingImages(product).slice(0, 3);
   const image = images[0];
-  const minimumPrice = Math.min(...(product.variants || []).map((variant) => Number(variant.price)).filter(Number.isFinite));
-  const optionValues = (product.variants || []).flatMap((variant) => variant.options || []).map((option) => option.value).join(" ").toLowerCase();
-  const searchText = `${product.title} ${product.brand || ""} ${product.description || ""} ${optionValues}`.toLowerCase();
-  const type = (product.productType || "").toLowerCase();
-  const availability = (product.variants || []).some((variant) => variant.available === true || variant.available === undefined || Number(variant.inventoryQuantity) > 0) ? "in-stock" : "out-of-stock";
-  const slides = images.map((entry, index) => `<span class="product-slide${isProductShot(entry) ? " product-shot" : ""}${index === 0 ? " is-active" : ""}" data-card-slide aria-hidden="${index === 0 ? "false" : "true"}">${responsiveImage(entry, { alt: imageAltText(entry, product.title, index), width: 640, sizes: "(max-width: 700px) 50vw, 25vw", loading: priority || index === 0 ? undefined : "lazy", priority: priority && index === 0 })}</span>`).join("");
+  const slides = images.map((entry, index) => {
+    const image = responsiveImage(entry, { alt: imageAltText(entry, product.title, index), width: 640, sizes: "(max-width: 700px) 50vw, 25vw", loading: priority && index === 0 ? undefined : "lazy", priority: priority && index === 0 });
+    // Opacity-hidden images still download. Templates keep alternate card
+    // photos inert until the shopper hovers or uses the carousel controls.
+    return `<span class="product-slide${isProductShot(entry) ? " product-shot" : ""}${index === 0 ? " is-active" : ""}" data-card-slide aria-hidden="${index === 0 ? "false" : "true"}">${index ? `<template data-card-image>${image}</template>` : image}</span>`;
+  }).join("");
   const hasCarousel = images.length > 1;
   const carouselControls = hasCarousel ? `<button class="product-carousel-control product-carousel-control--previous" type="button" aria-label="Previous image" data-card-previous><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7"></path></svg></button><button class="product-carousel-control product-carousel-control--next" type="button" aria-label="Next image" data-card-next><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"></path></svg></button>` : "";
   const hasSize = (product.variants || []).some((variant) => (variant.options || []).some((option) => option.name.toLowerCase().includes("size")));
@@ -247,7 +265,7 @@ function productCard(product, currency = "NOK", priority = false, includeCurrenc
     })),
   };
   const productJson = JSON.stringify(modalProduct).replaceAll("<", "\\u003c").replaceAll("\u2028", "\\u2028").replaceAll("\u2029", "\\u2029");
-  return `<article class="product-card" data-product-title="${escapeHtml(product.title.toLowerCase())}" data-product-price="${Number.isFinite(minimumPrice) ? minimumPrice : 0}" data-product-options="${escapeHtml(optionValues)}" data-product-sizes="${escapeHtml(JSON.stringify(facetValues([product], "size").map((size) => size.toLowerCase())))}" data-product-search="${escapeHtml(searchText)}" data-product-type="${escapeHtml(type)}" data-product-availability="${availability}"><div class="product-media" data-card-carousel><a class="product-slides" href="${escapeHtml(productUrl)}" aria-label="${escapeHtml(product.title)}">${slides}</a>${carouselControls}<button class="card-quick-add" type="button" aria-label="${actionLabel} ${escapeHtml(product.title)}" data-card-quick-add><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8h12l-1 12H7L6 8Z"></path><path d="M9 8V6a3 3 0 0 1 6 0v2"></path><path d="M12 11v6M9 14h6"></path></svg><span>${actionLabel}</span></button></div><div class="product-card-copy"><h3><a href="${escapeHtml(productUrl)}">${escapeHtml(product.title)}</a></h3><p>${priceRange(product.variants, currency, includeCurrency)}</p></div><script type="application/json" data-card-product>${productJson}</script></article>`;
+  return `<article class="product-card"><div class="product-media" data-card-carousel><a class="product-slides" href="${escapeHtml(productUrl)}" aria-label="${escapeHtml(product.title)}">${slides}</a>${carouselControls}<button class="card-quick-add" type="button" aria-label="${actionLabel} ${escapeHtml(product.title)}" data-card-quick-add><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8h12l-1 12H7L6 8Z"></path><path d="M9 8V6a3 3 0 0 1 6 0v2"></path><path d="M12 11v6M9 14h6"></path></svg><span>${actionLabel}</span></button></div><div class="product-card-copy"><h3><a href="${escapeHtml(productUrl)}">${escapeHtml(product.title)}</a></h3><p>${priceRange(product.variants, currency, includeCurrency)}</p></div><script type="application/json" data-card-product>${productJson}</script></article>`;
 }
 
 function productGrid(products, currency, limit, className = "", includeCurrency = true) {
@@ -694,9 +712,19 @@ export function renderSitemap(store) {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${[...new Set(paths.map(canonicalPath))].filter((path) => !NON_INDEXABLE_PATHS.has(path)).map((path) => `  <url><loc>${SITE_ORIGIN}${prefix}${path === "/" ? "/" : path}</loc></url>`).join("\n")}\n</urlset>\n`;
 }
 
-export const catalogProductsForRequest = (products, context) => productsForView(products, selectedView(context)).map((product) => ({
-  ...product, searchTerms: (context.collections || []).filter((collection) => (collection.products || []).some((member) => member.handle === product.handle)).map((collection) => collection.title).join(" "),
-}));
+export const catalogProductsForRequest = (products, context) => {
+  const membership = new Map();
+  for (const collection of context.collections || []) {
+    for (const member of collection.products || []) {
+      const titles = membership.get(member.handle) || [];
+      titles.push(collection.title);
+      membership.set(member.handle, titles);
+    }
+  }
+  return productsForView(products, selectedView(context)).map((product) => ({
+    ...product, searchTerms: (membership.get(product.handle) || []).join(" "),
+  }));
+};
 
 function shoppingImages(product) {
   const images = (product.images || []).filter((image) => image?.url);

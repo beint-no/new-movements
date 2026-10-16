@@ -321,6 +321,10 @@ const norwegianCurated = { ...norwegianStore, collections: norwegianStore.collec
 assert.match(renderCollectionPage(norwegianCurated, "men", { locale: "nb-NO", pathPrefix: "/nb", url: new URL("https://newmovements.com/nb/collections/men") }),
   /<title>Herresko \u2013 veganske sneakers, st\u00f8vler og loafers \| New Movements<\/title>/);
 assert.match(norwegianCollection, /class="product-card/);
+assert.match(norwegianCollection, /href="\/nb\/products\//);
+assert.match(norwegianCollection, /href="\/assets\/store\.css\?v=/);
+assert.doesNotMatch(norwegianCollection, /(?:src|href)="\/nb\/(?:assets|brand-assets)\//);
+assert.match(collection, /<template data-card-image><picture>/);
 const norwegianProduct = renderProductPage(norwegianStore, norwegianStore.products[0], { [product.variants[0].id]: true }, { locale: "nb-NO", pathPrefix: "/nb", url: new URL("https://newmovements.com/nb/products/allrounder-y-white") });
 assert.match(norwegianProduct, /https:\/\/newmovements\.com\/nb\/products\/allrounder-y-white\?variant=/);
 
