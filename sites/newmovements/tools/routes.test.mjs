@@ -4,6 +4,8 @@ import { canonicalPath, handleStorefrontRequest, redirectStorefrontRequest } fro
 
 test("canonicalizes legacy Shopify paths", () => {
   assert.equal(canonicalPath("/collections/all-shoes-1"), "/collections/all");
+  assert.equal(canonicalPath("/collections/accessories"), "/collections/shoe-care");
+  assert.equal(canonicalPath("/collections/archive"), "/collections/all");
   assert.equal(canonicalPath("/collections/sneakers/products/allrounder-y-white"), "/products/allrounder-y-white");
   assert.equal(canonicalPath("/pages/about-us/"), "/pages/evensen-story");
   assert.equal(canonicalPath("/blogs/news/allrounder"), "/blogs/news/allrounder");
