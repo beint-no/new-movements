@@ -15,7 +15,7 @@
   },
   "scripts": {
     "dev": "wrangler dev --cwd sites/newmovements",
-    "deploy": "npm run check && wrangler deploy --cwd sites/newmovements",
+    "deploy": "npm run check && CLOUDFLARE_ACCOUNT_ID=7ff7737df4a569ad04e6c7c91b607582 wrangler deploy --cwd sites/newmovements",
     "secret": "wrangler secret put REAI_SITE_TOKEN --cwd sites/newmovements",
     "generate:site-api": "node tools/generate-site-api.mjs",
     "test": "node --test packages/reai-cloudflare-storefront/*.test.mjs packages/reai-site-client/*.test.mjs sites/newmovements/tools/routes.test.mjs tools/*.test.mjs",
@@ -30,7 +30,7 @@
     "pretypecheck": "npm run build:assets",
     "pretest": "npm run build:assets",
     "precheck:storefront": "npm run build:assets",
-    "deploy:local": "npm exec --yes --package=wrangler@4.149.0 -- node tools/worker.mjs deploy",
+    "deploy:local": "npm run deploy",
     "preview:deploy": "npm exec --yes --package=wrangler@4.149.0 -- node tools/worker.mjs preview",
     "preview:remove": "npm exec --yes --package=wrangler@4.149.0 -- node tools/worker.mjs remove"
   },
