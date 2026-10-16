@@ -74,6 +74,21 @@ assert.match(home, /data-mega-backdrop aria-hidden="true"/);
 assert.doesNotMatch(home, /data-mega-menu hidden/);
 assert.match(home, /aria-label="Klarna"/);
 
+const productPage = renderProductPage(store, product, {
+  [product.variants[0].id]: true,
+  [product.variants[1].id]: false,
+});
+const jsonLd = productPage.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)?.[1];
+assert.ok(jsonLd, "product pages expose JSON-LD");
+const productSchema = JSON.parse(jsonLd);
+assert.equal(productSchema["@type"], "Product");
+assert.equal(productSchema.url, "https://newmovements.com/products/allrounder-y-white");
+assert.equal(productSchema.offers.length, 2);
+assert.equal(productSchema.offers[0].availability, "https://schema.org/InStock");
+assert.equal(productSchema.offers[1].availability, "https://schema.org/OutOfStock");
+assert.equal(productSchema.offers[0].hasMerchantReturnPolicy.merchantReturnDays, 30);
+assert.doesNotMatch(productPage, /itemOffered/);
+
 const story = renderStoryPage(store);
 assert.match(story, /<h1>Our Story<\/h1>/);
 assert.match(story, /Johnny Evensen/);
