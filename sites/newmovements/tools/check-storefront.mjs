@@ -24,8 +24,8 @@ const product = {
   productType: "Sneakers",
   attributes: [{ key: "color", name: "Color", values: [{ id: "color-white", label: "White", taxonomyValues: [{ id: "gid://shopify/TaxonomyValue/3", name: "White" }], colors: ["#ffffff"], aliases: [] }] }],
   description: "A water-repellent unisex sneaker designed in Oslo.",
-  seoTitle: "Allrounder Y (White) - Water-repellent sneaker | New Movements - Osl",
-  seoDescription: "White leather unisex sneaker.",
+  seoTitle: "Wool-Lined Water-Resistant Sneakers \u2013 Allrounder Y White Leather",
+  seoDescription: "Water-resistant White Leather winter sneakers with wool lining and an anti-slip rubber sole. Handcrafted in Portugal, designed in Oslo.",
   images: [image, { ...image, url: "https://app.reai.no/media/product-images/allrounder-side.avif", alt: null }],
   variants: [
     { id: "11111111-1111-4111-8111-111111111111", price: 2595, sku: "AY-W-40", options: [{ name: "Size", value: "40" }] },
@@ -35,12 +35,12 @@ const product = {
 const store = {
   currency: "NOK", catalogVersion: 1, products: [
     product,
-    { ...product, id: "00000000-0000-4000-8000-000000000003", handle: "zen-white", title: "Zen (White)", productType: "Zen" },
+    { ...product, id: "00000000-0000-4000-8000-000000000003", handle: "zen-white", title: "Zen (White)", productType: "Zen", seoTitle: null, seoDescription: null },
     { ...product, id: "00000000-0000-4000-8000-000000000002", handle: "allrounder-y-black", title: "Allrounder Y (Black)" },
   ],
   collections: [
     { id: "c1", handle: "new-arrivals", title: "New Arrivals", products: [{ handle: product.handle }] },
-    { id: "c2", handle: "sneakers", title: "Sneakers", products: [{ handle: product.handle }] },
+    { id: "c2", handle: "sneakers", title: "Sneakers", seoTitle: "Sneakers \u2013 Vegan, Leather and Suede Styles", seoDescription: "Every New Movements sneaker, handcrafted in Portugal.", products: [{ handle: product.handle }] },
     { id: "c3", handle: "loafers", title: "Loafers", products: [{ handle: product.handle }] },
     { id: "c4", handle: "women", title: "Women", products: [{ handle: product.handle }] },
     { id: "c5", handle: "men", title: "Men", products: [{ handle: product.handle }] },
@@ -288,10 +288,14 @@ assert.deepEqual(productView(rangeProduct, "women").variants.map((variant) => va
 assert.deepEqual(productView(rangeProduct, "men").variants.map((variant) => variant.id), ["39", "42", "46.5", "48"]);
 assert.equal(productView(rangeProduct, "women").variants[1], productView(rangeProduct, "men").variants[0]);
 
-// Imported SEO names can omit colour or end mid-brand. Use the published name once.
+// Curated ReAI metadata owns the title and description; the brand suffix is still appended once.
 const productMetadata = renderProductPage(store, product);
-assert.match(productMetadata, /<title>Allrounder Y \(White Leather\) Sneakers \| New Movements<\/title>/);
-assert.doesNotMatch(productMetadata, /<title>[^<]*Osl(?:<| \|)/);
+assert.match(productMetadata, /<title>Wool-Lined Water-Resistant Sneakers \u2013 Allrounder Y White Leather \| New Movements<\/title>/);
+assert.match(productMetadata, /name="description" content="Water-resistant White Leather winter sneakers with wool lining and an anti-slip rubber sole\. Handcrafted in Portugal, designed in Oslo\."/);
+assert.match(renderCollectionPage(store, "sneakers"), /<title>Sneakers \u2013 Vegan, Leather and Suede Styles \| New Movements<\/title>/);
+assert.match(renderCollectionPage(store, "sneakers"), /name="description" content="Every New Movements sneaker, handcrafted in Portugal\."/);
+// Without curated metadata the published name still carries the page.
+assert.match(renderProductPage(store, store.products[1]), /<title>Zen \(White\) Sneakers \| New Movements<\/title>/);
 assert.match(renderCollectionPage(store, "women"), /<title>Women&#39;s Shoes \| New Movements<\/title>/);
 assert.match(renderCollectionPage(store, "men"), /<title>Men&#39;s Shoes \| New Movements<\/title>/);
 assert.match(renderPage(store, "/search"), /name="robots" content="noindex,follow"/);

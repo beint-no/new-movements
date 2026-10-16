@@ -47,8 +47,18 @@ export function localizeMetaTitle(title, locale) {
   return NORWEGIAN_META_TITLES.get(value) || translateProductTitle(value, locale);
 }
 
-// Use the published product name and colour: imported SEO titles may be truncated,
-// repeated across colours, or describe an earlier version of the material.
+// Curated ReAI metadata wins when it exists; it is already written per locale, so it is
+// used verbatim apart from the brand suffix this storefront appends to every title.
+export function curatedMetaTitle(entity) {
+  return String(entity?.seoTitle || "").replace(/\s*\|\s*New Movements\b.*$/i, "").trim();
+}
+
+export function curatedMetaDescription(entity) {
+  return String(entity?.seoDescription || "").trim();
+}
+
+// Without curated metadata, fall back to the published product name and colour: imported SEO
+// titles may be truncated, repeated across colours, or describe an earlier version of the material.
 export function productMetaTitle(product, view = "", locale = "en") {
   const name = product.title.trim();
   const footwear = isFootwearProduct(product);
