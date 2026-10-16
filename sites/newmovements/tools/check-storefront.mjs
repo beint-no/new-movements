@@ -311,6 +311,8 @@ assert.match(renderCollectionPage(store, "men"), /<title>Men\u2019s Shoes \u2013
 assert.match(renderCollectionPage(store, "men"), /name="description" content="Men\u2019s shoes in EU sizes 35\u201347\."/);
 // Curated metadata owns <title>; the page heading stays the collection's own name.
 assert.match(renderCollectionPage(store, "men"), /<h1>Men&#39;s Shoes<\/h1>/);
+assert.match(renderCollectionPage(store, "sneakers"), /<h1>Sneakers<\/h1>/);
+assert.match(renderCollectionPage(store, "loafers"), /<h1>Loafers<\/h1>/);
 assert.match(renderCollectionPage(store, "women"), /<title>Women&#39;s Shoes \| New Movements<\/title>/);
 // A view on top of another collection is a filtered variant and keeps the generated copy.
 assert.match(renderCollectionPage(store, "sneakers", { url: new URL("https://newmovements.com/collections/sneakers?view=women") }), /<title>Women&#39;s Sneakers \| New Movements<\/title>/);
