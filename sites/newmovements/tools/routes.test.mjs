@@ -31,7 +31,11 @@ test("validates newsletter signup before provider delivery", async () => {
 });
 
 test("redirects storefront HTTP requests to HTTPS", async () => {
-  const request = new Request("http://newmovements.com/collections/women?view=women");
+  // Cloudflare can normalize the Worker URL to HTTPS while preserving the
+  // original client scheme in CF-Visitor. Keep this regression covered.
+  const request = new Request("https://newmovements.com/collections/women?view=women", {
+    headers: { "CF-Visitor": JSON.stringify({ scheme: "http" }) },
+  });
   const response = await handleStorefrontRequest({ request, env: {}, url: new URL(request.url) });
   assert.equal(response.status, 308);
   assert.equal(response.headers.get("Location"), "https://newmovements.com/collections/women?view=women");
