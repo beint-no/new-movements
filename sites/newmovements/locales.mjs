@@ -120,12 +120,12 @@ export function translateStorefrontHtml(html, locale) {
 }
 
 const PRODUCT_WORDS = new Map([
-  ["White", "Hvit"], ["Black", "Sort"], ["Grey", "Grå"], ["Gray", "Grå"],
+  ["White", "Hvit"], ["Black", "Svart"], ["Grey", "Grå"], ["Gray", "Grå"],
   ["Olive", "Oliven"], ["Brown", "Brun"], ["Blue", "Blå"], ["Green", "Grønn"],
   ["Orange", "Oransje"], ["Pink", "Rosa"], ["Forest", "Skoggrønn"], ["Nordic", "Nordisk"],
   ["Dark", "Mørk"], ["Full", "Hel"], ["Natural", "Natur"], ["Sand", "Sand"],
   ["Camel", "Kamel"], ["Burgundy", "Burgunder"], ["Earth", "Jord"], ["Turquoise", "Turkis"],
-  ["Wool", "Ull"], ["Leather", "Skinn"], ["Technical", "Tekstil"], ["Textile", "Tekstil"],
+  ["Wool", "Ull"], ["Leather", "Skinn"], ["Technical", "Teknisk"], ["Textile", "Tekstil"],
   ["Nubuck", "Nubuck"], ["Smooth", "Glatt"], ["Beige", "Beige"], ["Gold", "Gull"],
   ["Certified", "Sertifisert"], ["Shoe", "Sko"], ["Shoes", "Sko"], ["Care", "Pleie"],
   ["Insole", "Såle"], ["Insoles", "Såler"], ["Spray", "Spray"], ["Cleaner", "Rengjøring"],
@@ -133,43 +133,6 @@ const PRODUCT_WORDS = new Map([
   ["Sandals", "Sandaler"], ["Sandal", "Sandal"], ["Loafer", "Loafer"], ["Low", "Lav"],
 ]);
 
-const COLLECTION_NAMES = new Map([
-  ["Accessories", "Tilbehør"],
-  ["Allrounder E sneaker", "Allrounder E-sneakers"],
-  ["Allrounder S sneaker", "Allrounder S-sneakers"],
-  ["Allrounder series", "Allrounder-serien"],
-  ["Allrounder Sneakers", "Allrounder-sneakers"],
-  ["Apparel", "Klær"],
-  ["Archive", "Arkiv"],
-  ["Autumn & Winter", "Høst og vinter"],
-  ["Classic Sneakers", "Klassiske sneakers"],
-  ["Cloud Boots", "Cloud boots"],
-  ["Circular Collection", "Den sirkulære kolleksjonen"],
-  ["Footwear", "Fottøy"],
-  ["Flow Boots", "Flow boots"],
-  ["Gift Card", "Gavekort"],
-  ["Lav Hikers & Loafers", "Lave hikers og loafers"],
-  ["Men", "Herre"],
-  ["New Arrivals", "Nyheter"],
-  ["Norwegian Sneakers", "Norske sneakers"],
-  ["Original sneaker", "Original-sneakers"],
-  ["Shoe Care", "Skopleie"],
-  ["Sko Pleie", "Skopleie"],
-  ["Skinn shoes", "Skinnsko"],
-  ["Space Boots", "Space boots"],
-  ["Spring & Summer", "Vår og sommer"],
-  ["Technical Textile Shoes", "Tekstilsko"],
-  ["Tekstil Tekstil Sko", "Tekstilsko"],
-  ["Top picks", "Utvalgte favoritter"],
-  ["Water-resistant shoes", "Vannavvisende sko"],
-  ["Waterproof shoes", "Vanntette sko"],
-  ["White sneakers", "Hvite sneakers"],
-  ["Women", "Dame"],
-  ["Women & Men New Arrivals", "Nyheter for dame og herre"],
-  ["Wool lined shoes", "Ullfôrede sko"],
-  ["Zen sneaker", "Zen-sneakers"],
-  ["Zipper Boots", "Boots med glidelås"],
-]);
 
 const OPTION_NAMES = new Map([
   ["Size", "Størrelse"],
@@ -183,18 +146,14 @@ export function translateProductTitle(title, locale) {
   return String(title).replace(/\b[A-Za-z]+\b/g, (word) => PRODUCT_WORDS.get(word) || word);
 }
 
-export function translateCollectionTitle(title, locale) {
-  if (title == null || !isNorwegian(locale)) return title;
-  return COLLECTION_NAMES.get(String(title)) || translateProductTitle(title, locale);
-}
-
 export function localizeStorefront(store, locale) {
   if (!isNorwegian(locale) || !store) return store;
   return {
     ...store,
     products: (store.products || []).map((product) => ({
       ...product,
-      title: translateProductTitle(product.title, locale),
+      // Names and alt text are translated in ReAI and delivered per locale; only the
+      // taxonomy labels below still need the local word list.
       // Keep canonical taxonomy values stable for filtering, search and API
       // consumers. Display labels are localized separately.
       displayProductType: translateProductTitle(product.productType, locale),
@@ -218,10 +177,7 @@ export function localizeStorefront(store, locale) {
         })),
       })),
     })),
-    collections: (store.collections || []).map((collection) => ({
-      ...collection,
-      title: translateCollectionTitle(collection.title, locale),
-    })),
+    collections: store.collections || [],
   };
 }
 
