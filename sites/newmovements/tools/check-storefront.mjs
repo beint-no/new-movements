@@ -78,6 +78,16 @@ const productPage = renderProductPage(store, product, {
   [product.variants[0].id]: true,
   [product.variants[1].id]: false,
 });
+const breadcrumbFor = (html) => html.match(/<nav class="breadcrumbs"[\s\S]*?<\/nav>/)?.[0] || "";
+const productBreadcrumb = breadcrumbFor(productPage);
+assert.match(productBreadcrumb, /<ol><li>/);
+assert.equal((productBreadcrumb.match(/<a /g) || []).length, 2, "Parallel collections must not appear as ancestors");
+assert.match(productBreadcrumb, /aria-current="page"/);
+const womenBreadcrumb = breadcrumbFor(renderProductPage(store, product, {}, { url: new URL("https://newmovements.com/products/allrounder-y-white?view=women") }));
+assert.match(womenBreadcrumb, /href="\/collections\/women"/);
+assert.doesNotMatch(womenBreadcrumb, /href="\/collections\/new-arrivals"/);
+const noCollectionBreadcrumb = breadcrumbFor(renderProductPage({ ...store, collections: [] }, product));
+assert.equal((noCollectionBreadcrumb.match(/<a /g) || []).length, 1);
 const jsonLd = productPage.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)?.[1];
 assert.ok(jsonLd, "product pages expose JSON-LD");
 const productSchema = JSON.parse(jsonLd);
