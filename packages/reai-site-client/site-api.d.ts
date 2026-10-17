@@ -433,6 +433,7 @@ export interface components {
         };
         SiteAnalyticsBatchDto: {
             events: components["schemas"]["SiteAnalyticsEventDto"][];
+            origin?: string | null;
         };
         SiteAnalyticsEventDto: {
             /** Format: uuid */
@@ -543,6 +544,8 @@ export interface components {
             editable: boolean;
             /** Format: date-time */
             expiresAt: string;
+            giftCardAmount: number;
+            giftCardCode?: string | null;
             id: string;
             lines: components["schemas"]["SiteCheckoutDetailsLineDto"][];
             locale: string;
@@ -601,6 +604,11 @@ export interface components {
         };
         /** @description Checkout lines already selected by the store or application. Create this request from a trusted backend or Worker, never from the shopper's browser. */
         SiteCheckoutSessionReq: {
+            /**
+             * Format: uuid
+             * @description Optional anonymous browser session UUID for aggregate store analytics. Omit on tracking opt-out; never send customer data.
+             */
+            analyticsSessionId?: string | null;
             /** @description ISO 3166-1 alpha-2 delivery country within the selected market. Defaults to its first country when omitted. */
             countryCode?: string | null;
             lines: components["schemas"]["SiteCheckoutLineReq"][];
@@ -630,6 +638,7 @@ export interface components {
             complete?: boolean;
             customer?: components["schemas"]["SiteCheckoutCustomerDto"] | null;
             discountCode?: string | null;
+            giftCardCode?: string | null;
             optionToken?: string | null;
             pickupToken?: string | null;
             /** Format: int32 */
