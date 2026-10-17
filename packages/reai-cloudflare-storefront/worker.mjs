@@ -204,6 +204,7 @@ export function createReaiStorefrontWorker({
     /** @type {SiteCheckoutSessionRequest} */
     const checkoutBody = {
       lines,
+      ...(typeof body.analyticsSessionId === "string" && VARIANT_ID.test(body.analyticsSessionId) ? {analyticsSessionId: body.analyticsSessionId} : {}),
       returnUrl: new URL(publicPath(checkoutReturnPath), url.origin).href,
       ...(merchantCheckoutPath ? { merchantCheckoutUrl: new URL(publicPath(merchantCheckoutPath), url.origin).href } : {}),
     };
@@ -528,6 +529,7 @@ export function createReaiStorefrontWorker({
       upstreamResult = client.availability(variantId, deliveryContext);
       cacheControl = "no-store";
     } else if (request.method === "POST" && route === "/reai/analytics/events") {
+      if (env.CHECKOUT_ENABLED === "false") return new Response(null, {status: 204, headers: {"Cache-Control": "no-store"}});
       if (request.headers.get("Origin") !== url.origin) return jsonResponse({ error: "Invalid origin" }, 403, env);
       if (Number(request.headers.get("Content-Length")) > 16000) return jsonResponse({ error: "Batch too large" }, 413, env);
       if (env.ANALYTICS_RATE_LIMIT) {
@@ -544,7 +546,7 @@ export function createReaiStorefrontWorker({
           (event.productId!=null && !VARIANT_ID.test(event.productId)) || (event.variantId!=null && !VARIANT_ID.test(event.variantId)) ||
           (event.quantity!=null && (!Number.isInteger(event.quantity) || event.quantity<1 || event.quantity>100)))) return jsonResponse({ error: "Invalid events" }, 400, env);
       // Strip unknown fields so no personal data or arbitrary metadata reaches analytics.
-      upstreamResult=client.analyticsEvents({events:batch.events.map(({id,sessionId,kind,path,productId,variantId,quantity})=>({id,sessionId,kind,path,productId,variantId,quantity}))});
+      upstreamResult=client.analyticsEvents({origin:url.origin,events:batch.events.map(({id,sessionId,kind,path,productId,variantId,quantity})=>({id,sessionId,kind,path,productId,variantId,quantity}))});
       cacheControl="no-store";
     } else if (request.method === "POST" && ["/reai/newsletter/subscribe", "/reai/stock/subscribe"].includes(route)) {
       const origin = request.headers.get("Origin");

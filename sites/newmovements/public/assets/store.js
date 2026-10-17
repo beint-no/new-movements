@@ -1,4 +1,4 @@
-import {track} from './analytics.js';
+import {track, checkoutAnalytics} from './analytics.js';
 document.documentElement.classList.add('has-store-js');
 const CART_KEY = 'newmovements-cart-v1';
 const pathPrefix = document.body.dataset.pathPrefix || '';
@@ -555,9 +555,9 @@ const renderCart = () => {
   const list = cartRoot.querySelector('[data-cart-items]');
   const subtotal = cartRoot.querySelector('[data-cart-subtotal]');
   if (!items.length) {
-    list.innerHTML = `<div class="message-page"><h2>Your bag is empty</h2><p><a href="${sitePath('/collections/all')}">Continue shopping</a></p></div>`;
+    list.innerHTML = `<div class="message-page"><h2>${t('Your bag is empty', 'Handlekurven er tom')}</h2><p><a href="${sitePath('/collections/all')}">${t('Continue shopping', 'Fortsett å handle')}</a></p></div>`;
   } else {
-    list.innerHTML = items.map((item, index) => `<article class="cart-line${checkoutStockIssues.has(item.variant) ? ' has-stock-issue' : ''}" data-cart-index="${index}">${item.image ? `<img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.imageAlt || `${item.title} product image`)}">` : '<div></div>'}<div><h2><a href="${escapeHtml(localHref(item.url || `/products/${item.handle}`))}">${escapeHtml(item.title)}</a></h2>${cartOptions(item) ? `<p>${escapeHtml(cartOptions(item))}</p>` : ''}<p>${money(item.price, item.currency || 'NOK')}</p><label>Qty <input type="number" min="1" max="20" value="${item.quantity}" data-cart-quantity></label>${cartStockNotice(item)}<button type="button" data-cart-remove>Remove</button></div><strong>${money(item.price * item.quantity, item.currency || 'NOK')}</strong></article>`).join('');
+    list.innerHTML = items.map((item, index) => `<article class="cart-line${checkoutStockIssues.has(item.variant) ? ' has-stock-issue' : ''}" data-cart-index="${index}">${item.image ? `<img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.imageAlt || `${item.title} product image`)}">` : '<div></div>'}<div><h2><a href="${escapeHtml(localHref(item.url || `/products/${item.handle}`))}">${escapeHtml(item.title)}</a></h2>${cartOptions(item) ? `<p>${escapeHtml(cartOptions(item))}</p>` : ''}<p>${money(item.price, item.currency || 'NOK')}</p><label>${t('Qty', 'Antall')} <input type="number" min="1" max="20" value="${item.quantity}" data-cart-quantity></label>${cartStockNotice(item)}<button type="button" data-cart-remove>${t('Remove', 'Fjern')}</button></div><strong>${money(item.price * item.quantity, item.currency || 'NOK')}</strong></article>`).join('');
   }
   const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   if (subtotal) subtotal.textContent = cartRepricing ? t('Updating prices…', 'Oppdaterer priser …') : cartPriceFailed || items.some((item) => unavailableMarketVariants.has(item.variant)) ? t('Price unavailable', 'Pris utilgjengelig') : money(total);
@@ -600,7 +600,7 @@ checkoutButtons.forEach((checkout) => checkout.addEventListener('click', async (
   checkout.textContent = t('Opening secure checkout…', 'Åpner sikker betaling …');
   if (checkoutError) checkoutError.hidden = true;
   try {
-    const response = await fetch(sitePath('/reai/checkout/start'), { method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': crypto.randomUUID() }, body: JSON.stringify({ lines }) });
+    const response = await fetch(sitePath('/reai/checkout/start'), { method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': crypto.randomUUID() }, body: JSON.stringify({ lines, ...await checkoutAnalytics() }) });
     const payload = await response.json().catch(() => ({}));
     if (submittedRevision !== cartRevision) throw new Error(t('Your bag changed. Please check out again.', 'Handlekurven ble endret. Gå til kassen på nytt.'));
     if (response.status === 409 && payload.code === 'INSUFFICIENT_STOCK' && Array.isArray(payload.stockIssues)) {
