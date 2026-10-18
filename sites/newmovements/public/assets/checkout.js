@@ -1,8 +1,11 @@
 import './analytics.js';
+import {trackCheckout, trackPurchase} from './marketing.js';
 const root = document.body;
 const pathPrefix = root.dataset.pathPrefix || '';
 const sitePath = (path) => `${pathPrefix}${path === '/' ? '/' : path}`;
 let state = JSON.parse(root.dataset.checkout);
+trackCheckout(state);
+void trackPurchase(state);
 const no = /^no|^nb|^nn/.test(state.locale);
 const t = (en, nb) => no ? nb : en;
 const money = (v) => new Intl.NumberFormat(no ? 'nb-NO' : 'en-GB', { style: 'currency', currency: state.currency }).format(Number(v));
@@ -54,6 +57,7 @@ function message(text = '') { if (errorBox) { errorBox.textContent = text; error
 function text(selector, value) { const node = document.querySelector(selector); if (node) node.textContent = value; }
 function refresh(next) {
   state = next;
+  trackCheckout(state);
   rememberDraft();
   text('[data-subtotal]', money(state.subtotal)); text('[data-total]', money(state.total)); text('[data-mobile-total]', money(state.total));
   text('[data-shipping-price]', state.shippingGross == null ? t('Choose delivery','Velg levering') : Number(state.shippingGross) === 0 ? t('Free','Gratis') : money(state.shippingGross));
@@ -351,6 +355,7 @@ if (root.dataset.cartReturn==='true') {
     try {
       refresh(await api());
       if(state.phase==='complete') {
+        void trackPurchase(state);
         clearDraft();
         // Only remove the purchased cart; items added in another tab remain.
         const key='newmovements-cart-v1';

@@ -1,4 +1,5 @@
 import {track, checkoutAnalytics} from './analytics.js';
+import {trackCartAddition} from './marketing.js';
 document.documentElement.classList.add('has-store-js');
 const CART_KEY = 'newmovements-cart-v1';
 const pathPrefix = document.body.dataset.pathPrefix || '';
@@ -24,7 +25,10 @@ const writeCart = (items) => {
   const previous=readCart();
   for(const item of items) {
     const delta=item.quantity-(previous.find(p=>p.variant===item.variant)?.quantity||0);
-    if(delta>0) track('add_to_cart',{productId:item.id,variantId:item.variant,quantity:delta});
+    if(delta>0) {
+      track('add_to_cart',{productId:item.id,variantId:item.variant,quantity:delta});
+      trackCartAddition(item,delta);
+    }
   }
   for(const item of previous) {
     const delta=item.quantity-(items.find(p=>p.variant===item.variant)?.quantity||0);

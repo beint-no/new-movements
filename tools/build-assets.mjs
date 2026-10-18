@@ -10,12 +10,14 @@ export async function buildAssets(siteRoot) {
   await rm(join(output, 'public'), { recursive: true, force: true });
   await cp(source, join(output, 'public'), { recursive: true });
   // Imported modules participate in the parent asset hash, without manual version numbers.
-  const analytics = await readFile(join(output, 'public', 'assets/analytics.js')).catch(() => null);
-  if (analytics) {
-    const version=createHash('sha256').update(analytics).digest('hex').slice(0,16);
-    for(const file of ['assets/store.js','assets/checkout.js']) {
-      const js=await readFile(join(output,'public',file),'utf8');
-      await writeFile(join(output,'public',file),js.replaceAll("'./analytics.js'",`'./analytics.js?v=${version}'`));
+  for (const module of ['analytics', 'marketing']) {
+    const bytes = await readFile(join(output, 'public', `assets/${module}.js`)).catch(() => null);
+    if (bytes) {
+      const version=createHash('sha256').update(bytes).digest('hex').slice(0,16);
+      for(const file of ['assets/store.js','assets/checkout.js']) {
+        const js=await readFile(join(output,'public',file),'utf8');
+        await writeFile(join(output,'public',file),js.replaceAll(`'./${module}.js'`,`'./${module}.js?v=${version}'`));
+      }
     }
   }
   const urls = {};
