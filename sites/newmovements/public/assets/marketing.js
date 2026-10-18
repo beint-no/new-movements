@@ -1,4 +1,12 @@
 const PIXEL_ID = '689458021409484';
+const GOOGLE_ADS_ID = 'AW-799575406';
+const GOOGLE_PURCHASE = `${GOOGLE_ADS_ID}/bPYmCMfdnd0aEO6aov0C`;
+const googlePurchases = new Set();
+let googleScript;
+let googleReady = false;
+let googleConfigured = false;
+let googleScheduled = false;
+const googleQueue = new Map();
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const maxAge = 90 * 24 * 60 * 60;
 const pendingImages = new Set();
@@ -11,6 +19,87 @@ let checkoutSent = false;
 
 const permitted = () => consent && ['newmovements.com', 'www.newmovements.com'].includes(location.hostname)
   && navigator.globalPrivacyControl !== true && navigator.doNotTrack !== '1';
+
+function googleTag() {
+  window.dataLayer = window.dataLayer || [];
+  window.dataLayer.push(arguments);
+}
+
+function googleConsent(granted) {
+  googleTag('consent', 'update', {ad_storage: granted ? 'granted' : 'denied',
+    ad_user_data: granted ? 'granted' : 'denied', ad_personalization: granted ? 'granted' : 'denied',
+    analytics_storage: 'denied'});
+}
+
+function googlePage() {
+  return {page_location: location.origin + location.pathname, page_referrer: '', page_title: 'New Movements'};
+}
+
+function startGoogle() {
+  googleScheduled = false;
+  if (!permitted() || googleScript) return;
+  googleTag('consent', 'default', {ad_storage: 'denied', ad_user_data: 'denied',
+    ad_personalization: 'denied', analytics_storage: 'denied'});
+  googleTag('set', {...googlePage(), ads_data_redaction: true, url_passthrough: false,
+    allow_enhanced_conversions: false});
+  googleTag('set', 'user_data', null);
+  googleScript = document.createElement('script');
+  googleScript.async = true;
+  googleScript.referrerPolicy = 'no-referrer';
+  googleScript.src = `https://www.googletagmanager.com/gtag/js?id=${GOOGLE_ADS_ID}`;
+  googleScript.onload = () => {
+    googleReady = true;
+    configureGoogle();
+  };
+  googleScript.onerror = () => {
+    googleQueue.clear();
+    googleScript.remove();
+    googleScript = undefined;
+    window.dataLayer = [];
+  };
+  document.head.append(googleScript);
+}
+
+function configureGoogle() {
+  if (!permitted() || !googleReady) return;
+  googleConsent(true);
+  if (!googleConfigured) {
+    googleConfigured = true;
+    // Google requires a Date object for its initialization command.
+    googleTag('js', new Date());
+    googleTag('config', GOOGLE_ADS_ID, {...googlePage(), allow_enhanced_conversions: false});
+  }
+  for (const [id, purchase] of googleQueue) sendGooglePurchase(id, purchase);
+  googleQueue.clear();
+}
+
+function prepareGoogle() {
+  if (!permitted() || googleScript || googleScheduled) return;
+  googleScheduled = true;
+  const idle = () => {
+    if (window.requestIdleCallback) window.requestIdleCallback(startGoogle, {timeout: 1500});
+    else setTimeout(startGoogle, 0);
+  };
+  if (document.readyState === 'complete') idle();
+  else window.addEventListener('load', idle, {once: true});
+}
+
+function sendGooglePurchase(id, purchase) {
+  if (!permitted() || googlePurchases.has(id)) return;
+  let saved = [];
+  try { saved = JSON.parse(localStorage.getItem('nm-google-purchases') || '[]').filter(item => item.at > Date.now() - maxAge * 1000); } catch { /* Storage is optional. */ }
+  if (saved.some(item => item.id === id)) return;
+  googlePurchases.add(id);
+  googleTag('event', 'conversion', {send_to: GOOGLE_PURCHASE, ...purchase, transaction_id: id, ...googlePage()});
+  try { localStorage.setItem('nm-google-purchases', JSON.stringify([...saved.slice(-99), {id, at: Date.now()}])); } catch { /* Storage is optional. */ }
+}
+
+function googlePurchase(id, state) {
+  if (!permitted()) return;
+  const purchase = {value: Number(state.total), currency: state.currency};
+  if (googleReady) sendGooglePurchase(id, purchase);
+  else if (googleQueue.size < 10) googleQueue.set(id, purchase);
+}
 
 function cookie(name) {
   return document.cookie.split('; ').find(part => part.startsWith(`${name}=`))?.slice(name.length + 1);
@@ -33,7 +122,7 @@ function identifiers() {
 function send(event, data = {}, eventId = crypto.randomUUID()) {
   if (!permitted()) return false;
   // Explicit image beacons keep checkout bearer tokens, search queries, referrers
-  // and form fields out of Meta. No third-party script can inspect the checkout.
+  // and form fields out of Meta without loading its SDK into the checkout.
   const params = new URLSearchParams({id: PIXEL_ID, ev: event, dl: location.origin + location.pathname,
     noscript: '1', eid: eventId, ...identifiers()});
   for (const [key, value] of Object.entries(data)) params.set(`cd[${key}]`, typeof value === 'object' ? JSON.stringify(value) : String(value));
@@ -66,8 +155,15 @@ function currentPage() {
 export function setMarketingConsent(granted) {
   const wasGranted = consent;
   consent = granted === true;
+  if (!permitted()) {
+    googleQueue.clear();
+    if (googleScript) googleConsent(false);
+  } else {
+    configureGoogle();
+    prepareGoogle();
+  }
   if (wasGranted && !consent) {
-    for (const name of ['_fbp', '_fbc']) {
+    for (const name of ['_fbp', '_fbc', ...document.cookie.split('; ').map(part => part.split('=')[0]).filter(name => name.startsWith('_gcl_'))]) {
       for (const domain of ['', '; Domain=newmovements.com', '; Domain=www.newmovements.com']) {
         document.cookie = `${name}=; Path=/; Max-Age=0; SameSite=Lax; Secure${domain}`;
       }
@@ -104,12 +200,15 @@ export async function trackPurchase(state) {
   try {
     if (state.phase !== 'complete') return;
     completedCheckout = state;
-    if (!permitted() || !Number.isFinite(Number(state.total)) || !/^[A-Z]{3}$/.test(state.currency)) return;
+    if (!permitted() || typeof state.id !== 'string' || !state.id || !Number.isFinite(Number(state.total))
+      || Number(state.total) < 0 || !/^[A-Z]{3}$/.test(state.currency)) return;
     // The checkout ID grants access to customer details; only its SHA-256 digest
     // may leave this browser. The same ID also deduplicates refreshes and retries.
     const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`nm-purchase:${state.id}`));
     const id = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
-    if (!permitted() || purchases.has(id)) return;
+    if (!permitted()) return;
+    googlePurchase(id, state);
+    if (purchases.has(id)) return;
     let saved = [];
     try { saved = JSON.parse(localStorage.getItem('nm-meta-purchases') || '[]').filter(item => item.at > Date.now() - maxAge * 1000); } catch { /* Storage is optional. */ }
     if (saved.some(item => item.id === id)) return;
