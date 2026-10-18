@@ -323,3 +323,38 @@ managed collections and legacy links. /collections/new-arrivals redirects to /co
 landing queries are validated against enabled markets; product offers have exact variant URLs
 and merchant return-policy metadata. Review hostnames send noindex and disallow crawling;
 newmovements.com becomes indexable only when the user separately approves domain cutover.
+
+## Meta measurement (2026-10-18)
+
+`public/assets/marketing.js` uses the existing NEW MOVEMENT MAIN dataset
+`689458021409484`, owned by New Movements business `463087320803927`. It sends
+explicit browser image pixels for PageView, ViewContent, AddToCart,
+InitiateCheckout and Purchase. Keep third-party scripts blocked: explicit image
+requests prevent Meta scripts from reading checkout forms or bearer-token URLs.
+Only the path is sent, without query, fragment or referrer. Product groups use
+ReAI product UUIDs; individual content IDs use the variant UUIDs in the ReAI feed.
+Purchase requires the server's `phase=complete`, uses confirmed total/currency,
+and deduplicates by SHA-256 of the checkout ID. Never send the raw checkout ID.
+
+The owner deferred the cookie notice to another solution. No notice or Cookiebot
+subscription is installed. Marketing defaults to denied on every document and
+must remain denied until the future consent solution supplies the visitor's
+choice. Existing ReAI analytics is unchanged. The integration accepts:
+
+```js
+// Supply a previously saved choice before modules load:
+window.nmMarketingConsent = true; // only after explicit marketing consent
+// Or supply changes after modules load, including withdrawal:
+window.newMovementsMarketing.setConsent(true); // false to withdraw
+// An alternative event interface:
+window.dispatchEvent(new CustomEvent('nm:marketing-consent', {detail: {granted: true}}));
+```
+
+Cookiebot consent-ready/accept/decline events are also supported if later chosen.
+The consent provider owns persistence and withdrawal controls. Declare optional
+`_fbp`/`_fbc` cookies (up to 90 days) and `nm-meta-purchases` browser storage
+(up to 100 purchase digests, expired after 90 days), and update EN/NB privacy text
+before activating collection. Only live apex/www hosts can send marketing data;
+localhost, preview hosts, GPC and DNT remain excluded. Never use blanket consent
+to turn tracking on. Consenting on a page records its current view, without
+replaying earlier cart actions. This is browser measurement, not Conversions API.
