@@ -324,13 +324,13 @@ landing queries are validated against enabled markets; product offers have exact
 and merchant return-policy metadata. Review hostnames send noindex and disallow crawling;
 newmovements.com becomes indexable only when the user separately approves domain cutover.
 
-## Meta measurement (2026-10-18)
+## Advertising measurement (2026-10-18)
 
 `public/assets/marketing.js` uses the existing NEW MOVEMENT MAIN dataset
 `689458021409484`, owned by New Movements business `463087320803927`. It sends
 explicit browser image pixels for PageView, ViewContent, AddToCart,
-InitiateCheckout and Purchase. Keep third-party scripts blocked: explicit image
-requests prevent Meta scripts from reading checkout forms or bearer-token URLs.
+InitiateCheckout and Purchase. No Meta SDK is loaded: explicit image requests prevent Meta scripts
+from reading checkout forms or bearer-token URLs.
 Only the path is sent, without query, fragment or referrer. Product groups use
 ReAI product UUIDs; individual content IDs use the variant UUIDs in the ReAI feed.
 Purchase requires the server's `phase=complete`, uses confirmed total/currency,
@@ -358,3 +358,24 @@ before activating collection. Only live apex/www hosts can send marketing data;
 localhost, preview hosts, GPC and DNT remain excluded. Never use blanket consent
 to turn tracking on. Consenting on a page records its current view, without
 replaying earlier cart actions. This is browser measurement, not Conversions API.
+
+Google Ads reuses tag `AW-799575406` and the existing primary Purchase conversion
+`bPYmCMfdnd0aEO6aov0C`. Load its official gtag.js asynchronously only after explicit
+marketing consent, document load and an idle opportunity. No Google requests occur
+before consent; this is basic Consent Mode. Keep analytics_storage denied (no GA4),
+URL passthrough off, enhanced conversions off and user_data unset. Explicitly supply
+path-only page_location and an empty page_referrer before configuring the tag and
+on conversion events; checkout URLs contain bearer tokens. Google config supports
+remarketing/page measurement; only server-confirmed completed checkout sends the
+Purchase conversion with the actual total, currency and SHA-256 transaction ID.
+Do not count cart/checkout visits as primary purchases or create duplicate goals.
+`nm-google-purchases` independently deduplicates up to 100 purchases for 90 days.
+Consent withdrawal clears pending Google purchases, signals denied to a loaded tag
+and removes first-party _gcl_* cookies. A tag already loaded can send its own consent
+updates; do not promise that its runtime can be unloaded. Google owns its third-party
+cookies. Document applicable Google Ads cookies in the future consent solution.
+
+Only this site's Worker CSP permits Google's documented tag/transport origins;
+shared storefront policy stays unchanged. No unsafe inline/eval script permission.
+External-script/network failure must never affect cart or checkout. Do not send
+customer form fields, enhanced-conversion data or raw checkout IDs.
