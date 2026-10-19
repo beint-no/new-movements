@@ -379,3 +379,11 @@ Only this site's Worker CSP permits Google's documented tag/transport origins;
 shared storefront policy stays unchanged. No unsafe inline/eval script permission.
 External-script/network failure must never affect cart or checkout. Do not send
 customer form fields, enhanced-conversion data or raw checkout IDs.
+
+Store pickup is a configured ReAI shipping method with pickupDetails, not a carrier
+pickup point. Offer it immediately at the top of checkout without address discovery.
+Only contact name, email, phone and country are required for store pickup. Keep
+address values when switching locally back to delivery, restore required fields,
+and block payment until the selected fulfillment mode has actually been saved.
+Carrier discovery runs only for delivery with a complete address; its responses
+must not replace a newer pickup choice. Never hardcode pickup addresses in JS.
