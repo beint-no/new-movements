@@ -1,4 +1,4 @@
-import { isNorwegian, translateProductTitle } from "./locales.mjs";
+import { isGerman, isNorwegian, translateProductTitle } from "./locales.mjs";
 
 export const isFootwearProduct = (product) => (product.variants || []).some((variant) =>
   (variant.options || []).some((option) => /size/i.test(option.name) && /^\d+(?:\.\d+)?$/.test(option.value)));
@@ -29,6 +29,11 @@ export function productMetaTitle(product, view = "", locale = "en") {
     : !footwear ? " for Shoes"
     : /^(?:allrounder|classic|original|zen)\b/i.test(name) ? " Sneakers" : " Shoes";
   const audience = footwear && view === "women" ? (isNorwegian(locale) ? "Dame" : "Women's ") : footwear && view === "men" ? (isNorwegian(locale) ? "Herre" : "Men's ") : "";
+  if (isGerman(locale)) {
+    const prefix = footwear && view === "women" ? "Damen " : footwear && view === "men" ? "Herren " : "";
+    const suffix = !category ? "" : !footwear ? " für Schuhe" : category === " Sneakers" ? " Sneaker" : " Schuhe";
+    return (prefix + name + suffix).trim();
+  }
   if (isNorwegian(locale)) {
     const norwegianCategory = !category ? "" : category === " for Shoes" ? " for sko" : category === " Sneakers" ? " sneakers" : " sko";
     return `${audience ? `${audience} ` : ""}${name}${norwegianCategory}`.trim();
@@ -37,6 +42,12 @@ export function productMetaTitle(product, view = "", locale = "en") {
 }
 
 export function collectionMetaTitle(title, view = "", locale = "en") {
+  if (isGerman(locale)) {
+    const label = String(title || "").trim();
+    if (/^(women|damen)$/i.test(label)) return "Damenschuhe";
+    if (/^(men|herren)$/i.test(label)) return "Herrenschuhe";
+    return label;
+  }
   if (isNorwegian(locale)) {
     const normalized = String(title || "").trim();
     if (/^(?:women|dame)$/i.test(normalized)) return "Damesko";

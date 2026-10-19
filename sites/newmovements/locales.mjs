@@ -6,9 +6,13 @@ export function isNorwegian(locale = "") {
   return /^(?:nb|no|nn)(?:-|$)/i.test(String(locale));
 }
 
+export function isGerman(locale = "") {
+  return /^de(?:-|$)/i.test(String(locale));
+}
+
 export function translator(locale) {
   const norwegian = isNorwegian(locale);
-  return (en, nb) => (norwegian && nb !== undefined ? nb : en);
+  return (en, nb, de) => (isGerman(locale) && de !== undefined ? de : norwegian && nb !== undefined ? nb : en);
 }
 
 // Catalog taxonomy comes from ReAI in English only: categories, attributes, option names
@@ -52,18 +56,24 @@ const OPTION_NAMES = new Map([
   ["Material", "Materiale"],
 ]);
 
+const GERMAN_LABELS = new Map([["Color","Farbe"],["Colour","Farbe"],["Pattern","Muster"],["Footwear material","Material"],["Shoe features","Eigenschaften"],["Olive Green","Olivgrün"],["Camel Brown","Kamelbraun"],["Macchiato Brown","Macchiatobraun"],["Grape Grey","Traubengrau"],["Mustard Yellow","Senfgelb"],["Night Blue","Nachtblau"],["Navy","Marineblau"],["Silver","Silber"],["Yellow","Gelb"],["Gold","Gold"],["Rubberized textile","Gummiertes Textil"],["Technical textile","Technisches Textil"],["Suede","Veloursleder"],["Synthetic","Synthetik"],["Rubber","Gummi"],["Breathable design","Atmungsaktives Design"],["Vegan friendly","Veganfreundlich"],["Recycled materials","Recycelte Materialien"],["Slip resistant","Rutschfest"],["Sustainable sourcing","Nachhaltige Beschaffung"],["Waterproof","Wasserdicht"],["Water resistant","Wasserabweisend"],["Eco friendly","Umweltfreundlich"],["Cushioned","Gedämpft"],["Lightweight","Leicht"],["Insulated","Isoliert"],["Shoe Care","Schuhpflege"],["Shoe Accessories","Schuhzubehör"],["Sneaker","Sneaker"],["Shoes","Schuhe"],["Shoe","Schuh"],["White","Weiß"],["Black","Schwarz"],["Grey","Grau"],["Gray","Grau"],["Olive","Olive"],["Brown","Braun"],["Blue","Blau"],["Green","Grün"],["Orange","Orange"],["Pink","Rosa"],["Forest","Waldgrün"],["Nordic","Nordisch"],["Dark","Dunkel"],["Full","Ganz"],["Natural","Natur"],["Sand","Sand"],["Camel","Kamel"],["Burgundy","Burgunder"],["Earth","Erde"],["Turquoise","Türkis"],["Wool","Wolle"],["Leather","Leder"],["Technical","Technisch"],["Textile","Textil"],["Nubuck","Nubuk"],["Smooth","Glatt"],["Beige","Beige"],["Certified","Zertifiziert"],["Care","Pflege"],["Insole","Einlegesohle"],["Insoles","Einlegesohlen"],["Spray","Spray"],["Cleaner","Reiniger"],["Wax","Wachs"],["Boots","Boots"],["Boot","Boot"],["Sandals","Sandalen"],["Sandal","Sandale"],["Loafer","Loafer"],["Low","Niedrig"],["Size","Größe"],["Material","Material"]]);
+
 export function translateProductTitle(title, locale) {
-  if (title == null || !isNorwegian(locale)) return title;
+  if (title == null) return title;
+  if (isGerman(locale)) return String(title).replace(/\b[A-Za-z]+\b/g, word => GERMAN_LABELS.get(word) || word);
+  if (!isNorwegian(locale)) return title;
   return String(title).replace(/\b[A-Za-z]+\b/g, (word) => PRODUCT_WORDS.get(word) || word);
 }
 
 export function taxonomyLabel(label, locale) {
-  if (label == null || !isNorwegian(locale)) return label;
+  if (label == null) return label;
+  if (isGerman(locale)) return GERMAN_LABELS.get(String(label).trim()) || translateProductTitle(label, locale);
+  if (!isNorwegian(locale)) return label;
   return TAXONOMY_LABELS.get(String(label).trim()) || translateProductTitle(label, locale);
 }
 
 export function localizeStorefront(store, locale) {
-  if (!isNorwegian(locale) || !store) return store;
+  if ((!isNorwegian(locale) && !isGerman(locale)) || !store) return store;
   return {
     ...store,
     products: (store.products || []).map((product) => ({
@@ -80,7 +90,7 @@ export function localizeStorefront(store, locale) {
           ...option,
           // Keep canonical option names for filtering, variant matching, and
           // cart payloads. Consumers can use displayName for localized UI.
-          displayName: OPTION_NAMES.get(option.name) || option.name,
+          displayName: isGerman(locale) ? GERMAN_LABELS.get(option.name) || option.name : OPTION_NAMES.get(option.name) || option.name,
           value: taxonomyLabel(option.value, locale),
         })),
       })),

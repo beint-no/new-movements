@@ -7,8 +7,9 @@ let state = JSON.parse(root.dataset.checkout);
 trackCheckout(state);
 void trackPurchase(state);
 const no = /^no|^nb|^nn/.test(state.locale);
-const t = (en, nb) => no ? nb : en;
-const money = (v) => new Intl.NumberFormat(no ? 'nb-NO' : 'en-GB', { style: 'currency', currency: state.currency }).format(Number(v));
+const de = /^de(?:-|$)/i.test(state.locale);
+const t = (en, nb, german) => de && german !== undefined ? german : no ? nb : en;
+const money = (v) => new Intl.NumberFormat(de ? 'de-DE' : no ? 'nb-NO' : 'en-GB', { style: 'currency', currency: state.currency }).format(Number(v));
 const form = document.querySelector('[data-details-form]');
 const errorBox = document.querySelector('[data-error]');
 const status = document.querySelector('[data-save-status]');
@@ -60,10 +61,10 @@ function refresh(next) {
   trackCheckout(state);
   rememberDraft();
   text('[data-subtotal]', money(state.subtotal)); text('[data-total]', money(state.total)); text('[data-mobile-total]', money(state.total));
-  text('[data-shipping-price]', state.shippingGross == null ? t('Choose delivery','Velg levering') : Number(state.shippingGross) === 0 ? t('Free','Gratis') : money(state.shippingGross));
+  text('[data-shipping-price]', state.shippingGross == null ? t('Choose delivery','Velg levering', "Lieferung wählen") : Number(state.shippingGross) === 0 ? t('Free','Gratis', "Kostenlos") : money(state.shippingGross));
   text('[data-discount-name]',state.discountCode || ''); text('[data-discount-amount]',money(-(state.discountGross || 0)));
   document.querySelector('[data-discount-row]').hidden = !state.discountCode;
-  if (state.currency === 'NOK') text('[data-tax]', t('Including VAT','Inkludert MVA') + ' ' + money(state.vat));
+  if (state.currency === 'NOK') text('[data-tax]', t('Including VAT','Inkludert MVA', "Inklusive MwSt.") + ' ' + money(state.vat));
 }
 async function api(suffix = '', method = 'GET', body, idempotencyKey, signal) {
   const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 20000);
@@ -72,17 +73,17 @@ async function api(suffix = '', method = 'GET', body, idempotencyKey, signal) {
       ...(body ? { headers: { 'Content-Type': 'application/json', ...(suffix==='/change-country'?{'Idempotency-Key':idempotencyKey || crypto.randomUUID()}:{}) }, body: JSON.stringify(body) } : {}) });
     const result = await response.json().catch(() => ({}));
     if (!response.ok) {
-      let detail = result.detail || result.error || t('We could not update checkout. Please try again.','Vi kunne ikke oppdatere kassen. Prøv igjen.');
+      let detail = result.detail || result.error || t('We could not update checkout. Please try again.','Vi kunne ikke oppdatere kassen. Prøv igjen.', "Wir konnten den Checkout nicht aktualisieren. Bitte versuche es erneut.");
       if (response.status === 409) {
         conflict = true;
-        detail = result.code === 'INSUFFICIENT_STOCK' ? (result.stockIssues || []).map(i=>`${i.title}: ${i.maximumQuantity === 0 ? t('sold out','utsolgt') : t('quantity unavailable','antallet er ikke tilgjengelig')}`).join('. ') || detail : t('Checkout changed in another tab or payment has started. Refresh this page to continue.','Kassen er endret i en annen fane eller betalingen har startet. Last inn siden på nytt for å fortsette.');
+        detail = result.code === 'INSUFFICIENT_STOCK' ? (result.stockIssues || []).map(i=>`${i.title}: ${i.maximumQuantity === 0 ? t('sold out','utsolgt', "ausverkauft") : t('quantity unavailable','antallet er ikke tilgjengelig', "Menge nicht verfügbar")}`).join('. ') || detail : t('Checkout changed in another tab or payment has started. Refresh this page to continue.','Kassen er endret i en annen fane eller betalingen har startet. Last inn siden på nytt for å fortsette.', "Der Checkout wurde in einem anderen Tab geändert oder die Zahlung wurde gestartet. Aktualisiere diese Seite, um fortzufahren.");
       }
       throw new Error(detail);
     }
     return result;
   } catch (error) {
     if (signal?.aborted) throw error;
-    if (error.name === 'AbortError') throw new Error(t('This is taking longer than expected. Refresh to check the saved checkout before trying again.','Dette tar lengre tid enn forventet. Last inn siden på nytt for å sjekke lagrede detaljer før du prøver igjen.'));
+    if (error.name === 'AbortError') throw new Error(t('This is taking longer than expected. Refresh to check the saved checkout before trying again.','Dette tar lengre tid enn forventet. Last inn siden på nytt for å sjekke lagrede detaljer før du prøver igjen.', "Das dauert länger als erwartet. Aktualisiere die Seite, um den gespeicherten Checkout zu prüfen, bevor du es erneut versuchst."));
     throw error;
   } finally { clearTimeout(timeout); }
 }
@@ -92,17 +93,17 @@ function enqueue(task) {
   return operation;
 }
 async function save(extra = {}, complete = false) {
-  if (conflict) throw new Error(t('Refresh this page before continuing.','Last inn siden på nytt før du fortsetter.'));
+  if (conflict) throw new Error(t('Refresh this page before continuing.','Last inn siden på nytt før du fortsetter.', "Aktualisiere diese Seite, bevor du fortfährst."));
   const c = customer();
   return enqueue(async () => {
-    if (conflict) throw new Error(t('Refresh this page before continuing.','Last inn siden på nytt før du fortsetter.'));
-    if (status) status.textContent = t('Saving…','Lagrer…');
+    if (conflict) throw new Error(t('Refresh this page before continuing.','Last inn siden på nytt før du fortsetter.', "Aktualisiere diese Seite, bevor du fortfährst."));
+    if (status) status.textContent = t('Saving…','Lagrer…', "Wird gespeichert…");
     // The server may accept this save even if navigation interrupts its reply.
     lastSentCustomer=c;rememberDraft();
     const next = await api('', 'PATCH', { revision:state.revision, customer:c, complete, ...extra });
     lastSentCustomer=null;
     refresh(next);
-    if (status) status.textContent = t('Saved','Lagret');
+    if (status) status.textContent = t('Saved','Lagret', "Gespeichert");
     return next;
   });
 }
@@ -122,9 +123,9 @@ function validateDetails() {
     const input=form.elements.namedItem(name);if(!input)continue;
     clearFieldError(input);
     let detail='';
-    if(input.required && !input.value.trim())detail=t('Please complete this required field.','Fyll ut dette obligatoriske feltet.');
-    else if(name==='email' && (input.validity.typeMismatch || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.value.trim())))detail=t('Enter a valid email address.','Oppgi en gyldig e-postadresse.');
-    else if(!input.validity.valid)detail=t('Check this field before continuing.','Sjekk dette feltet før du fortsetter.');
+    if(input.required && !input.value.trim())detail=t('Please complete this required field.','Fyll ut dette obligatoriske feltet.', "Bitte fülle dieses Pflichtfeld aus.");
+    else if(name==='email' && (input.validity.typeMismatch || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.value.trim())))detail=t('Enter a valid email address.','Oppgi en gyldig e-postadresse.', "Gib eine gültige E-Mail-Adresse ein.");
+    else if(!input.validity.valid)detail=t('Check this field before continuing.','Sjekk dette feltet før du fortsetter.', "Prüfe dieses Feld, bevor du fortfährst.");
     if(detail) {
       const hint=document.getElementById(`checkout-${name}-error`);
       if(hint){hint.textContent=detail;hint.hidden=false;input.setAttribute('aria-describedby',hint.id);}
@@ -179,7 +180,7 @@ function combobox(input, { search, choose, draw, empty, restore }) {
       });
       if(!items.length && empty && input.value.trim()) {const p=document.createElement('p');p.className='co-empty';p.textContent=empty;list.append(p);}
       list.hidden=!list.childElementCount;input.setAttribute('aria-expanded',String(!list.hidden));
-      announcement.textContent=items.length ? t(`${items.length} suggestions available. Use the arrow keys to choose.`,`${items.length} forslag. Bruk piltastene for å velge.`) : '';
+      announcement.textContent=items.length ? t(`${items.length} suggestions available. Use the arrow keys to choose.`,`${items.length} forslag. Bruk piltastene for å velge.`, "" + (items.length) + " Vorschläge verfügbar. Verwende die Pfeiltasten, um auszuwählen.") : '';
     } catch { if(current===generation)close(); } // Lookup failure never prevents manual address entry.
   }
   input.addEventListener('input',()=> {if(selecting)return;generation++;controller?.abort();clearTimeout(pending);close();pending=setTimeout(update,180);});
@@ -212,7 +213,7 @@ function renderDelivery() {
   delivery.replaceChildren();
   const methods = state.dynamicShipping ? options : state.shippingMethods;
   if (!methods.length) {
-    const p=document.createElement('p'); p.textContent = t('No delivery options are available for this address. Check your address or contact us.','Ingen leveringsalternativer for denne adressen. Sjekk adressen eller kontakt oss.');delivery.append(p);return;
+    const p=document.createElement('p'); p.textContent = t('No delivery options are available for this address. Check your address or contact us.','Ingen leveringsalternativer for denne adressen. Sjekk adressen eller kontakt oss.', "Für diese Adresse sind keine Lieferoptionen verfügbar. Prüfe deine Adresse oder kontaktiere uns.");delivery.append(p);return;
   }
   methods.forEach(o => {
     const dynamic = state.dynamicShipping;
@@ -225,7 +226,7 @@ function renderDelivery() {
     if(o.carrierLogoUrl) {const logo=document.createElement('img');logo.src=o.carrierLogoUrl;logo.alt=o.carrierName;logo.className='co-carrier';logo.width=84;logo.height=28;content.append(logo);}
     else if(o.carrierName){const carrier=document.createElement('small');carrier.textContent=o.carrierName;content.append(carrier);}
     if(o.description){const description=document.createElement('small');description.textContent=o.description;content.append(description);}
-    const price=document.createElement('b');price.textContent=Number(o.gross)===0?t('Free','Gratis'):money(o.gross);
+    const price=document.createElement('b');price.textContent=Number(o.gross)===0?t('Free','Gratis', "Kostenlos"):money(o.gross);
     label.append(input,content,price);card.append(label);delivery.append(card);
     input.addEventListener('change',async()=> {
       message();choosingOption=dynamic?o.token:null;
@@ -238,15 +239,15 @@ function renderDelivery() {
     });
     if (dynamic && o.pickupRequired && selected) {
       const box=document.createElement('div');box.className='co-pickup';card.append(box);
-      if(!o.pickups?.length){const p=document.createElement('p');p.textContent=o.pickupsLoaded?t('No pickup locations found. Check the address or choose another delivery method.','Fant ingen hentesteder. Sjekk adressen eller velg en annen leveringsmåte.'):t('Finding pickup locations…','Henter hentesteder…');box.append(p);if(o.pickupsLoaded){const retry=document.createElement('button');retry.type='button';retry.className='co-retry';retry.textContent=t('Try again','Prøv igjen');retry.addEventListener('click',()=>discover(o.token).catch(error));box.append(retry);}return;}
+      if(!o.pickups?.length){const p=document.createElement('p');p.textContent=o.pickupsLoaded?t('No pickup locations found. Check the address or choose another delivery method.','Fant ingen hentesteder. Sjekk adressen eller velg en annen leveringsmåte.', "Keine Abholstationen gefunden. Prüfe die Adresse oder wähle eine andere Liefermethode."):t('Finding pickup locations…','Henter hentesteder…', "Abholstationen werden gesucht…");box.append(p);if(o.pickupsLoaded){const retry=document.createElement('button');retry.type='button';retry.className='co-retry';retry.textContent=t('Try again','Prøv igjen', "Erneut versuchen");retry.addEventListener('click',()=>discover(o.token).catch(error));box.append(retry);}return;}
       const selectedPickup=()=>state.selectedOptionToken===o.token?o.pickups.find(p=>p.token===state.selectedPickupToken):null;
-      const pickLabel=document.createElement('label');pickLabel.textContent=o.pickupLabel || t('Pickup point','Hentested');
+      const pickLabel=document.createElement('label');pickLabel.textContent=o.pickupLabel || t('Pickup point','Hentested', "Abholstation");
       const search=document.createElement('input');search.type='text';search.autocomplete='off';search.maxLength=254;search.dataset.pickupOption=o.token;
-      search.placeholder=t('Search name, street, postal code or city','Søk på navn, gate, postnummer eller sted');search.value=selectedPickup()?.name || '';
+      search.placeholder=t('Search name, street, postal code or city','Søk på navn, gate, postnummer eller sted', "Name, Straße, Postleitzahl oder Stadt suchen");search.value=selectedPickup()?.name || '';
       pickLabel.append(search);box.append(pickLabel);
       combobox(search,{
         search:query=>{const q=query.trim().toLocaleLowerCase(no?'nb-NO':'en');return o.pickups.filter(p=>[p.name,p.address,p.postalCode,p.city].join(' ').toLocaleLowerCase(no?'nb-NO':'en').includes(q));},
-        draw:pickupDisplay,empty:t('No matching pickup locations. Try another street or name.','Ingen hentesteder matcher. Prøv en annen gate eller et annet navn.'),
+        draw:pickupDisplay,empty:t('No matching pickup locations. Try another street or name.','Ingen hentesteder matcher. Prøv en annen gate eller et annet navn.', "Keine passenden Abholstationen. Versuche eine andere Straße oder einen anderen Namen."),
         restore:()=>selectedPickup()?.name || '',
         choose:async p=> {search.value=p.name;search.disabled=true;message();try{await save({optionToken:o.token,pickupToken:p.token});choosingOption=null;renderDelivery();const next=delivery.querySelector(`[data-pickup-option="${CSS.escape(o.token)}"]`);if(next){next.dataset.skipOpen='true';next.focus({preventScroll:true});}warmPayment();}catch(e){error(e,true);search.disabled=false;search.value=selectedPickup()?.name || '';}}
       });
@@ -265,18 +266,18 @@ function enhanceAddress() {
 async function discover(optionToken, includeOtherOptions = false) {
   const generation=++discovery,c=customer();
   if (!addressComplete(c)) return;
-  if (!optionToken) text('[data-delivery-options]', t('Finding delivery options…','Henter leveringsalternativer…'));
+  if (!optionToken) text('[data-delivery-options]', t('Finding delivery options…','Henter leveringsalternativer…', "Lieferoptionen werden gesucht…"));
   const result = await api('/delivery-options','POST',{customer:c,includeOtherOptions,...(optionToken?{optionToken}:{})});
   if (generation !== discovery || !equal(c,customer())) return;
   if (result.error === 'OPTION_EXPIRED') {
     state.shippingMethodId=null;state.selectedOptionToken=null;state.selectedPickupToken=null;
-    message(t('Please choose delivery again; the previous quote expired.','Velg levering på nytt; forrige tilbud har utløpt.'));
+    message(t('Please choose delivery again; the previous quote expired.','Velg levering på nytt; forrige tilbud har utløpt.', "Bitte wähle die Lieferung erneut; das vorherige Angebot ist abgelaufen."));
     return discover();
   }
   if(optionToken)result.options.forEach(o=>{if(o.token===optionToken)o.pickupsLoaded=true;});
   options=optionToken && options.length && !includeOtherOptions ? options.map(o => result.options.find(n => n.token===o.token) || o) : result.options;
-  if (result.error && !options.length) throw new Error(t('Delivery options are temporarily unavailable. Check your address and try again.','Leveringsalternativer er ikke tilgjengelige nå. Sjekk adressen og prøv igjen.'));
-  if(result.error && optionToken){renderDelivery();throw new Error(t('Pickup locations are temporarily unavailable. Select delivery again to retry.','Hentesteder er ikke tilgjengelige nå. Velg levering på nytt for å prøve igjen.'));}
+  if (result.error && !options.length) throw new Error(t('Delivery options are temporarily unavailable. Check your address and try again.','Leveringsalternativer er ikke tilgjengelige nå. Sjekk adressen og prøv igjen.', "Lieferoptionen sind vorübergehend nicht verfügbar. Prüfe deine Adresse und versuche es erneut."));
+  if(result.error && optionToken){renderDelivery();throw new Error(t('Pickup locations are temporarily unavailable. Select delivery again to retry.','Hentesteder er ikke tilgjengelige nå. Velg levering på nytt for å prøve igjen.', "Abholstationen sind vorübergehend nicht verfügbar. Wähle die Lieferung erneut, um es noch einmal zu versuchen."));}
   renderDelivery();
 }
 function warmPayment() {
@@ -326,10 +327,10 @@ form?.addEventListener('submit',async e=> {
   const c=customer();
   try {
     await save({},true);
-    if (state.shippingRequired && !state.shippingMethodId) throw new Error(t('Choose a delivery method before continuing.','Velg leveringsmåte før du fortsetter.'));
+    if (state.shippingRequired && !state.shippingMethodId) throw new Error(t('Choose a delivery method before continuing.','Velg leveringsmåte før du fortsetter.', "Wähle eine Liefermethode, bevor du fortfährst."));
     const revision=state.revision;
     const next=await enqueue(()=>api('/prepare-payment','POST',{revision}));refresh(next);
-    if(next.revision!==revision||!equal(c,customer()))throw new Error(t('Your details changed. Review them and continue again.','Detaljene er endret. Sjekk dem og fortsett igjen.'));
+    if(next.revision!==revision||!equal(c,customer()))throw new Error(t('Your details changed. Review them and continue again.','Detaljene er endret. Sjekk dem og fortsett igjen.', "Deine Angaben haben sich geändert. Prüfe sie und fahre dann erneut fort."));
     location.assign(state.paymentUrl);
   } catch(e){error(e,true);submitting=false;continueButton.disabled=false;}
 });
@@ -337,7 +338,7 @@ const discountForm=document.querySelector('[data-discount-form]');
 discountForm?.addEventListener('submit',async e=>{e.preventDefault();const code=discountForm.elements.discountCode.value.trim();if(!code)return;const btn=discountForm.querySelector('button');btn.disabled=true;text('[data-discount-status]','');try{await save({discountCode:code});discountForm.reset();warmPayment();}catch(e){text('[data-discount-status]',e.message);}finally{btn.disabled=false;}});
 document.querySelector('[data-remove-discount]')?.addEventListener('click',async()=>{try{await save({discountCode:''});warmPayment();}catch(e){error(e);}});
 if (form) {
-  if (!state.editable) { form.hidden=true; const p=document.createElement('p');p.textContent=state.phase==='expired'?t('This checkout has expired. Your bag is still available.','Denne kassen har utløpt. Handlekurven din er bevart.'):t('Payment is in progress. Continue on the secure payment page.','Betalingen er i gang. Fortsett på den sikre betalingssiden.');const link=document.createElement('a');link.className='co-button';link.href=state.phase==='expired'?sitePath('/cart'):state.paymentUrl;link.textContent=state.phase==='expired'?t('Return to bag','Tilbake til handlekurven'):t('Continue payment','Fortsett betaling');form.before(p,link); }
+  if (!state.editable) { form.hidden=true; const p=document.createElement('p');p.textContent=state.phase==='expired'?t('This checkout has expired. Your bag is still available.','Denne kassen har utløpt. Handlekurven din er bevart.', "Dieser Checkout ist abgelaufen. Deine Tasche ist weiterhin verfügbar."):t('Payment is in progress. Continue on the secure payment page.','Betalingen er i gang. Fortsett på den sikre betalingssiden.', "Die Zahlung läuft. Fahre auf der sicheren Zahlungsseite fort.");const link=document.createElement('a');link.className='co-button';link.href=state.phase==='expired'?sitePath('/cart'):state.paymentUrl;link.textContent=state.phase==='expired'?t('Return to bag','Tilbake til handlekurven', "Zurück zur Tasche"):t('Continue payment','Fortsett betaling', "Zahlung fortsetzen");form.before(p,link); }
   else {
     if(restoredDraft)save().then(()=>{if(state.dynamicShipping&&addressComplete(customer()))return discover(state.selectedOptionToken||undefined,true);}).then(warmPayment).catch(error);
     else if(state.dynamicShipping&&addressComplete(customer())) {
@@ -367,14 +368,14 @@ if (root.dataset.cartReturn==='true') {
           localStorage.setItem(key,JSON.stringify(remaining));
           localStorage.setItem(clearedKey,JSON.stringify([...cleared.slice(-19),state.id]));
         }
-        text('.co-complete h1',t('Thank you for your order','Takk for bestillingen'));
-        text('[data-result-message]',t('Your order is confirmed. We will send the details by email.','Bestillingen er bekreftet. Vi sender deg detaljene på e-post.'));
+        text('.co-complete h1',t('Thank you for your order','Takk for bestillingen', "Danke für deine Bestellung"));
+        text('[data-result-message]',t('Your order is confirmed. We will send the details by email.','Bestillingen er bekreftet. Vi sender deg detaljene på e-post.', "Deine Bestellung ist bestätigt. Wir senden dir die Details per E-Mail."));
       } else if(state.phase==='failed'||state.phase==='expired'||state.phase==='details') {
-        text('.co-complete h1',t('Your payment is not complete','Betalingen er ikke fullført'));
-        text('[data-result-message]',t('Your bag has been kept. Return to checkout to try again.','Handlekurven er bevart. Gå tilbake til kassen for å prøve igjen.'));
-        const link=document.querySelector('.co-complete .co-button');link.href=state.checkoutUrl;link.textContent=t('Return to checkout','Tilbake til kassen');
+        text('.co-complete h1',t('Your payment is not complete','Betalingen er ikke fullført', "Deine Zahlung ist nicht abgeschlossen"));
+        text('[data-result-message]',t('Your bag has been kept. Return to checkout to try again.','Handlekurven er bevart. Gå tilbake til kassen for å prøve igjen.', "Deine Tasche wurde gespeichert. Kehre zum Checkout zurück, um es erneut zu versuchen."));
+        const link=document.querySelector('.co-complete .co-button');link.href=state.checkoutUrl;link.textContent=t('Return to checkout','Tilbake til kassen', "Zurück zum Checkout");
       } else if(++polls<30) setTimeout(verify,2000);
-      else text('[data-result-message]',t('Confirmation is taking longer than usual. We will email you when your order is confirmed. Please avoid placing a second order.','Bekreftelsen tar lengre tid enn vanlig. Vi sender e-post når bestillingen er bekreftet. Unngå å legge inn en ny bestilling.'));
+      else text('[data-result-message]',t('Confirmation is taking longer than usual. We will email you when your order is confirmed. Please avoid placing a second order.','Bekreftelsen tar lengre tid enn vanlig. Vi sender e-post når bestillingen er bekreftet. Unngå å legge inn en ny bestilling.', "Die Bestätigung dauert länger als üblich. Wir senden dir eine E-Mail, sobald deine Bestellung bestätigt ist. Bitte vermeide eine zweite Bestellung."));
     } catch { if(++polls<30)setTimeout(verify,3000); }
   };verify();
 }

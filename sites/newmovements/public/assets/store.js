@@ -5,7 +5,8 @@ const CART_KEY = 'newmovements-cart-v1';
 const pathPrefix = document.body.dataset.pathPrefix || '';
 // The document language decides the copy this script writes; the server renders the rest.
 const norwegian = /^(?:nb|no|nn)\b/i.test(document.documentElement.lang || '');
-const t = (en, nb) => (norwegian && nb !== undefined ? nb : en);
+const german = /^de(?:-|$)/i.test(document.documentElement.lang || "");
+const t = (en, nb, de) => (german && de !== undefined ? de : norwegian && nb !== undefined ? nb : en);
 const sitePath = (path) => `${pathPrefix}${path === '/' ? '/' : path}`;
 const localHref = (href) => typeof href === 'string' && href.startsWith('/') && !href.startsWith(`${pathPrefix}/`) ? sitePath(href) : href;
 const activeCurrency = document.body.dataset.currency || 'NOK';
@@ -49,26 +50,26 @@ const updateCount = () => {
     node.hidden = count === 0;
   });
 };
-const money = (value, currency = activeCurrency) => new Intl.NumberFormat('en-NO', {
+const money = (value, currency = activeCurrency) => new Intl.NumberFormat(german ? 'de-DE' : norwegian ? 'nb-NO' : 'en-GB', {
   style: 'currency', currency, currencyDisplay: 'code', maximumFractionDigits: Number(value) % 1 ? 2 : 0,
 }).format(Number(value));
 const plainMoney = (value) => new Intl.NumberFormat('nb-NO', { maximumFractionDigits: Number(value) % 1 ? 2 : 0 }).format(Number(value));
 const escapeHtml = (value) => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
 const cartOptions = (item) => Array.isArray(item.options)
   ? item.options.filter((option) => option.name && option.value && option.value !== 'Default Title').map((option) => `${option.name}: ${option.value}`).join(' · ')
-  : item.label ? t(`Size ${item.label}`, `Størrelse ${item.label}`) : '';
+  : item.label ? t(`Size ${item.label}`, `Størrelse ${item.label}`, "Größe " + (item.label) + "") : '';
 const cartStockMessage = (issue) => issue.maximumQuantity === 0
-  ? t('Sold out — remove this item to continue.', 'Utsolgt – fjern varen for å gå videre.')
-  : t(`Only ${issue.maximumQuantity} available for this bag. Reduce the quantity to continue.`, `Bare ${issue.maximumQuantity} på lager. Reduser antallet for å gå videre.`);
+  ? t('Sold out — remove this item to continue.', 'Utsolgt – fjern varen for å gå videre.', "Ausverkauft — entferne diesen Artikel, um fortzufahren.")
+  : t(`Only ${issue.maximumQuantity} available for this bag. Reduce the quantity to continue.`, `Bare ${issue.maximumQuantity} på lager. Reduser antallet for å gå videre.`, "Nur " + (issue.maximumQuantity) + " für diese Tasche verfügbar. Reduziere die Menge, um fortzufahren.");
 const cartStockNotice = (item) => {
-  if (unavailableMarketVariants.has(item.variant)) return `<p class="cart-stock-issue" role="alert">${t('Unavailable for this delivery country — remove this item to continue.', 'Ikke tilgjengelig for dette leveringslandet – fjern varen for å gå videre.')}</p>`;
+  if (unavailableMarketVariants.has(item.variant)) return `<p class="cart-stock-issue" role="alert">${t('Unavailable for this delivery country — remove this item to continue.', 'Ikke tilgjengelig for dette leveringslandet – fjern varen for å gå videre.', "Für dieses Lieferland nicht verfügbar — entferne diesen Artikel, um fortzufahren.")}</p>`;
   const issue = checkoutStockIssues.get(item.variant);
   if (!issue) return '';
   const hasSize = item.options?.some((option) => /^(size|størrelse)$/i.test(option.name)) || item.label;
-  return `<p class="cart-stock-notice">${escapeHtml(cartStockMessage(issue))}</p>${issue.maximumQuantity > 0 ? `<button type="button" data-cart-stock-adjust="${escapeHtml(item.variant)}">${t(`Change quantity to ${issue.maximumQuantity}`, `Endre antallet til ${issue.maximumQuantity}`)}</button>` : `<a class="cart-stock-action" href="${escapeHtml(localHref(item.url || `/products/${item.handle}`))}">${hasSize ? t('Choose another size', 'Velg en annen størrelse') : t('View product', 'Se produktet')}</a>`}`;
+  return `<p class="cart-stock-notice">${escapeHtml(cartStockMessage(issue))}</p>${issue.maximumQuantity > 0 ? `<button type="button" data-cart-stock-adjust="${escapeHtml(item.variant)}">${t(`Change quantity to ${issue.maximumQuantity}`, `Endre antallet til ${issue.maximumQuantity}`, "Menge auf " + (issue.maximumQuantity) + " ändern")}</button>` : `<a class="cart-stock-action" href="${escapeHtml(localHref(item.url || `/products/${item.handle}`))}">${hasSize ? t('Choose another size', 'Velg en annen størrelse', "Andere Größe wählen") : t('View product', 'Se produktet', "Produkt ansehen")}</a>`}`;
 };
 if (!document.querySelector('[data-drawer-backdrop]')) {
-  document.querySelector('.site-header')?.insertAdjacentHTML('afterend', `<div class="drawer-backdrop" data-drawer-backdrop hidden></div><dialog class="store-drawer search-drawer" aria-label="${t('Search', 'Søk')}" data-search-drawer><header><h2>${t('Search', 'Søk')}</h2><button type="button" data-drawer-close>${t('Close', 'Lukk')}</button></header><form role="search" data-predictive-search><label class="sr-only" for="predictive-query">${t('Search products', 'Søk etter produkter')}</label><input id="predictive-query" name="q" type="search" autocomplete="off" placeholder="${t('Search shoes, styles, materials', 'Søk etter sko, stiler og materialer')}"><button type="submit">${t('View all', 'Se alle')}</button></form><p data-predictive-status role="status" aria-live="polite">${t('Start typing to search the live catalog.', 'Skriv for å søke i den oppdaterte katalogen.')}</p><div class="predictive-results" data-predictive-results></div></dialog><dialog class="store-drawer cart-drawer" aria-label="${t('Shopping bag', 'Handlekurv')}" data-cart-drawer><header><h2>${t('Your bag', 'Handlekurven din')}</h2><button type="button" data-drawer-close>${t('Close', 'Lukk')}</button></header><div data-drawer-cart-items></div><footer><p><span>${t('Subtotal', 'Delsum')}</span><strong data-drawer-subtotal>NOK 0</strong></p><a href="${sitePath('/cart')}">${t('View bag', 'Se handlekurven')}</a></footer></dialog>`);
+  document.querySelector('.site-header')?.insertAdjacentHTML('afterend', `<div class="drawer-backdrop" data-drawer-backdrop hidden></div><dialog class="store-drawer search-drawer" aria-label="${t('Search', 'Søk', "Suche")}" data-search-drawer><header><h2>${t('Search', 'Søk', "Suche")}</h2><button type="button" data-drawer-close>${t('Close', 'Lukk', "Schließen")}</button></header><form role="search" data-predictive-search><label class="sr-only" for="predictive-query">${t('Search products', 'Søk etter produkter', "Produkte suchen")}</label><input id="predictive-query" name="q" type="search" autocomplete="off" placeholder="${t('Search shoes, styles, materials', 'Søk etter sko, stiler og materialer', "Schuhe, Styles, Materialien suchen")}"><button type="submit">${t('View all', 'Se alle', "Alle ansehen")}</button></form><p data-predictive-status role="status" aria-live="polite">${t('Start typing to search the live catalog.', 'Skriv for å søke i den oppdaterte katalogen.', "Beginne zu tippen, um den Live-Katalog zu durchsuchen.")}</p><div class="predictive-results" data-predictive-results></div></dialog><dialog class="store-drawer cart-drawer" aria-label="${t('Shopping bag', 'Handlekurv', "Einkaufstasche")}" data-cart-drawer><header><h2>${t('Your bag', 'Handlekurven din', "Deine Tasche")}</h2><button type="button" data-drawer-close>${t('Close', 'Lukk', "Schließen")}</button></header><div data-drawer-cart-items></div><footer><p><span>${t('Subtotal', 'Delsum', "Zwischensumme")}</span><strong data-drawer-subtotal>NOK 0</strong></p><a href="${sitePath('/cart')}">${t('View bag', 'Se handlekurven', "Tasche ansehen")}</a></footer></dialog>`);
 }
 const showToast = (message) => {
   const toast = document.querySelector('[data-cart-toast]');
@@ -92,14 +93,14 @@ const addCartItem = (product, variant, quantity = 1) => {
     url: product.url || `/products/${product.handle}`,
     label: variant.label || '',
     image: product.image || '',
-    imageAlt: product.imageAlt || product.title || t('New Movements product image', 'Produktbilde fra New Movements'),
+    imageAlt: product.imageAlt || product.title || t('New Movements product image', 'Produktbilde fra New Movements', "New Movements Produktbild"),
     price: Number(variant.price),
     currency: activeCurrency,
     market: activeMarket,
     quantity: safeQuantity,
   });
   writeCart(items);
-  if (cartDrawer?.getAttribute('aria-hidden') !== 'false') showToast(`${safeQuantity} × ${product.title} added to your bag.`);
+  if (cartDrawer?.getAttribute('aria-hidden') !== 'false') showToast(t(`${safeQuantity} × ${product.title} added to your bag.`, `${safeQuantity} × ${product.title} lagt i handlekurven.`, `${safeQuantity} × ${product.title} wurde dem Warenkorb hinzugefügt.`));
   return true;
 };
 
@@ -231,8 +232,8 @@ function renderDrawerCart() {
   const subtotal = document.querySelector('[data-drawer-subtotal]');
   if (!list) return;
   const items = readCart();
-  list.innerHTML = items.length ? items.map((item, index) => `<article class="drawer-cart-line${checkoutStockIssues.has(item.variant) ? ' has-stock-issue' : ''}" data-drawer-cart-index="${index}">${item.image ? `<img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.imageAlt || t(`${item.title} product image`, `Produktbilde av ${item.title}`))}">` : '<div class="drawer-cart-placeholder"></div>'}<div><a href="${escapeHtml(localHref(item.url || `/products/${item.handle}`))}">${escapeHtml(item.title)}</a><span>${cartOptions(item) ? `${escapeHtml(cartOptions(item))} · ` : ''}${item.quantity} × ${money(item.price, item.currency || 'NOK')}</span>${cartStockNotice(item)}<label class="drawer-quantity">${t('Quantity', 'Antall')}<input data-drawer-quantity type="number" min="1" max="20" inputmode="numeric" value="${item.quantity}" aria-label="${escapeHtml(t(`Quantity for ${item.title}`, `Antall for ${item.title}`))}"></label><button type="button" data-drawer-remove>${t('Remove', 'Fjern')}</button></div></article>`).join('') : `<div class="drawer-empty"><p>${t('Your bag is empty.', 'Handlekurven din er tom.')}</p><a href="${sitePath('/collections/all')}">${t('Continue shopping', 'Fortsett å handle')}</a></div>`;
-  if (subtotal) subtotal.textContent = cartRepricing ? t('Updating prices…', 'Oppdaterer priser …') : cartPriceFailed || items.some((item) => unavailableMarketVariants.has(item.variant)) ? t('Price unavailable', 'Pris utilgjengelig') : money(items.reduce((sum, item) => sum + item.price * item.quantity, 0));
+  list.innerHTML = items.length ? items.map((item, index) => `<article class="drawer-cart-line${checkoutStockIssues.has(item.variant) ? ' has-stock-issue' : ''}" data-drawer-cart-index="${index}">${item.image ? `<img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.imageAlt || t(`${item.title} product image`, `Produktbilde av ${item.title}`, "" + (item.title) + " Produktbild"))}">` : '<div class="drawer-cart-placeholder"></div>'}<div><a href="${escapeHtml(localHref(item.url || `/products/${item.handle}`))}">${escapeHtml(item.title)}</a><span>${cartOptions(item) ? `${escapeHtml(cartOptions(item))} · ` : ''}${item.quantity} × ${money(item.price, item.currency || 'NOK')}</span>${cartStockNotice(item)}<label class="drawer-quantity">${t('Quantity', 'Antall', "Menge")}<input data-drawer-quantity type="number" min="1" max="20" inputmode="numeric" value="${item.quantity}" aria-label="${escapeHtml(t(`Quantity for ${item.title}`, `Antall for ${item.title}`, "Menge für " + (item.title) + ""))}"></label><button type="button" data-drawer-remove>${t('Remove', 'Fjern', "Entfernen")}</button></div></article>`).join('') : `<div class="drawer-empty"><p>${t('Your bag is empty.', 'Handlekurven din er tom.', "Deine Tasche ist leer.")}</p><a href="${sitePath('/collections/all')}">${t('Continue shopping', 'Fortsett å handle', "Weiter einkaufen")}</a></div>`;
+  if (subtotal) subtotal.textContent = cartRepricing ? t('Updating prices…', 'Oppdaterer priser …', "Preise werden aktualisiert…") : cartPriceFailed || items.some((item) => unavailableMarketVariants.has(item.variant)) ? t('Price unavailable', 'Pris utilgjengelig', "Preis nicht verfügbar") : money(items.reduce((sum, item) => sum + item.price * item.quantity, 0));
   syncCartUpsells(items);
   cartDrawer.querySelectorAll('[data-checkout-start]').forEach((button) => { button.disabled = !items.length || checkoutPending || cartRepricing || cartPriceFailed || items.some((item) => unavailableMarketVariants.has(item.variant)); });
 }
@@ -251,8 +252,8 @@ function syncCartUpsells(items = readCart()) {
   if (cartUpsells) cartUpsells.hidden = !items.length || !upsellChoices.some(({ row }) => !row.hidden);
   if (upsellStatus) {
     upsellStatus.textContent = checkingUpsellStock
-      ? t('Checking shoe-care availability…', 'Sjekker lagerstatus for skopleie …')
-      : upsellStockFailed ? t('We could not check shoe-care stock. Reopen your bag to try again.', 'Vi klarte ikke å sjekke lagerstatus for skopleie. Åpne handlekurven igjen for å prøve på nytt.') : '';
+      ? t('Checking shoe-care availability…', 'Sjekker lagerstatus for skopleie …', "Verfügbarkeit der Schuhpflege wird geprüft…")
+      : upsellStockFailed ? t('We could not check shoe-care stock. Reopen your bag to try again.', 'Vi klarte ikke å sjekke lagerstatus for skopleie. Åpne handlekurven igjen for å prøve på nytt.', "Wir konnten den Bestand der Schuhpflege nicht prüfen. Öffne deine Tasche erneut, um es noch einmal zu versuchen.") : '';
     upsellStatus.hidden = !checkingUpsellStock && !upsellStockFailed;
   }
 }
@@ -323,12 +324,12 @@ const syncVariant = () => {
   add.disabled = option?.dataset.available !== 'true' || !UUID.test(add.dataset.variant);
   const unavailable = add.disabled;
   const unknown = option?.dataset.available === 'unknown';
-  add.textContent = !option?.value ? t('Select your size', 'Velg størrelse') : unknown ? t('Check availability', 'Sjekk tilgjengelighet') : unavailable ? t('Notify me', 'Varsle meg') : t('Add to cart', 'Legg i handlekurv');
+  add.textContent = !option?.value ? t('Select your size', 'Velg størrelse', "Wähle deine Größe") : unknown ? t('Check availability', 'Sjekk tilgjengelighet', "Verfügbarkeit prüfen") : unavailable ? t('Notify me', 'Varsle meg', "Benachrichtige mich") : t('Add to cart', 'Legg i handlekurv', "In den Warenkorb");
   add.dataset.checkStock = String(unknown);
   add.disabled = !option?.value;
   add.dataset.notify = String(unavailable && !!option?.value);
   const mobileAction = document.querySelector('[data-mobile-purchase-action]');
-  if (mobileAction) mobileAction.textContent = !option?.value ? t('Choose size', 'Velg størrelse') : unknown ? t('Check availability', 'Sjekk tilgjengelighet') : unavailable ? t('Notify me', 'Varsle meg') : t(`Add to bag · ${money(option.dataset.price)}`, `Legg i handlekurv · ${money(option.dataset.price)}`);
+  if (mobileAction) mobileAction.textContent = !option?.value ? t('Choose size', 'Velg størrelse', "Größe wählen") : unknown ? t('Check availability', 'Sjekk tilgjengelighet', "Verfügbarkeit prüfen") : unavailable ? t('Notify me', 'Varsle meg', "Benachrichtige mich") : t(`Add to bag · ${money(option.dataset.price)}`, `Legg i handlekurv · ${money(option.dataset.price)}`, "Zur Tasche hinzufügen · " + (money(option.dataset.price)) + "");
   document.querySelectorAll('[data-color-link]').forEach((link) => {
     try {
       const choices = JSON.parse(link.dataset.colorVariants);
@@ -363,9 +364,9 @@ const syncVariant = () => {
   const notifySize = notify?.querySelector('select[name="variantId"]');
   const canNotify = notifySize && [...notifySize.options].some(item => item.value === add.dataset.variant);
   if (sizeStatus) sizeStatus.textContent = unknown
-    ? t('Live stock could not be checked. Please try again.', 'Vi klarte ikke å sjekke lagerstatus. Prøv igjen.')
+    ? t('Live stock could not be checked. Please try again.', 'Vi klarte ikke å sjekke lagerstatus. Prøv igjen.', "Der Live-Bestand konnte nicht geprüft werden. Bitte versuche es erneut.")
     : option?.dataset.available === 'false'
-      ? canNotify ? t('This size is sold out. Request a one-time email below.', 'Denne størrelsen er utsolgt. Be om én e-postvarsling nedenfor.') : t('This option is currently unavailable.', 'Dette alternativet er ikke tilgjengelig nå.')
+      ? canNotify ? t('This size is sold out. Request a one-time email below.', 'Denne størrelsen er utsolgt. Be om én e-postvarsling nedenfor.', "Diese Größe ist ausverkauft. Fordere unten eine einmalige E-Mail an.") : t('This option is currently unavailable.', 'Dette alternativet er ikke tilgjengelig nå.', "Diese Option ist derzeit nicht verfügbar.")
       : '';
   if (option?.dataset.available === 'false' && notifySize?.querySelector(`option[value="${add.dataset.variant}"]`)) {
     notify.open = true;
@@ -491,7 +492,7 @@ const openQuickAdd = async (button) => {
       quickAddSizes.append(size);
     });
   }
-  if (quickAddStatus) quickAddStatus.textContent = t('Checking available sizes…', 'Sjekker tilgjengelige størrelser …');
+  if (quickAddStatus) quickAddStatus.textContent = t('Checking available sizes…', 'Sjekker tilgjengelige størrelser …', "Verfügbare Größen werden geprüft…");
   if (quickAddSubmit) quickAddSubmit.disabled = true;
   quickAddDialog?.showModal();
   document.body.classList.add('quick-add-open');
@@ -511,9 +512,9 @@ const openQuickAdd = async (button) => {
       const selected = variants.find((variant) => variant.id === quickAddProduct.selectedVariantId);
       if (selected) selectQuickAddVariant(selected, quickAddSizes?.querySelector(`[data-quick-variant="${selected.id}"]`));
     }
-    if (quickAddStatus && !quickAddVariant) quickAddStatus.textContent = available.size ? '' : t('These sizes are currently sold out.', 'Disse størrelsene er utsolgt nå.');
+    if (quickAddStatus && !quickAddVariant) quickAddStatus.textContent = available.size ? '' : t('These sizes are currently sold out.', 'Disse størrelsene er utsolgt nå.', "Diese Größen sind derzeit ausverkauft.");
   } catch {
-    if (quickAddProduct === requestedProduct && quickAddStatus) quickAddStatus.textContent = t('We could not check stock. Open the product page to try again.', 'Vi klarte ikke å sjekke lagerstatus. Åpne produktsiden for å prøve på nytt.');
+    if (quickAddProduct === requestedProduct && quickAddStatus) quickAddStatus.textContent = t('We could not check stock. Open the product page to try again.', 'Vi klarte ikke å sjekke lagerstatus. Åpne produktsiden for å prøve på nytt.', "Wir konnten den Bestand nicht prüfen. Öffne die Produktseite, um es erneut zu versuchen.");
   }
 
   quickAddSizes?.querySelector('button:not(:disabled)')?.focus();
@@ -559,12 +560,12 @@ const renderCart = () => {
   const list = cartRoot.querySelector('[data-cart-items]');
   const subtotal = cartRoot.querySelector('[data-cart-subtotal]');
   if (!items.length) {
-    list.innerHTML = `<div class="message-page"><h2>${t('Your bag is empty', 'Handlekurven er tom')}</h2><p><a href="${sitePath('/collections/all')}">${t('Continue shopping', 'Fortsett å handle')}</a></p></div>`;
+    list.innerHTML = `<div class="message-page"><h2>${t('Your bag is empty', 'Handlekurven er tom', "Deine Tasche ist leer")}</h2><p><a href="${sitePath('/collections/all')}">${t('Continue shopping', 'Fortsett å handle', "Weiter einkaufen")}</a></p></div>`;
   } else {
-    list.innerHTML = items.map((item, index) => `<article class="cart-line${checkoutStockIssues.has(item.variant) ? ' has-stock-issue' : ''}" data-cart-index="${index}">${item.image ? `<img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.imageAlt || `${item.title} product image`)}">` : '<div></div>'}<div><h2><a href="${escapeHtml(localHref(item.url || `/products/${item.handle}`))}">${escapeHtml(item.title)}</a></h2>${cartOptions(item) ? `<p>${escapeHtml(cartOptions(item))}</p>` : ''}<p>${money(item.price, item.currency || 'NOK')}</p><label>${t('Qty', 'Antall')} <input type="number" min="1" max="20" value="${item.quantity}" data-cart-quantity></label>${cartStockNotice(item)}<button type="button" data-cart-remove>${t('Remove', 'Fjern')}</button></div><strong>${money(item.price * item.quantity, item.currency || 'NOK')}</strong></article>`).join('');
+    list.innerHTML = items.map((item, index) => `<article class="cart-line${checkoutStockIssues.has(item.variant) ? ' has-stock-issue' : ''}" data-cart-index="${index}">${item.image ? `<img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.imageAlt || `${item.title} product image`)}">` : '<div></div>'}<div><h2><a href="${escapeHtml(localHref(item.url || `/products/${item.handle}`))}">${escapeHtml(item.title)}</a></h2>${cartOptions(item) ? `<p>${escapeHtml(cartOptions(item))}</p>` : ''}<p>${money(item.price, item.currency || 'NOK')}</p><label>${t('Qty', 'Antall', "Menge")} <input type="number" min="1" max="20" value="${item.quantity}" data-cart-quantity></label>${cartStockNotice(item)}<button type="button" data-cart-remove>${t('Remove', 'Fjern', "Entfernen")}</button></div><strong>${money(item.price * item.quantity, item.currency || 'NOK')}</strong></article>`).join('');
   }
   const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  if (subtotal) subtotal.textContent = cartRepricing ? t('Updating prices…', 'Oppdaterer priser …') : cartPriceFailed || items.some((item) => unavailableMarketVariants.has(item.variant)) ? t('Price unavailable', 'Pris utilgjengelig') : money(total);
+  if (subtotal) subtotal.textContent = cartRepricing ? t('Updating prices…', 'Oppdaterer priser …', "Preise werden aktualisiert…") : cartPriceFailed || items.some((item) => unavailableMarketVariants.has(item.variant)) ? t('Price unavailable', 'Pris utilgjengelig', "Preis nicht verfügbar") : money(total);
   checkoutButtons.forEach((button) => { button.disabled = !items.length || checkoutPending || cartRepricing || cartPriceFailed || items.some((item) => unavailableMarketVariants.has(item.variant)); });
 };
 cartRoot?.addEventListener('change', (event) => {
@@ -601,12 +602,12 @@ checkoutButtons.forEach((checkout) => checkout.addEventListener('click', async (
   checkoutPending = true;
   const label = checkout.textContent;
   checkoutButtons.forEach((button) => { button.disabled = true; });
-  checkout.textContent = t('Opening secure checkout…', 'Åpner sikker betaling …');
+  checkout.textContent = t('Opening secure checkout…', 'Åpner sikker betaling …', "Sicherer Checkout wird geöffnet…");
   if (checkoutError) checkoutError.hidden = true;
   try {
     const response = await fetch(sitePath('/reai/checkout/start'), { method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': crypto.randomUUID() }, body: JSON.stringify({ lines, ...await checkoutAnalytics() }) });
     const payload = await response.json().catch(() => ({}));
-    if (submittedRevision !== cartRevision) throw new Error(t('Your bag changed. Please check out again.', 'Handlekurven ble endret. Gå til kassen på nytt.'));
+    if (submittedRevision !== cartRevision) throw new Error(t('Your bag changed. Please check out again.', 'Handlekurven ble endret. Gå til kassen på nytt.', "Deine Tasche wurde geändert. Bitte gehe erneut zur Kasse."));
     if (response.status === 409 && payload.code === 'INSUFFICIENT_STOCK' && Array.isArray(payload.stockIssues)) {
       checkoutStockIssues = new Map(payload.stockIssues.filter((issue) => lines.some((line) => line.variantId === issue.variantId && line.quantity === issue.requestedQuantity) && Number.isInteger(issue.maximumQuantity) && issue.maximumQuantity >= 0 && issue.maximumQuantity < issue.requestedQuantity).map((issue) => [issue.variantId, issue]));
       const items = readCart().map((item) => {
@@ -619,10 +620,10 @@ checkoutButtons.forEach((checkout) => checkout.addEventListener('click', async (
       const affected = items.filter((item) => checkoutStockIssues.has(item.variant));
       if (affected.length) {
         const names = affected.map((item) => `${item.title}${cartOptions(item) ? ` (${cartOptions(item)})` : ''}`).join('; ');
-        throw new Error(t(`Please update your bag: ${names}. See the highlighted items above.`, `Oppdater handlekurven: ${names}. Se de markerte varene over.`));
+        throw new Error(t(`Please update your bag: ${names}. See the highlighted items above.`, `Oppdater handlekurven: ${names}. Se de markerte varene over.`, "Bitte aktualisiere deine Tasche: " + (names) + ". Sieh dir die hervorgehobenen Artikel oben an."));
       }
     }
-    if (!response.ok || !payload.checkoutUrl) throw new Error(payload.detail || payload.error || t('Checkout could not be started.', 'Vi klarte ikke å starte betalingen.'));
+    if (!response.ok || !payload.checkoutUrl) throw new Error(payload.detail || payload.error || t('Checkout could not be started.', 'Vi klarte ikke å starte betalingen.', "Der Checkout konnte nicht gestartet werden."));
     location.assign(payload.checkoutUrl);
   } catch (error) {
     if (checkoutError) { checkoutError.textContent = error.message; checkoutError.hidden = false; }
@@ -651,11 +652,11 @@ const renderPredictiveSearch = async () => {
   predictiveRequest = controller;
   const query = predictiveInput?.value.trim() || '';
   if (!query) {
-    if (predictiveStatus) predictiveStatus.textContent = t('Start typing to search the live catalog.', 'Skriv for å søke i den oppdaterte katalogen.');
+    if (predictiveStatus) predictiveStatus.textContent = t('Start typing to search the live catalog.', 'Skriv for å søke i den oppdaterte katalogen.', "Beginne zu tippen, um den Live-Katalog zu durchsuchen.");
     if (predictiveResults) predictiveResults.innerHTML = '';
     return;
   }
-  if (predictiveStatus) predictiveStatus.textContent = t('Searching…', 'Søker …');
+  if (predictiveStatus) predictiveStatus.textContent = t('Searching…', 'Søker …', "Suche läuft…");
   try {
     const response = await fetch(sitePath(`/reai/search?${new URLSearchParams({ q: query, ...(activeView ? { view: activeView } : {}) })}`), { signal: controller.signal });
     if (!response.ok) throw new Error('Search unavailable');
@@ -663,12 +664,12 @@ const renderPredictiveSearch = async () => {
     if (sequence !== predictiveSequence) return;
     const products = store.products;
     if (predictiveStatus) predictiveStatus.textContent = products.length
-      ? t(`${products.length} suggested product${products.length === 1 ? '' : 's'}`, `${products.length} ${products.length === 1 ? 'foreslått produkt' : 'foreslåtte produkter'}`)
-      : t(`No results for “${query}”`, `Ingen treff for «${query}»`);
+      ? t(`${products.length} suggested product${products.length === 1 ? '' : 's'}`, `${products.length} ${products.length === 1 ? 'foreslått produkt' : 'foreslåtte produkter'}`, "" + products.length + " Produktvorschläge")
+      : t(`No results for “${query}”`, `Ingen treff for «${query}»`, "Keine Ergebnisse für „" + (query) + "“");
     if (predictiveResults) predictiveResults.innerHTML = products.map((item) => `<a class="predictive-item" href="${escapeHtml(localHref(item.url || `/products/${item.handle}`))}">${item.image ? `<img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.imageAlt || `${item.title} product image`)}" width="80" height="100">` : '<span></span>'}<b>${escapeHtml(item.title)}</b><small>${money(item.price, store.currency || 'NOK')}</small></a>`).join('');
   } catch {
     if (sequence !== predictiveSequence || controller.signal.aborted) return;
-    if (predictiveStatus) predictiveStatus.textContent = t('The live catalog is temporarily unavailable.', 'Katalogen er midlertidig utilgjengelig.');
+    if (predictiveStatus) predictiveStatus.textContent = t('The live catalog is temporarily unavailable.', 'Katalogen er midlertidig utilgjengelig.', "Der Live-Katalog ist vorübergehend nicht verfügbar.");
   }
 };
 predictiveInput?.addEventListener('input', () => {
@@ -730,7 +731,7 @@ const updateCollection = async (url, pushHistory = true) => {
   if (!section) { location.assign(url); return; }
   section.setAttribute('aria-busy', 'true');
   const status = document.querySelector('[data-filter-status]');
-  if (status) status.textContent = t('Updating products…', 'Oppdaterer produkter …');
+  if (status) status.textContent = t('Updating products…', 'Oppdaterer produkter …', "Produkte werden aktualisiert…");
   try {
     const response = await fetch(url, { signal: controller.signal, headers: { Accept: 'text/html' } });
     if (!response.ok) throw new Error('Collection unavailable');
@@ -830,7 +831,7 @@ async function refreshCartPrices() {
   } catch {
     if (requestId !== cartPriceRequest) return;
     cartPriceFailed = true;
-    document.querySelectorAll('[data-checkout-error]').forEach((node) => { node.hidden = false; node.textContent = t('We could not update prices for your delivery country. Refresh the page to try again.', 'Vi klarte ikke å oppdatere prisene for leveringslandet ditt. Last siden på nytt for å prøve igjen.'); });
+    document.querySelectorAll('[data-checkout-error]').forEach((node) => { node.hidden = false; node.textContent = t('We could not update prices for your delivery country. Refresh the page to try again.', 'Vi klarte ikke å oppdatere prisene for leveringslandet ditt. Last siden på nytt for å prøve igjen.', "Wir konnten die Preise für dein Lieferland nicht aktualisieren. Aktualisiere die Seite, um es erneut zu versuchen."); });
   } finally { if (requestId === cartPriceRequest) { cartRepricing = false; renderCart(); renderDrawerCart(); } }
 }
 const updateCountryReturn = (form) => {
@@ -892,7 +893,7 @@ document.querySelectorAll('[data-newsletter-form]').forEach((newsletterForm) => 
   const name = String(data.get('name') || '').trim();
   const welcomeDiscount = data.get('welcomeDiscount') === 'true';
   button.disabled = true;
-  button.textContent = t('Signing up…', 'Melder deg på …');
+  button.textContent = t('Signing up…', 'Melder deg på …', "Anmeldung läuft…");
   status.hidden = true;
   try {
     const response = await fetch(sitePath('/reai/newsletter/subscribe'), {
@@ -905,11 +906,11 @@ document.querySelectorAll('[data-newsletter-form]').forEach((newsletterForm) => 
       : "You're on the list. Thanks for joining the New Movements community.";
     newsletterForm.reset();
   } catch {
-    status.textContent = t('We could not save your signup. Please try again in a moment.', 'Vi klarte ikke å lagre påmeldingen. Prøv igjen om litt.');
+    status.textContent = t('We could not save your signup. Please try again in a moment.', 'Vi klarte ikke å lagre påmeldingen. Prøv igjen om litt.', "Wir konnten deine Anmeldung nicht speichern. Bitte versuche es gleich noch einmal.");
   } finally {
     status.hidden = false;
     button.disabled = false;
-    button.textContent = t('Sign up', 'Meld deg på');
+    button.textContent = t('Sign up', 'Meld deg på', "Anmelden");
   }
 }));
 
@@ -921,13 +922,13 @@ document.querySelectorAll('[data-stock-form]').forEach((form) => form.addEventLi
   const status = form.querySelector('[data-stock-status]');
   const data = new FormData(form);
   button.disabled = true;
-  status.textContent = t('Saving your request…', 'Lagrer forespørselen …');
+  status.textContent = t('Saving your request…', 'Lagrer forespørselen …', "Deine Anfrage wird gespeichert…");
   try {
     const response = await fetch(sitePath('/reai/stock/subscribe'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ variantId: data.get('variantId'), email: data.get('email'), consent: data.get('consent') === 'true' }) });
     if (!response.ok) throw new Error(response.status === 429
-      ? t('Please wait a minute before trying again.', 'Vent et minutt før du prøver igjen.')
-      : t('We could not save your request. Refresh the page and try again.', 'Vi klarte ikke å lagre forespørselen. Last siden på nytt og prøv igjen.'));
-    status.textContent = t('You’re on the list. We’ll email you once when this size is available.', 'Du står på listen. Vi sender deg én e-post når størrelsen er tilgjengelig.');
+      ? t('Please wait a minute before trying again.', 'Vent et minutt før du prøver igjen.', "Bitte warte eine Minute, bevor du es erneut versuchst.")
+      : t('We could not save your request. Refresh the page and try again.', 'Vi klarte ikke å lagre forespørselen. Last siden på nytt og prøv igjen.', "Wir konnten deine Anfrage nicht speichern. Aktualisiere die Seite und versuche es erneut."));
+    status.textContent = t('You’re on the list. We’ll email you once when this size is available.', 'Du står på listen. Vi sender deg én e-post når størrelsen er tilgjengelig.', "Du stehst auf der Liste. Wir senden dir einmalig eine E-Mail, sobald diese Größe verfügbar ist.");
     form.elements.email.value = '';
     form.elements.consent.checked = false;
   } catch (error) { status.textContent = error.message; }
@@ -953,7 +954,7 @@ if (sizeGuideDialog && typeof sizeGuideDialog.showModal === 'function') {
     const active = controller;
     const timeout = setTimeout(() => active.abort(), 8000);
     body.setAttribute('aria-busy', 'true');
-    if (!body.querySelector('[data-size-guide-content]')) body.innerHTML = `<p class="sg-loading" role="status">${t('Opening your size guide…', 'Åpner størrelsesguiden …')}</p>`;
+    if (!body.querySelector('[data-size-guide-content]')) body.innerHTML = `<p class="sg-loading" role="status">${t('Opening your size guide…', 'Åpner størrelsesguiden …', "Dein Größenratgeber wird geöffnet…")}</p>`;
     try {
       const response = await fetch(href, { signal: active.signal });
       if (!response.ok) throw new Error('Size guide unavailable');

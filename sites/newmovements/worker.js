@@ -5,13 +5,14 @@ import * as storefront from "./storefront.mjs";
 import { handleStorefrontRequest } from "./routes.mjs";
 
 const worker = createReaiMarketStorefrontWorker({
-  cacheKey: "newmovements-v16",
+  cacheKey: "newmovements-v18",
   storefront,
   market: "default",
   locale: "en",
   locales: [
     { pathPrefix: "", locale: "en" },
     { pathPrefix: "/nb", locale: "nb-NO" },
+    { pathPrefix: "/de", locale: "de" },
   ],
   imageOrigins: ["https://cdn.shopify.com"],
   merchantCheckoutPath: "/checkout",
@@ -27,8 +28,8 @@ export default {
   async fetch(request, env, context) {
     const requestUrl = new URL(request.url);
     const review = !["newmovements.com", "www.newmovements.com"].includes(requestUrl.hostname);
-    if (review && /^(?:\/nb)?\/robots\.txt$/.test(requestUrl.pathname)) return new Response("User-agent: *\nDisallow: /\n", { headers: { "Content-Type": "text/plain", "X-Robots-Tag": "noindex, nofollow" } });
-    if (!review && /^(?:\/nb)?\/robots\.txt$/.test(requestUrl.pathname)) return new Response("User-agent: *\nAllow: /\nSitemap: https://newmovements.com/sitemap.xml\nSitemap: https://newmovements.com/nb/sitemap.xml\n", { headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=3600" } });
+    if (review && /^(?:\/(?:nb|de))?\/robots\.txt$/.test(requestUrl.pathname)) return new Response("User-agent: *\nDisallow: /\n", { headers: { "Content-Type": "text/plain", "X-Robots-Tag": "noindex, nofollow" } });
+    if (!review && /^(?:\/(?:nb|de))?\/robots\.txt$/.test(requestUrl.pathname)) return new Response("User-agent: *\nAllow: /\nSitemap: https://newmovements.com/sitemap.xml\nSitemap: https://newmovements.com/nb/sitemap.xml\nSitemap: https://newmovements.com/de/sitemap.xml\n", { headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=3600" } });
     const response = await worker.fetch(request, env, context);
     const headers = new Headers(response.headers);
     // Only this storefront opts into consent-controlled advertising measurement.
