@@ -3,7 +3,7 @@
 ## Public business context
 
 - New Movements is an Oslo footwear brand focused on unisex, repairable and recyclable shoes.
-- The public storefront defaults to English. Norwegian is available under `/nb` with `nb-NO` catalog/checkout delivery; additional locales should use the same shared Worker locale map. Norway uses NOK, Germany EUR and Switzerland CHF; the server selects the configured ReAI market.
+- The public storefront defaults to English. Norwegian is available under `/nb` with `nb-NO` catalog/checkout delivery; German under `/de` with `de` delivery; additional locales should use the same shared Worker locale map. Norway uses NOK, Germany EUR, Switzerland CHF and the United Kingdom GBP; the server selects the configured ReAI market.
 - The reference domain is `https://newmovements.com`.
 
 ## Site constraints

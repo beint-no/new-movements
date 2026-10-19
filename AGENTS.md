@@ -74,7 +74,7 @@ repository-specific; the hub never grants access to its submodules.
 ## Countries and currencies
 
 Delivery countries are discovered from the ReAI Site markets. Several countries can
-share a market and price list; New Movements keeps one Shopify-synced list per currency.
+share a market and price list; New Movements keeps one ReAI-managed price list per currency. UK GBP prices were restored from Shopify’s contextual UK price list; automatic Shopify product sync remains disabled after cutover.
 The header searches country names, ISO country codes and currency codes, with a native
 select fallback. The HttpOnly preference retains both market and country, and the
 Worker passes the validated country to checkout. Never infer the delivery country

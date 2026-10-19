@@ -46,7 +46,7 @@ export function canonicalPath(pathname) {
 
 export function redirectStorefrontRequest({ request, url }) {
   if (!["GET", "HEAD"].includes(request.method) || url.pathname.startsWith("/reai/")) return null;
-  const localePrefix = url.pathname === "/nb" || url.pathname.startsWith("/nb/") ? "/nb" : "";
+  const localePrefix = /^\/(?:nb|de)(?:\/|$)/.exec(url.pathname)?.[0].replace(/\/$/, "") || "";
   const localePath = localePrefix ? (url.pathname.slice(localePrefix.length) || "/") : url.pathname;
   const pathname = canonicalPath(localePath);
   const hostname = url.hostname === "www.newmovements.com" ? "newmovements.com" : url.hostname;
@@ -77,7 +77,8 @@ export async function handleStorefrontRequest(context) {
       forwardedScheme = null;
     }
   }
-  if ((url.protocol === "http:" || forwardedScheme === "http") && !url.pathname.startsWith("/reai/")) {
+  const localDevelopment = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
+  if (!localDevelopment && (url.protocol === "http:" || forwardedScheme === "http") && !url.pathname.startsWith("/reai/")) {
     const destination = new URL(url.href);
     destination.protocol = "https:";
     return new Response(null, { status: 308, headers: { Location: destination.href, "Cache-Control": "public, max-age=3600" } });

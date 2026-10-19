@@ -1,4 +1,5 @@
 const COPY = Object.freeze({
+  de: Object.freeze({label: "Rechtliche Informationen und Plattform", poweredBy: "Betrieben mit ReAI", refund: "Rückgabe", privacy: "Datenschutz", terms: "Allgemeine Geschäftsbedingungen"}),
   en: Object.freeze({
     label: "Legal and platform information",
     poweredBy: "Powered by ReAI",
@@ -36,7 +37,7 @@ const requiredHref = (value, name) => {
   return href;
 };
 
-const language = (locale) => /^(?:nb|no)(?:-|$)/i.test(String(locale || "")) ? "nb" : "en";
+const language = (locale) => /^de(?:-|$)/i.test(String(locale || "")) ? "de" : /^(?:nb|no)(?:-|$)/i.test(String(locale || "")) ? "nb" : "en";
 
 export function renderCompactLegalFooter({
   owner,
