@@ -4,9 +4,9 @@ export const SIZE_GUIDE_SOURCE = {
   "sheet": "Last Sizes",
   "sha256": "7a9d58fb60188a8ead2b141a936314c3e22620de8534297b32e3aa6d16dd73cb",
   "importedOn": "2026-10-15",
-  "lengthMeaning": "foot",
-  "lengthConfirmed": false,
-  "lengthAssumption": "Merchant authorized publication on 2026-10-14 using approximate heel-to-toe foot lengths. Existing public Original/Allrounder guide labels matching CM values as foot measurements; this interpretation is provisionally applied to all five workbook charts pending the New Movements team review.",
+  "lengthMeaning": "internal",
+  "lengthConfirmed": true,
+  "lengthConfirmation": "Bárbara Pimenta, New Movements QC/Production Manager, confirmed by email on 2026-10-19 that the millimetre measurements are internal shoe lengths corresponding to the shoe last. This covers the published Sneakers, Boots and Loafers charts. No foot-length conversion or toe allowance has been derived.",
   "unitNotes": "Classic and Sandals numeric values are cm; Sneakers, Boots and Loafers numeric values are mm, despite inconsistent source headings. The new workbook is semantically unchanged from the previously published size rows; values are preserved by converting mm to cm. No missing conversions or sizes extrapolated. Lace-length tables remain source-only until the team confirms they should be published."
 };
 
