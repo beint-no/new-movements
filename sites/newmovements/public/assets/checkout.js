@@ -18,6 +18,10 @@ const delivery = document.querySelector('[data-delivery-options]');
 const customerFields = ['email','phone','name','countryCode','addressPart1','addressPart2','postalCode','city','province'];
 let chain = Promise.resolve(), timer, conflict = false, submitting = false, lastSentCustomer = null;
 let options = [], discovery = 0, choosingOption = null;
+const pickupMethod = () => state.shippingMethods.find(m => m.id === state.shippingMethodId && m.pickupDetails);
+let fulfillment = pickupMethod()?.id || 'delivery';
+const storePickup = () => fulfillment !== 'delivery';
+const fulfillmentSaved = () => storePickup() ? pickupMethod()?.id === fulfillment : !!state.shippingMethodId && !pickupMethod();
 const deliveryAddress = c => JSON.stringify(['name','countryCode','addressPart1','addressPart2','postalCode','city','province'].map(n=>c[n]));
 const apiPath = sitePath(`/reai/checkout/${state.id}`);
 const customer = () => Object.fromEntries(customerFields.map(name => [name, form?.elements.namedItem(name)?.value.trim() || '']));
@@ -58,6 +62,7 @@ function message(text = '') { if (errorBox) { errorBox.textContent = text; error
 function text(selector, value) { const node = document.querySelector(selector); if (node) node.textContent = value; }
 function refresh(next) {
   state = next;
+  renderFulfillment();
   trackCheckout(state);
   rememberDraft();
   text('[data-subtotal]', money(state.subtotal)); text('[data-total]', money(state.total)); text('[data-mobile-total]', money(state.total));
@@ -208,12 +213,48 @@ function pickupDisplay(row,p) {
   const kind=document.createElement('small');kind.className='co-choice-type';kind.textContent=p.typeLabel || '';
   row.append(name,address);if(kind.textContent)row.append(kind);
 }
+function renderFulfillment() {
+  const target=document.querySelector('[data-fulfillment-options]');if(!target)return;
+  const focused=target.contains(document.activeElement)?document.activeElement.value:null;
+  const pickups=state.shippingMethods.filter(m=>m.pickupDetails);
+  if(storePickup() && !pickups.some(m=>m.id===fulfillment))fulfillment='delivery';
+  target.replaceChildren();
+  const methods=[{id:'delivery',name:t('Deliver to my address','Send til min adresse','An meine Adresse liefern')},...pickups];
+  methods.forEach(method=>{
+    const card=document.createElement('div');card.className='co-delivery-card';card.classList.toggle('is-selected',fulfillment===method.id);
+    const label=document.createElement('label');label.className='co-option';
+    const input=document.createElement('input');input.type='radio';input.name='fulfillment';input.value=method.id;input.checked=fulfillment===method.id;
+    const content=document.createElement('span');content.className='co-option-content';
+    const title=document.createElement('strong');title.textContent=method.pickupDetails?t('Pick up in store','Hent i butikk','Im Geschäft abholen'):method.name;content.append(title);
+    if(method.pickupDetails){const details=document.createElement('small');details.textContent=method.pickupDetails;content.append(details);}
+    label.append(input,content);
+    if(method.pickupDetails){const price=document.createElement('b');price.textContent=t('Free','Gratis','Kostenlos');label.append(price);}
+    card.append(label);target.append(card);
+    input.addEventListener('change',async()=>{
+      fulfillment=method.id;discovery++;choosingOption=null;clearTimeout(timer);message();renderFulfillment();
+      try {
+        if(storePickup()){await save({shippingMethodId:method.id});}
+        else {renderDelivery();if(state.dynamicShipping && addressComplete(customer()))await discover();}
+        warmPayment();
+      } catch(e){error(e,true);}
+    });
+  });
+  if(focused)target.querySelector(`input[value="${CSS.escape(focused)}"]`)?.focus({preventScroll:true});
+  document.querySelector('.co-fulfillment').hidden=!pickups.length;
+  const address=document.querySelector('[data-delivery-address]');address.hidden=storePickup();
+  address.querySelectorAll('input').forEach(input=>{
+    input.required=!storePickup() && ['addressPart1','postalCode','city'].includes(input.name);
+    if(storePickup())clearFieldError(input);
+  });
+  document.querySelector('[data-carrier-delivery]').hidden=storePickup();
+  document.querySelector('[data-delivery-heading]').hidden=storePickup();
+}
 function renderDelivery() {
   if (!delivery) return;
   delivery.replaceChildren();
-  const methods = state.dynamicShipping ? options : state.shippingMethods;
+  const methods = state.dynamicShipping ? options : state.shippingMethods.filter(m=>!m.pickupDetails);
   if (!methods.length) {
-    const p=document.createElement('p'); p.textContent = t('No delivery options are available for this address. Check your address or contact us.','Ingen leveringsalternativer for denne adressen. Sjekk adressen eller kontakt oss.', "Für diese Adresse sind keine Lieferoptionen verfügbar. Prüfe deine Adresse oder kontaktiere uns.");delivery.append(p);return;
+    const p=document.createElement('p'); p.textContent = state.dynamicShipping && !addressComplete(customer()) ? t('Enter your address to see delivery options.','Oppgi adressen for å se leveringsalternativer.','Gib deine Adresse ein, um Lieferoptionen zu sehen.') : t('No delivery options are available for this address. Check your address or contact us.','Ingen leveringsalternativer for denne adressen. Sjekk adressen eller kontakt oss.', "Für diese Adresse sind keine Lieferoptionen verfügbar. Prüfe deine Adresse oder kontaktiere uns.");delivery.append(p);return;
   }
   methods.forEach(o => {
     const dynamic = state.dynamicShipping;
@@ -265,10 +306,10 @@ function enhanceAddress() {
 }
 async function discover(optionToken, includeOtherOptions = false) {
   const generation=++discovery,c=customer();
-  if (!addressComplete(c)) return;
+  if (storePickup() || !addressComplete(c)) return;
   if (!optionToken) text('[data-delivery-options]', t('Finding delivery options…','Henter leveringsalternativer…', "Lieferoptionen werden gesucht…"));
   const result = await api('/delivery-options','POST',{customer:c,includeOtherOptions,...(optionToken?{optionToken}:{})});
-  if (generation !== discovery || !equal(c,customer())) return;
+  if (generation !== discovery || storePickup() || !equal(c,customer())) return;
   if (result.error === 'OPTION_EXPIRED') {
     state.shippingMethodId=null;state.selectedOptionToken=null;state.selectedPickupToken=null;
     message(t('Please choose delivery again; the previous quote expired.','Velg levering på nytt; forrige tilbud har utløpt.', "Bitte wähle die Lieferung erneut; das vorherige Angebot ist abgelaufen."));
@@ -281,10 +322,10 @@ async function discover(optionToken, includeOtherOptions = false) {
   renderDelivery();
 }
 function warmPayment() {
-  if (!form?.checkValidity() || state.shippingRequired && !state.shippingMethodId || conflict) return;
+  if (!form?.checkValidity() || state.shippingRequired && !fulfillmentSaved() || conflict) return;
   const revision=state.revision;
   enqueue(async()=> {
-    if (state.revision!==revision) return;
+    if (state.revision!==revision || state.shippingRequired && !fulfillmentSaved()) return;
     const next=await api('/prepare-payment','POST',{revision});
     if (next.revision===revision) { refresh(next); }
   }).catch(()=>{});
@@ -295,7 +336,7 @@ form?.addEventListener('input',e=> {
   if(e.target.name==='countryCode' && !state.countries.includes(e.target.value)) return;
   const addressChanged=deliveryAddress(state.customer)!==deliveryAddress(customer());
   clearTimeout(timer);if(addressChanged){discovery++;choosingOption=null;}message();
-  timer=setTimeout(async()=>{try {const needsDiscovery=deliveryAddress(state.customer)!==deliveryAddress(customer());await save();if(state.dynamicShipping&&needsDiscovery&&addressComplete(customer()))await discover();else if(!state.dynamicShipping)renderDelivery();warmPayment();}catch(e){error(e);}},650);
+  timer=setTimeout(async()=>{try {const needsDiscovery=deliveryAddress(state.customer)!==deliveryAddress(customer());await save();if(state.dynamicShipping&&!storePickup()&&needsDiscovery&&addressComplete(customer()))await discover();else if(!state.dynamicShipping)renderDelivery();warmPayment();}catch(e){error(e);}},650);
 });
 function provinceVisibility() {
   const node = document.querySelector('[data-province]');
@@ -326,8 +367,9 @@ form?.addEventListener('submit',async e=> {
   submitting=true;continueButton.disabled=true;clearTimeout(timer);message();
   const c=customer();
   try {
+    if (state.shippingRequired && !fulfillmentSaved()) throw new Error(t('Choose a delivery method before continuing.','Velg leveringsmåte før du fortsetter.','Wähle eine Liefermethode, bevor du fortfährst.'));
     await save({},true);
-    if (state.shippingRequired && !state.shippingMethodId) throw new Error(t('Choose a delivery method before continuing.','Velg leveringsmåte før du fortsetter.', "Wähle eine Liefermethode, bevor du fortfährst."));
+    if (state.shippingRequired && !fulfillmentSaved()) throw new Error(t('Choose a delivery method before continuing.','Velg leveringsmåte før du fortsetter.', "Wähle eine Liefermethode, bevor du fortfährst."));
     const revision=state.revision;
     const next=await enqueue(()=>api('/prepare-payment','POST',{revision}));refresh(next);
     if(next.revision!==revision||!equal(c,customer()))throw new Error(t('Your details changed. Review them and continue again.','Detaljene er endret. Sjekk dem og fortsett igjen.', "Deine Angaben haben sich geändert. Prüfe sie und fahre dann erneut fort."));
@@ -340,8 +382,9 @@ document.querySelector('[data-remove-discount]')?.addEventListener('click',async
 if (form) {
   if (!state.editable) { form.hidden=true; const p=document.createElement('p');p.textContent=state.phase==='expired'?t('This checkout has expired. Your bag is still available.','Denne kassen har utløpt. Handlekurven din er bevart.', "Dieser Checkout ist abgelaufen. Deine Tasche ist weiterhin verfügbar."):t('Payment is in progress. Continue on the secure payment page.','Betalingen er i gang. Fortsett på den sikre betalingssiden.', "Die Zahlung läuft. Fahre auf der sicheren Zahlungsseite fort.");const link=document.createElement('a');link.className='co-button';link.href=state.phase==='expired'?sitePath('/cart'):state.paymentUrl;link.textContent=state.phase==='expired'?t('Return to bag','Tilbake til handlekurven', "Zurück zur Tasche"):t('Continue payment','Fortsett betaling', "Zahlung fortsetzen");form.before(p,link); }
   else {
-    if(restoredDraft)save().then(()=>{if(state.dynamicShipping&&addressComplete(customer()))return discover(state.selectedOptionToken||undefined,true);}).then(warmPayment).catch(error);
-    else if(state.dynamicShipping&&addressComplete(customer())) {
+    renderFulfillment();
+    if(restoredDraft)save().then(()=>{if(state.dynamicShipping&&!storePickup()&&addressComplete(customer()))return discover(state.selectedOptionToken||undefined,true);}).then(warmPayment).catch(error);
+    else if(state.dynamicShipping&&!storePickup()&&addressComplete(customer())) {
       discover(state.selectedOptionToken||undefined,true).then(()=> {
         if(options.find(o=>o.token===state.selectedOptionToken)?.pickupRequired)return discover(state.selectedOptionToken);
       }).catch(error);
