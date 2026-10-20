@@ -387,3 +387,22 @@ address values when switching locally back to delivery, restore required fields,
 and block payment until the selected fulfillment mode has actually been saved.
 Carrier discovery runs only for delivery with a complete address; its responses
 must not replace a newer pickup choice. Never hardcode pickup addresses in JS.
+
+## Product publication and discovery (2026-10-20)
+
+Publishing makes a product addressable; it does not supply missing market prices
+or add it to manual merchandising collections. Women and Men now use ReAI's native
+automated rules for Sneakers, Boots and Loafers categories (`aa-8-8`, `aa-8-3`,
+`aa-8-9`); Sneakers and Boots match their own categories. The existing audience
+size ranges still apply in the storefront. Existing collection IDs, handles and
+sort settings are retained. Family, seasonal and featured collections remain
+curated in ReAI; add newly published products to the relevant ones explicitly.
+
+Before publishing, check category, structured color/material attributes, photos
+and alt text, EN/NB/DE copy, and actual prices in every intended market. Preserve
+public product/variant identities and handles. Match historical price recovery by
+exact unique SKU and use the merchant's existing market prices, never inferred FX.
+Option-specific colors must link to the exact option name/value; do not assign all
+of a multi-color garment's colors to every variant. Shoe-care products do not need
+fabricated footwear colors or materials. This configuration and product data live
+in ReAI; storefront deployments do not update them.

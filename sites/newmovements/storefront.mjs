@@ -531,7 +531,7 @@ function structuredFilterGroup(facet, t) {
   const options = facet.values.map((value) => {
     const count = value.count === null ? "" : `<small class="facet-count">${value.count}</small>`;
     const swatchColor = COLOR_SWATCHES[value.label.toLowerCase()] || value.colors.find((color) => /^#[0-9a-f]{6}([0-9a-f]{2})?$/i.test(color)) || "#ddd";
-    const swatch = colors ? `<span class="color-swatch" style="--swatch:${swatchColor}" aria-hidden="true"></span>` : "";
+    const swatch = colors ? `<span class="color-swatch" style="--swatch-color:${swatchColor}" aria-hidden="true"></span>` : "";
     return `<label${colors ? ' class="color-option"' : ""}><input type="checkbox" name="${escapeHtml(facet.parameter)}" value="${escapeHtml(value.inputValue)}"${value.selected ? " checked" : ""}${value.count === 0 && !value.selected ? " disabled" : ""}>${swatch}<span>${escapeHtml(facetValueLabel(facet, value, t))}</span>${count}</label>`;
   }).join("");
   return `<details name="collection-facet"${facet.values.some((value) => value.selected) ? " open" : ""}><summary>${escapeHtml(facetLabel(facet, t))}</summary><div class="facet-options${colors ? " color-options" : ""}">${options}</div></details>`;
