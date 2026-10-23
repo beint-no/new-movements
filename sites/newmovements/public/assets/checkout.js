@@ -69,6 +69,10 @@ function refresh(next) {
   text('[data-shipping-price]', state.shippingGross == null ? t('Choose delivery','Velg levering', "Lieferung wählen") : Number(state.shippingGross) === 0 ? t('Free','Gratis', "Kostenlos") : money(state.shippingGross));
   text('[data-discount-name]',state.discountCode || ''); text('[data-discount-amount]',money(-(state.discountGross || 0)));
   document.querySelector('[data-discount-row]').hidden = !state.discountCode;
+  text('[data-gift-card-name]', state.giftCardCode ? '•••• ' + state.giftCardCode.slice(-4) : '');
+  text('[data-gift-card-amount]', money(-(state.giftCardAmount || 0)));
+  document.querySelector('[data-gift-card-row]').hidden = !state.giftCardCode;
+  text('[data-total-label]', state.giftCardCode ? t('Left to pay','Å betale','Noch zu zahlen') : t('Total','Totalt','Gesamt'));
   if (state.currency === 'NOK') text('[data-tax]', t('Including VAT','Inkludert MVA', "Inklusive MwSt.") + ' ' + money(state.vat));
 }
 async function api(suffix = '', method = 'GET', body, idempotencyKey, signal) {
@@ -376,9 +380,39 @@ form?.addEventListener('submit',async e=> {
     location.assign(state.paymentUrl);
   } catch(e){error(e,true);submitting=false;continueButton.disabled=false;}
 });
-const discountForm=document.querySelector('[data-discount-form]');
-discountForm?.addEventListener('submit',async e=>{e.preventDefault();const code=discountForm.elements.discountCode.value.trim();if(!code)return;const btn=discountForm.querySelector('button');btn.disabled=true;text('[data-discount-status]','');try{await save({discountCode:code});discountForm.reset();warmPayment();}catch(e){text('[data-discount-status]',e.message);}finally{btn.disabled=false;}});
-document.querySelector('[data-remove-discount]')?.addEventListener('click',async()=>{try{await save({discountCode:''});warmPayment();}catch(e){error(e);}});
+const codeForm=document.querySelector('[data-code-form]');
+const normalizeCode = value => value.replace(/\s/gu, '').toUpperCase();
+codeForm?.elements.code.addEventListener('paste', e => {
+  const pasted = e.clipboardData?.getData('text');
+  if (pasted == null) return;
+  e.preventDefault();
+  const input=e.currentTarget;
+  input.setRangeText(normalizeCode(pasted), input.selectionStart, input.selectionEnd, 'end');
+});
+codeForm?.addEventListener('submit', async e => {
+  e.preventDefault();
+  const input=codeForm.elements.code;
+  const code=normalizeCode(input.value);
+  input.value=code;
+  if(!code)return;
+  const btn=codeForm.querySelector('button');
+  btn.disabled=true;text('[data-code-status]','');
+  try {
+    await save({code});
+    codeForm.reset();
+    text('[data-code-status]', t('Code applied.','Koden er lagt til.','Code angewendet.'));
+    warmPayment();
+  } catch(e) {text('[data-code-status]',e.message);}
+  finally {btn.disabled=false;}
+});
+for(const [selector,field] of [['[data-remove-discount]','discountCode'],['[data-remove-gift-card]','giftCardCode']]) {
+  document.querySelector(selector)?.addEventListener('click',async e=> {
+    const button=e.currentTarget;button.disabled=true;
+    try {await save({[field]:''});text('[data-code-status]','');warmPayment();}
+    catch(e){text('[data-code-status]',e.message);}
+    finally{button.disabled=false;}
+  });
+}
 if (form) {
   if (!state.editable) { form.hidden=true; const p=document.createElement('p');p.textContent=state.phase==='expired'?t('This checkout has expired. Your bag is still available.','Denne kassen har utløpt. Handlekurven din er bevart.', "Dieser Checkout ist abgelaufen. Deine Tasche ist weiterhin verfügbar."):t('Payment is in progress. Continue on the secure payment page.','Betalingen er i gang. Fortsett på den sikre betalingssiden.', "Die Zahlung läuft. Fahre auf der sicheren Zahlungsseite fort.");const link=document.createElement('a');link.className='co-button';link.href=state.phase==='expired'?sitePath('/cart'):state.paymentUrl;link.textContent=state.phase==='expired'?t('Return to bag','Tilbake til handlekurven', "Zurück zur Tasche"):t('Continue payment','Fortsett betaling', "Zahlung fortsetzen");form.before(p,link); }
   else {

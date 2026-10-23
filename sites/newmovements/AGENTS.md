@@ -231,13 +231,12 @@ Only allowlisted anonymous event fields are transmitted.
 
 ## Launch audit (2026-10-13)
 
-Gift Card (product 70025) is deliberately unpublished from this Site: ReAI does not
-yet issue or redeem stored-value codes. Legacy product/collection/page links lead
+Gift Card (product 70025) remains deliberately unpublished from this Site.
+ReAI now supports stored-value issuance and redemption; selling this product still
+requires explicit merchant configuration. Legacy product/collection/page links lead
 to gift-card customer care. Never republish it as an ordinary digital product.
-On 2026-10-13, the merchant confirmed there are no outstanding Shopify gift-card
-balances, so no balance migration is required. Gift-card sales remain unavailable
-until issuance and redemption are supported. The original Shopify store remains
-the backup; this change is ReAI-only.
+Imported legacy balances use replacement ReAI codes; redemption never queries
+Shopify. Keep gift-card product sales unpublished until explicitly configured.
 
 Recovery flow has stage zero only. The previous 8/16-hour follow-ups conflicted
 with Bud's one marketing email per sender/recipient per 24 hours and the 24-hour
@@ -406,3 +405,9 @@ Option-specific colors must link to the exact option name/value; do not assign a
 of a multi-color garment's colors to every variant. Shoe-care products do not need
 fabricated footwear colors or materials. This configuration and product data live
 in ReAI; storefront deployments do not update them.
+
+Checkout uses one explicitly submitted code field for discount codes or gift cards,
+with pasted whitespace removed. ReAI resolves the code; the browser never probes
+balances or guesses code types. Render gift cards as separate prepaid tender with
+a masked ending and an independent removal action; do not alter prices or VAT.
+The total is the remaining amount to pay after gift-card value.
