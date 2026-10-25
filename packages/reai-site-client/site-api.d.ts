@@ -763,6 +763,8 @@ export interface components {
             isDefault: boolean;
             locales: string[];
             name: string;
+            /** @description Configured delivery prices in this market currency for storefront shipping information. Excludes store pickup. Country restrictions and optional weight tiers apply; checkout remains authoritative. Free-shipping threshold uses product total after discounts, before gift-card payment. */
+            shippingMethods: components["schemas"]["SiteDeliveryShippingMethodRes"][];
         };
         SiteDeliveryOptionRes: {
             name: string;
@@ -821,6 +823,16 @@ export interface components {
             sourceLocale: string;
             /** @enum {string} */
             status: "enabled" | "disabled";
+        };
+        SiteDeliveryShippingMethodRes: {
+            amount: number;
+            amountAboveWeight?: number | null;
+            countries: string[];
+            freeFromAmount?: number | null;
+            /** Format: uuid */
+            id: string;
+            /** Format: int32 */
+            weightThresholdGrams?: number | null;
         };
         SiteDeliveryVariantRes: {
             /** @description Attributes bound to this variant's selected option values. Combine with product-wide attributes when filtering; keep size, price and availability predicates on the same variant. */

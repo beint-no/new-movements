@@ -219,7 +219,7 @@ collection retains its own route and membership. The empty tax utility collectio
 
 New Movements opts in with merchantCheckoutPath=/checkout. The shared Worker and typed Site client own the private proxy; the Site token stays server-side. Contact, address, delivery and discount edits are saved in ReAI with optimistic revision checks. Cross-market country changes create a new currency quote and retire the old draft. Background preparation is unpayable and holds no stock; ReAI validates and reserves only on payment submission. The complete hosted checkout remains the shared default for other storefronts. Checkout HTML/API are no-store, noindex and no-referrer; never log their personal data. Confirmation checks fulfillment before removing purchased cart quantities, once per checkout. No implicit newsletter consent.
 
-Checkout shipping cards consume Site API carrier logos, localized descriptions and pickup labels. Pickup search filters returned locations locally and supports keyboard selection; distance is shown only when supplied by the carrier. Optional Norwegian address suggestions use the same private Worker/Site client boundary because Bring requires credentials; keep manual input working during provider failure. Checkout promises free returns within 30 days and free exchanges per https://newmovements.com/pages/returns-exchanges (checked 2026-10-12); Free delivery and taxes/duties included were separately confirmed on 2026-10-13; keep all shopping surfaces consistent. Payment marks are optimized inline SVG; Vipps is shown for Norwegian destinations only.
+Checkout shipping cards consume Site API carrier logos, localized descriptions and pickup labels. Pickup search filters returned locations locally and supports keyboard selection; distance is shown only when supplied by the carrier. Optional Norwegian address suggestions use the same private Worker/Site client boundary because Bring requires credentials; keep manual input working during provider failure. Checkout promises free returns within 30 days and free exchanges per https://newmovements.com/pages/returns-exchanges (checked 2026-10-12); Taxes/duties remain included; shipping prices and free-delivery thresholds follow ReAI market shipping settings. Payment marks are optimized inline SVG; Vipps is shown for Norwegian destinations only.
 
 Checkout contact drafts use sessionStorage (this browser tab) with a 24-hour expiry. Store only contact/address fields, never delivery quotes, payment tokens or consent. Write on input and pagehide to protect unfinished edits; restore into compatible quotes without overriding newer server edits or the quote country/currency. Clear the matching draft after confirmed completion. Disabled browser storage must not block server autosave. Selecting delivery saves a partial draft; complete validation belongs to Continue to payment. Required fields are marked, optional fields labeled, and validation errors are shown beside inputs with accessible focus.
 
@@ -289,7 +289,7 @@ and Everyday Sandals source tables remain archived in size-guide-data.mjs for
 provenance and are not offered in shopper navigation. Do not reintroduce them
 without merchant approval. The generic Features copy does not say Unisex.
 
-Free delivery uses PostNord/Bring in Norway, Sweden and Denmark; other supported
+Delivery uses PostNord/Bring in Norway, Sweden and Denmark; other supported
 destinations use DHL Express. Sweden/Denmark use fixed, merchant-fulfilled delivery
 configured in ReAI, not the Norway-only dynamic booking/pickup-point integration.
 Taxes and duties remain included everywhere. Footer Vipps appears for Norwegian
@@ -411,3 +411,14 @@ with pasted whitespace removed. ReAI resolves the code; the browser never probes
 balances or guesses code types. Render gift cards as separate prepaid tender with
 a masked ending and an independent removal action; do not alter prices or VAT.
 The total is the remaining amount to pay after gift-card value.
+
+## International shipping (2026-10-25)
+
+Norway retains free delivery and store pickup. Non-Norwegian markets charge a fixed
+fee below their free-shipping threshold (USD 30 / USD 150; fixed rounded local values
+in other markets). ReAI shipping method amount/freeFromAmount own this policy.
+Site delivery market metadata supplies the same prices for banner, bag, product,
+checkout and shipping-policy copy; never duplicate numeric rules or run FX in the
+storefront. Unknown settings use “Shipping calculated at checkout”, never free.
+Thresholds use product total after discounts and before gift-card tender/shipping.
+Paid orders keep their accepted shipping snapshots.
