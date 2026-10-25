@@ -149,9 +149,7 @@ Do not add a review API, third-party widget or runtime refresh for this section.
 Review URL: https://newmovements.respiro.workers.dev
 
 As checked on 2026-10-13, tenant 3157's Site is named New Movements, has no
-active domain, and uses the existing review Worker. All enabled market shipping
-methods are free without a minimum order: Bring/Posten and PostNord in Norway,
-PostNord/Bring in Sweden and Denmark (merchant-fulfilled), and DHL Express for other supported destinations. Taxes and duties are included in every destination,
+active domain, and uses the existing review Worker. Current shipping prices and carriers follow the International shipping section below. Taxes and duties are included in every destination,
 as the merchant explicitly confirmed. On 2026-10-13, the merchant confirmed that
 international orders will use the existing DHL/Webshipper fulfillment setup with
 duties and taxes billed to New Movements. ReAI's current DHL booking adapter
@@ -289,9 +287,9 @@ and Everyday Sandals source tables remain archived in size-guide-data.mjs for
 provenance and are not offered in shopper navigation. Do not reintroduce them
 without merchant approval. The generic Features copy does not say Unisex.
 
-Delivery uses PostNord/Bring in Norway, Sweden and Denmark; other supported
-destinations use DHL Express. Sweden/Denmark use fixed, merchant-fulfilled delivery
-configured in ReAI, not the Norway-only dynamic booking/pickup-point integration.
+Delivery uses PostNord/Bring in Norway; all other supported destinations, including
+Sweden and Denmark, use fixed merchant-fulfilled DHL Express delivery configured in
+ReAI, not the Norway-only dynamic booking/pickup-point integration.
 Taxes and duties remain included everywhere. Footer Vipps appears for Norwegian
 destinations, reusing the optimized payment mark already used by checkout.
 Product help links are underlined with a visible keyboard focus indicator.
@@ -414,10 +412,11 @@ The total is the remaining amount to pay after gift-card value.
 
 ## International shipping (2026-10-25)
 
-Norway retains free delivery and store pickup. Non-Norwegian markets charge a fixed
+Norway offers free PostNord delivery and free store pickup. Both Bring alternatives
+cost NOK 49 with no free-delivery threshold. Non-Norwegian markets charge a fixed
 fee below their free-shipping threshold (USD 30 / USD 150; fixed rounded local values
 in other markets). ReAI shipping method amount/freeFromAmount own this policy.
-Site delivery market metadata supplies the same prices for banner, bag, product,
+Site delivery market metadata supplies the carrier codes and same prices for banner, bag, product,
 checkout and shipping-policy copy; never duplicate numeric rules or run FX in the
 storefront. Unknown settings use “Shipping calculated at checkout”, never free.
 Thresholds use product total after discounts and before gift-card tender/shipping.
