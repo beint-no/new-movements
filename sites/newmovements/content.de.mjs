@@ -75,7 +75,7 @@ export const CONTENT_PAGES = {
   "/policies/shipping-policy": {
     "title": "Liefer- & Versandrichtlinie",
     "eyebrow": "Richtlinie",
-    "heading": "Versandrichtlinie.",
+    "heading": "Versand.",
     "copy": "<p>Verfügbare Lieferdienste, Zielbeschränkungen und die bestätigte Lieferprognose werden im sicheren Checkout angezeigt. Steuern und Abgaben sind für jedes unterstützte Ziel enthalten. Die Lieferung erfolgt mit PostNord oder Bring in Norwegen, Schweden und Dänemark und mit DHL Express in andere unterstützte Länder. Innerhalb Norwegens ist die Lieferung kostenlos. Für andere Länder fallen unterhalb der Freigrenze Versandkosten an. Wähle dein Lieferland im Store-Header, um Preise und Freigrenze zu sehen. Die Freigrenze gilt für Waren nach Rabatten, vor Versandkosten und Gutscheinzahlung. Bei der Lieferung wirst du nicht aufgefordert, Einfuhrabgaben zu zahlen.</p>"
   }
 };
