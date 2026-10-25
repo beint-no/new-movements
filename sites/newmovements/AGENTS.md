@@ -3,7 +3,7 @@
 ## Public business context
 
 - New Movements is an Oslo footwear brand focused on unisex, repairable and recyclable shoes.
-- The public storefront defaults to English. Norwegian is available under `/nb` with `nb-NO` catalog/checkout delivery; German under `/de` with `de` delivery; additional locales should use the same shared Worker locale map. Norway uses NOK, Germany EUR, Switzerland CHF and the United Kingdom GBP; the server selects the configured ReAI market.
+- The public storefront defaults to English. Norwegian is available under `/nb` with `nb-NO` catalog/checkout delivery; Only English and Norwegian are supported; legacy `/de` links redirect to English. Norway uses NOK, Germany EUR, Switzerland CHF and the United Kingdom GBP; the server selects the configured ReAI market.
 - The reference domain is `https://newmovements.com`.
 
 ## Site constraints
@@ -422,3 +422,14 @@ checkout and shipping-policy copy; never duplicate numeric rules or run FX in th
 storefront. Unknown settings use “Shipping calculated at checkout”, never free.
 Thresholds use product total after discounts and before gift-card tender/shipping.
 Paid orders keep their accepted shipping snapshots.
+
+## Country and language selection (2026-10-25)
+
+The country selector switches Norway/NOK to `/nb`; other destinations use a locale
+supported by the selected ReAI market (currently English). Retain page/query/variant
+context and the browser cart; clear only obsolete currency price filters. Saved or
+explicit foreign markets on `/nb` redirect to the supported English route. API
+mutations retain body/idempotency and use matching checkout/return language paths.
+Root English remains directly accessible for Norway. There is no footer language
+menu or German runtime route/sitemap; redirect old `/de` GET/HEAD links to English
+without losing the query. Only advertise supported market locales in hreflang.

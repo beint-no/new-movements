@@ -12,8 +12,8 @@ const worker = createReaiMarketStorefrontWorker({
   locales: [
     { pathPrefix: "", locale: "en" },
     { pathPrefix: "/nb", locale: "nb-NO" },
-    { pathPrefix: "/de", locale: "de" },
   ],
+  countryLocales: { NO: "nb-NO" },
   imageOrigins: ["https://cdn.shopify.com"],
   merchantCheckoutPath: "/checkout",
   checkoutReturnPath: "/order/complete",
@@ -27,9 +27,13 @@ const worker = createReaiMarketStorefrontWorker({
 export default {
   async fetch(request, env, context) {
     const requestUrl = new URL(request.url);
+    if (['GET', 'HEAD'].includes(request.method) && /^\/de(?:\/|$)/.test(requestUrl.pathname)) {
+      requestUrl.pathname = requestUrl.pathname.slice(3) || '/';
+      return new Response(null, { status: 308, headers: { Location: requestUrl.href, 'Cache-Control': 'public, max-age=3600' } });
+    }
     const review = !["newmovements.com", "www.newmovements.com"].includes(requestUrl.hostname);
     if (review && /^(?:\/(?:nb|de))?\/robots\.txt$/.test(requestUrl.pathname)) return new Response("User-agent: *\nDisallow: /\n", { headers: { "Content-Type": "text/plain", "X-Robots-Tag": "noindex, nofollow" } });
-    if (!review && /^(?:\/(?:nb|de))?\/robots\.txt$/.test(requestUrl.pathname)) return new Response("User-agent: *\nAllow: /\nSitemap: https://newmovements.com/sitemap.xml\nSitemap: https://newmovements.com/nb/sitemap.xml\nSitemap: https://newmovements.com/de/sitemap.xml\n", { headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=3600" } });
+    if (!review && /^(?:\/(?:nb|de))?\/robots\.txt$/.test(requestUrl.pathname)) return new Response("User-agent: *\nAllow: /\nSitemap: https://newmovements.com/sitemap.xml\nSitemap: https://newmovements.com/nb/sitemap.xml\n", { headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=3600" } });
     const response = await worker.fetch(request, env, context);
     const headers = new Headers(response.headers);
     // Only this storefront opts into consent-controlled advertising measurement.

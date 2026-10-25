@@ -123,3 +123,10 @@ no descriptions, variant arrays or credentials enter suggestions. Numeric option
 its public variant URL. Optional productAvailabilityVariants selects a bounded batch for related
 products without per-product calls. Explicit country query choices are validated against enabled
 markets and take precedence over saved/geographic preferences.
+
+Country changes retain a locale only when the destination market supports it;
+otherwise choose a configured route for its default/supported locale. Optional
+`countryLocales` selects a storefront-owned preference on explicit country changes.
+Preserve page/query context and mutation bodies/idempotency; rebase checkout/return
+URLs to the selected route. Redirect mismatched public GET/HEAD pages privately,
+never cache cookie-dependent language redirects. Hreflang lists supported routes.

@@ -126,3 +126,45 @@ test('a stalled market lookup cannot hold another request or credential hostage'
   } finally { releaseFirst(); }
   assert.equal((await first).status, 303);
 });
+
+test('country changes select supported language paths without losing product context', async context => {
+  const originalFetch = globalThis.fetch;
+  context.after(() => { globalThis.fetch = originalFetch; });
+  const configured = markets.map(m => ({ ...m, defaultLocale: 'en', locales: m.currency === 'NOK' ? ['en', 'nb-NO'] : ['en'] }));
+  let checkout;
+  globalThis.fetch = async (url, init) => {
+    if (String(url).endsWith('/site/v1/site')) return Response.json({ markets: configured });
+    checkout = { url: String(url), body: JSON.parse(init.body), key: new Headers(init.headers).get('Idempotency-Key') };
+    return Response.json({ checkoutUrl: 'https://shop.example/checkout?checkout=test' }, { status: 201 });
+  };
+  const worker = createReaiMarketStorefrontWorker({
+    storefront: { HANDLE: /^[a-z0-9-]+$/, matchRoute: path => path.startsWith('/products/') ? { type: 'product', handle: 'shoe' } : null },
+    cacheKey: 'country-language', locales: [{ pathPrefix: '', locale: 'en' }, { pathPrefix: '/nb', locale: 'nb-NO' }],
+    countryLocales: { NO: 'nb-NO' }, merchantCheckoutPath: '/checkout', checkoutReturnPath: '/order/complete',
+  });
+  const env = { REAI_SITE_TOKEN: 'test' };
+  const choose = (path, country, returnTo) => worker.fetch(new Request('https://shop.example'+path+'/reai/market', {
+    method: 'POST', headers: { Origin: 'https://shop.example' }, body: new URLSearchParams({ country, returnTo }),
+  }), env);
+  const toEurope = await choose('/nb', 'FR', '/nb/products/shoe?variant=stable&view=women&filter.v.price.gte=100');
+  assert.equal(toEurope.status, 303);
+  assert.equal(toEurope.headers.get('Location'), 'https://shop.example/products/shoe?variant=stable&view=women');
+  assert.match(toEurope.headers.get('Set-Cookie'), /de%3AFR/);
+  const toNorway = await choose('', 'NO', '/products/shoe?variant=stable');
+  assert.equal(toNorway.headers.get('Location'), 'https://shop.example/nb/products/shoe?variant=stable');
+  const stalePath = await worker.fetch(new Request('https://shop.example/nb/products/shoe?variant=stable', { headers: { Cookie: 'reai-market=de%3AFR' } }), env);
+  assert.equal(stalePath.status, 303);
+  assert.equal(stalePath.headers.get('Location'), 'https://shop.example/products/shoe?variant=stable');
+  assert.match(stalePath.headers.get('Cache-Control'), /no-store/);
+  const mutation = await worker.fetch(new Request('https://shop.example/nb/reai/checkout/start?country=FR', {
+    method: 'POST', headers: { Origin: 'https://shop.example', 'Content-Type': 'application/json', 'Idempotency-Key': 'stable-retry' },
+    body: JSON.stringify({ lines: [{ variantId: '018f3c2e-8b1a-4d3e-9c4f-5a6b7c8d9e0f', quantity: 2 }] }),
+  }), env);
+  assert.equal(mutation.status, 201);
+  assert.match(checkout.url, /market=de&locale=en/);
+  assert.equal(checkout.body.countryCode, 'FR');
+  assert.equal(checkout.body.lines[0].quantity, 2);
+  assert.equal(checkout.key, 'stable-retry');
+  assert.equal(checkout.body.merchantCheckoutUrl, 'https://shop.example/checkout');
+  assert.equal(checkout.body.returnUrl, 'https://shop.example/order/complete');
+});
