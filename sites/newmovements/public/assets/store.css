@@ -842,3 +842,5 @@ dialog.store-drawer::backdrop{background:#0005}
 .checkout-reassurance{font-size:.78rem;line-height:1.6;text-align:center;color:#555}.store-drawer footer .checkout-reassurance{display:block;margin:.75rem 0 0}.checkout-reassurance a{text-underline-offset:.2em}
 
 .store-drawer footer .checkout-reassurance a{display:inline;padding:0;border:0;background:none;color:inherit;font-size:inherit;letter-spacing:normal;text-transform:none;text-decoration:underline}
+
+.announcement>span:nth-child(2){min-width:0;white-space:normal;text-align:center;text-wrap:balance}
