@@ -827,6 +827,8 @@ export interface components {
         SiteDeliveryShippingMethodRes: {
             amount: number;
             amountAboveWeight?: number | null;
+            /** @description Configured carrier code for shipping information, such as bring, postnord or dhl; null for an unbranded method. */
+            carrier?: string | null;
             countries: string[];
             freeFromAmount?: number | null;
             /** Format: uuid */
