@@ -7,8 +7,9 @@ hub and ReAI backend source are not required.
 
 ## Start with your editor or coding assistant
 
-Accept your GitHub repository invitation first, using the invited GitHub account.
-Open the repository in your editor, or give your coding assistant this prompt:
+To push branches and open same-repository PRs, accept your GitHub repository
+invitation using the invited GitHub account. Open the repository in your editor,
+or give your coding assistant this prompt:
 
 > Use https://github.com/beint-no/new-movements. Clone it if it is not already
 > available locally. Read README.md, AGENTS.md and sites/newmovements/AGENTS.md.
@@ -19,7 +20,8 @@ Open the repository in your editor, or give your coding assistant this prompt:
 > Leave the PR open for review; merging main publishes the website.
 
 Describe the page, the desired result, and any reference screenshot. Keep each PR
-focused on one change so it is easy to review or undo.
+focused on one change so it is easy to review or undo. Include the affected page
+URL and expected result in the PR description.
 
 ## Local setup
 
@@ -95,7 +97,7 @@ or committed. Product data is managed in ReAI, not duplicated in website code.
    revision automatically to [newmovements.com](https://newmovements.com). Wait for
    that workflow to succeed, then check the live page. A merge alone does not prove
    deployment succeeded. A draft PR also receives a preview, but does not publish
-   production.
+   production. Check workflow progress in [GitHub Actions](https://github.com/beint-no/new-movements/actions).
 
 There is no shared `dev` branch: each PR has its own preview. Do not push directly
 to `main` or run a production deploy from an unreviewed feature branch.
