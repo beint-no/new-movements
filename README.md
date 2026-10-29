@@ -99,27 +99,3 @@ or committed. Product data is managed in ReAI, not duplicated in website code.
 
 There is no shared `dev` branch: each PR has its own preview. Do not push directly
 to `main` or run a production deploy from an unreviewed feature branch.
-
-## If automation is unavailable
-
-Private GitHub Actions runs depend on the organization's shared Actions quota.
-On 29 October 2026 it was exhausted, so configured automatic workflows could not
-run. Check the latest Actions result rather than assuming this remains the case.
-Ask Greg if a check reports a spending-limit or quota error; do not merge expecting
-an automatic release while deployment is blocked.
-
-Authorized operators can still run `npm run preview:deploy -- review` with a
-read-only PREVIEW credential and Cloudflare access, then remove it with
-`npm run preview:remove -- review`. To release manually, deploy the reviewed,
-merged `main` revision with `npm ci` and `npm run deploy` after authenticating
-Cloudflare. The deploy command runs the checks and selects the New Movements
-account. Normal deployment retains the existing production Site secret; do not
-run `npm run secret` for routine releases.
-
-Production Actions uses the `production` GitHub environment, restricted to `main`.
-Its encrypted Cloudflare token is scoped to the New Movements account and domain.
-Build/check jobs receive no production deployment credentials. PR preview
-publishing uses the existing central controller and read-only Site credentials.
-
-To undo a release, revert its merged PR on GitHub, review the revert, and merge
-it to `main`. This triggers the same checked deployment process.

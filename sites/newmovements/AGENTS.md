@@ -37,8 +37,8 @@ npm run check
 
 Same-repository PRs automatically run checks and create an isolated preview;
 closing or merging removes it. Pushes to `main` automatically check and deploy
-production through the restricted `production` GitHub environment. Actions needs
-available organization quota; use the documented local fallback if it is blocked.
+production through the restricted `production` GitHub environment. Local
+deployment commands remain available for authorized operators.
 Configure the Site API credential with `npm run secret` only for initial setup or
 an intentional rotation. Normal deployments retain it. See the root README.md
 for contributor setup, file locations, review steps and deployment troubleshooting.
