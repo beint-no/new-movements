@@ -1,6 +1,6 @@
 # New Movements storefront
 
-This private repository owns the independently deployable `newmovements`
+This repository owns the independently deployable `newmovements`
 Cloudflare Worker.
 
 ## Repository contract
@@ -21,7 +21,7 @@ Cloudflare Worker.
   support, and useful metadata.
 - Same-repository PRs automatically run checks and publish isolated previews.
   Merging to `main` automatically checks and deploys production. See README.md
-  for the contributor workflow and the local fallback when Actions quota is unavailable.
+  for the contributor workflow and the local deployment commands.
 
 ## Brand constraints
 
@@ -69,7 +69,7 @@ does not contain a second catalog or Shopify runtime client.
 
 ## Working here
 
-This private repository works independently of the customer-sites hub. Operators
+This repository works independently of the customer-sites hub. Operators
 keep its primary checkout on main and develop in dedicated worktrees under
 ~/.r-worktrees. Use pull requests and squash merges. A hub commit records a
 reviewed child revision; editing or deploying this site does not deploy siblings.
@@ -91,9 +91,8 @@ Opening, updating or reopening a same-repository PR runs checks and creates or
 updates its isolated preview. Closing or merging removes the preview. Fork PRs
 are excluded. Manual dispatch with a PR number remains available for retries.
 `npm run preview:deploy -- design` and `npm run preview:remove -- design` remain
-local alternatives. Private Actions runs still require available organization
-quota; the quota was exhausted on 2026-10-29. Never describe a failed or blocked
-workflow as a successful deployment.
+local alternatives. Never describe a failed or blocked workflow as a successful
+deployment.
 
 `.github/workflows/preview.yml` builds without deployment
 credentials, then requests the trusted preview workflow in beint-no/reai-site-examples through signed
@@ -105,7 +104,7 @@ Manually dispatch PR previews with a PR number to backfill an already-open PR.
 Register independently created repositories in the server's customer preview registry;
 new repositories created through the e-commerce module are recognized automatically.
 
-This customer repository is private at the owner’s request. Keep credentials and private data outside Git history. Preview publishing runs in the reviewed default-branch storefront-preview.yml workflow in beint-no/reai-site-examples; ReAI privately verifies the current PR and assigned Worker. Publishing credentials remain encrypted Actions secrets in the controller repository.
+Keep credentials and private data outside Git history. Preview publishing runs in the reviewed default-branch storefront-preview.yml workflow in beint-no/reai-site-examples; ReAI privately verifies the current PR and assigned Worker. Publishing credentials remain encrypted Actions secrets in the controller repository.
 
 The preview comment records the PR head revision so reviewers can confirm which push is deployed.
 

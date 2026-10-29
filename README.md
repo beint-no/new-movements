@@ -100,13 +100,7 @@ or committed. Product data is managed in ReAI, not duplicated in website code.
 There is no shared `dev` branch: each PR has its own preview. Do not push directly
 to `main` or run a production deploy from an unreviewed feature branch.
 
-## If automation is unavailable
-
-Private GitHub Actions runs depend on the organization's shared Actions quota.
-On 29 October 2026 it was exhausted, so configured automatic workflows could not
-run. Check the latest Actions result rather than assuming this remains the case.
-Ask Greg if a check reports a spending-limit or quota error; do not merge expecting
-an automatic release while deployment is blocked.
+## Manual deployment and rollback
 
 Authorized operators can still run `npm run preview:deploy -- review` with a
 read-only PREVIEW credential and Cloudflare access, then remove it with
