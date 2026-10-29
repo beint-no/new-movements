@@ -20,7 +20,8 @@ or give your coding assistant this prompt:
 > Leave the PR open for review; merging main publishes the website.
 
 Describe the page, the desired result, and any reference screenshot. Keep each PR
-focused on one change so it is easy to review or undo.
+focused on one change so it is easy to review or undo. Include the affected page
+URL and expected result in the PR description.
 
 ## Local setup
 
