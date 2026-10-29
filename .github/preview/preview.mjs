@@ -88,6 +88,8 @@ if (["deploy", "cleanup"].includes(command) && (config.vars?.REAI_MANAGED_PREVIE
     artifactName: process.env.ARTIFACT_NAME };
   async function request(route) {
     const response = await fetch(apiUrl + route, { method: "POST", headers: { Authorization: `Bearer ${value}`, "Content-Type": "application/json" }, body: JSON.stringify(run) });
+    // A published preview can outlive a transient gateway error while polling its status.
+    if (route === "result" && [429, 502, 503, 504, 520, 521, 522, 523, 524].includes(response.status)) return { ready: false };
     if (!response.ok) throw new Error(`Managed preview ${route} failed: ${response.status}`);
     return response.status === 204 ? null : response.json();
   }
