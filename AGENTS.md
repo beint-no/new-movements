@@ -19,9 +19,9 @@ Cloudflare Worker.
 - Render API image alt text, intrinsic dimensions, and width-based renditions.
 - Preserve semantic HTML, keyboard operation, visible focus, reduced-motion
   support, and useful metadata.
-- GitHub Actions checks and PR previews are temporarily manual-only while the
-  private Actions budget is exhausted. Run `npm run check` locally before pushing
-  and deploy locally. Do not restore automatic triggers without agreement.
+- Same-repository PRs automatically run checks and publish isolated previews.
+  Merging to `main` automatically checks and deploys production. See README.md
+  for the contributor workflow and the local fallback when Actions quota is unavailable.
 
 ## Brand constraints
 
@@ -58,9 +58,14 @@ npm run deploy
 Only run `npm run secret` when initially configuring or intentionally rotating the
 Site credential; normal deployments retain the existing secret.
 
-Production deployment is local-only. Product data continues to be managed and published
-through ReAI; this repository does not contain a second catalog or Shopify
-runtime client.
+Production deployment runs automatically on pushes to `main` through
+`.github/workflows/deploy.yml`. Build/check jobs receive no deployment credentials;
+only the deployment job reads the `production` environment's scoped Cloudflare
+token. That environment permits only `main`. `npm run build:production` prepares a
+compiled bundle, static assets and configuration without build hooks for that job.
+`npm run deploy` remains the local fallback and should publish only reviewed main.
+Product data continues to be managed and published through ReAI; this repository
+does not contain a second catalog or Shopify runtime client.
 
 ## Working here
 
@@ -80,13 +85,15 @@ select fallback. The HttpOnly preference retains both market and country, and th
 Worker passes the validated country to checkout. Never infer the delivery country
 from currency alone or generate exchange-rate prices in browser code.
 
-## Manual PR previews
+## Automatic PR previews
 
-Automatic PR previews are paused. Use `npm run preview:deploy -- design` and
-`npm run preview:remove -- design` for local preview management. The retained
-Actions workflow can be manually dispatched with a PR number when the budget
-allows it, but opening, updating or closing a PR does not run it. For manually
-dispatched previews, dispatch again after closing the PR to clean up its preview.
+Opening, updating or reopening a same-repository PR runs checks and creates or
+updates its isolated preview. Closing or merging removes the preview. Fork PRs
+are excluded. Manual dispatch with a PR number remains available for retries.
+`npm run preview:deploy -- design` and `npm run preview:remove -- design` remain
+local alternatives. Private Actions runs still require available organization
+quota; the quota was exhausted on 2026-10-29. Never describe a failed or blocked
+workflow as a successful deployment.
 
 `.github/workflows/preview.yml` builds without deployment
 credentials, then requests the trusted preview workflow in beint-no/reai-site-examples through signed

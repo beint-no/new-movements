@@ -27,6 +27,7 @@
     "typecheck": "tsc --project tsconfig.json",
     "check": "npm run typecheck && npm run check:client-boundary && npm test && npm run check:storefront && npm run check:worker && npm run check:dependencies",
     "build:assets": "node tools/build-assets.mjs",
+    "build:production": "node tools/build-production.mjs",
     "pretypecheck": "npm run build:assets",
     "pretest": "npm run build:assets",
     "precheck:storefront": "npm run build:assets",
