@@ -1,6 +1,6 @@
 name: Check storefront
-# Automatic runs are paused while the private Actions budget is exhausted.
-# Run npm run check and deploy from local; dispatch only when explicitly needed.
+# PR previews and production deployment run the checks automatically.
+# This workflow is for independent manual checks without deploying.
 on:
   workflow_dispatch:
 permissions:

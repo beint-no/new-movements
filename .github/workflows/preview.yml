@@ -1,7 +1,7 @@
 name: PR previews
-# Automatic PR previews are paused; use npm run preview:deploy from local.
-# Manual dispatch remains available when the Actions budget allows it.
 on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
   workflow_dispatch:
     inputs:
       pull_request:
@@ -16,6 +16,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   metadata:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     outputs:
       pr: ${{ steps.pr.outputs.pr }}
