@@ -1,14 +1,13 @@
 name: PR previews
 # The preview controller trusts only the default-branch workflow identity.
 on:
-  pull_request_target:
-    types: [opened, synchronize, reopened, closed]
   workflow_dispatch:
     inputs:
       pull_request:
         description: Open pull request number to preview
         required: true
         type: string
+
 permissions:
   contents: read
   pull-requests: read
@@ -69,7 +68,7 @@ jobs:
           cache: npm
           cache-dependency-path: source/package-lock.json
       - run: npm ci --no-fund
-      - run: npm install --global --no-fund wrangler@4.149.0
+      - run: npm install --global --no-fund wrangler@4.156.0
       - run: npm run check
       - run: node ../preview-tools/.github/preview/preview.mjs build "$CONFIG" ../.preview
         env:
@@ -107,7 +106,7 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 26
-      - run: npm install --global --no-fund wrangler@4.149.0
+      - run: npm install --global --no-fund wrangler@4.156.0
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         if: needs.metadata.outputs.closed != 'true'
         with:

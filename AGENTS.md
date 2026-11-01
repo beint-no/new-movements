@@ -19,8 +19,8 @@ Cloudflare Worker.
 - Render API image alt text, intrinsic dimensions, and width-based renditions.
 - Preserve semantic HTML, keyboard operation, visible focus, reduced-motion
   support, and useful metadata.
-- Same-repository PRs automatically run checks and publish isolated previews.
-  Merging to `main` automatically checks and deploys production. See README.md
+- Checks and isolated PR previews run only when explicitly dispatched.
+  Deploy reviewed `main` locally after running the checks. See README.md
   for the contributor workflow and the local deployment commands.
 
 ## Brand constraints
@@ -85,28 +85,13 @@ select fallback. The HttpOnly preference retains both market and country, and th
 Worker passes the validated country to checkout. Never infer the delivery country
 from currency alone or generate exchange-rate prices in browser code.
 
-## Automatic PR previews
+## Manual GitHub Actions
 
-Opening, updating or reopening a same-repository PR runs checks and creates or
-updates its isolated preview. Closing or merging removes the preview. Fork PRs
-are excluded. Manual dispatch with a PR number remains available for retries.
-`npm run preview:deploy -- design` and `npm run preview:remove -- design` remain
-local alternatives. Never describe a failed or blocked workflow as a successful
-deployment.
-
-`.github/workflows/preview.yml` builds without deployment
-credentials, then requests the trusted preview workflow in beint-no/reai-site-examples through signed
-GitHub Actions OIDC. Cloudflare credentials stay in the central deployment repository.
-The server maps this repository to its assigned Worker, verifies the current PR,
-and provides only a read-only PREVIEW Site credential where catalog access is needed.
-Previews are noindex and reject orders, payments and form submissions.
-Manually dispatch PR previews with a PR number to backfill an already-open PR.
-Register independently created repositories in the server's customer preview registry;
-new repositories created through the e-commerce module are recognized automatically.
-
-Keep credentials and private data outside Git history. Preview publishing runs in the reviewed default-branch storefront-preview.yml workflow in beint-no/reai-site-examples; ReAI privately verifies the current PR and assigned Worker. Publishing credentials remain encrypted Actions secrets in the controller repository.
-
-The preview comment records the PR head revision so reviewers can confirm which push is deployed.
+Checks, deployment and PR previews run only when explicitly dispatched. Pushes,
+pull requests and merges do not start workflows. Use the repository's local check,
+deployment and preview commands for normal work. A manual PR preview must be
+dispatched again after changes, and after closing a PR to remove it. Preview
+credentials stay in the trusted controller; previews remain read-only and noindex.
 
 ## Direct Cloudflare commands
 

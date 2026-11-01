@@ -1,8 +1,7 @@
 name: Deploy website
 on:
-  push:
-    branches: [main]
-  workflow_dispatch:
+  workflow_dispatch: null
+
 permissions:
   contents: read
 concurrency:
@@ -42,7 +41,7 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 26
-      - run: npm install --global --no-fund wrangler@4.149.0
+      - run: npm install --global --no-fund wrangler@4.156.0
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: production
