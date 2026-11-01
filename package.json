@@ -32,17 +32,17 @@
     "pretest": "npm run build:assets",
     "precheck:storefront": "npm run build:assets",
     "deploy:local": "npm run deploy",
-    "preview:deploy": "npm exec --yes --package=wrangler@4.149.0 -- node tools/worker.mjs preview",
-    "preview:remove": "npm exec --yes --package=wrangler@4.149.0 -- node tools/worker.mjs remove",
+    "preview:deploy": "node tools/worker.mjs preview",
+    "preview:remove": "node tools/worker.mjs remove",
     "optimize:images": "node tools/optimize-editorial-images.mjs"
   },
   "browserslist": [
     "baseline 2025 with downstream"
   ],
   "devDependencies": {
-    "@cloudflare/workers-types": "^5.20261009.1",
+    "@cloudflare/workers-types": "^5.20261101.1",
     "typescript": "7.0.2",
-    "wrangler": "^4.149.0"
+    "wrangler": "4.156.0"
   },
   "overrides": {
     "miniflare": {
