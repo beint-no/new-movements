@@ -96,7 +96,7 @@ credentials stay in the trusted controller; previews remain read-only and noinde
 ## Direct Cloudflare commands
 
 These commands run from this repository and do not use GitHub Actions. Install
-with npm ci first. Authenticate using npm exec --yes --package=wrangler@4.149.0
+with npm ci first. Authenticate using npm exec --yes --package=wrangler@4.156.0
 -- wrangler login, or your CLOUDFLARE_API_TOKEN. Select the account with
 CLOUDFLARE_ACCOUNT_ID. Existing Worker secrets and domain configuration are retained.
 

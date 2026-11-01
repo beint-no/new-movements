@@ -6,8 +6,8 @@
   "description": "New Movements Cloudflare storefront powered by the ReAI Site API",
   "license": "MIT",
   "allowScripts": {
-    "esbuild@0.28.1": true,
-    "workerd@1.20260926.1": true
+    "esbuild@0.28.2": true,
+    "workerd@1.20261023.1": true
   },
   "engines": {
     "node": ">=26",
