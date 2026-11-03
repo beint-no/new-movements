@@ -335,7 +335,7 @@ export interface paths {
         put?: never;
         /**
          * Subscribe to the Site owner's newsletter
-         * @description Accepts an email and optional name with explicit newsletter consent. Reuses the tenant's customer consent records without changing existing customer details. Repeated submissions are idempotent. Returns the same receipt for new and existing contacts; queues the configured welcome flow only after new consent. Explicit welcomeDiscount=true selects the separately enabled welcome_discount flow instead, at most once per email and store even for existing subscribers. An unavailable offer rejects the request without saving consent. Does not create a discount.
+         * @description Accepts an email and optional name with explicit newsletter consent. Reuses the tenant's customer consent records without changing existing customer details. Repeated submissions are idempotent. Returns the same receipt for new and existing contacts; ensures enrollment in the configured welcome flow at most once per email and store, including existing subscribers. Explicit welcomeDiscount=true selects the separately enabled welcome_discount flow instead, at most once per email and store even for existing subscribers. An unavailable offer rejects the request without saving consent. Does not create a discount.
          */
         post: operations["subscribeNewsletter"];
         delete?: never;
