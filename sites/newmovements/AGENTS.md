@@ -436,3 +436,11 @@ mutations retain body/idempotency and use matching checkout/return language path
 Root English remains directly accessible for Norway. There is no footer language
 menu or German runtime route/sitemap; redirect old `/de` GET/HEAD links to English
 without losing the query. Only advertise supported market locales in hreflang.
+
+## Half-size availability
+
+Hide footwear half sizes only when live availability confirms they are out of stock.
+Apply this to product choices, their offers, collection size filters and quick-add.
+Keep stocked half sizes and sold-out whole sizes visible, and retain unknown
+availability on read failures. Do not remove ReAI variants or alter inventory;
+half sizes reappear automatically when available again.
