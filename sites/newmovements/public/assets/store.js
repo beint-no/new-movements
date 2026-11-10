@@ -503,14 +503,15 @@ const openQuickAdd = async (button) => {
     const result = await response.json();
     if (quickAddProduct !== requestedProduct || !quickAddDialog?.open) return;
     const available = new Set((result.variants || []).filter((variant) => variant.status === 'AVAILABLE').map((variant) => variant.variantId));
+    const soldOut = new Set((result.variants || []).filter((variant) => variant.status === 'OUT_OF_STOCK').map((variant) => variant.variantId));
     variants.forEach((variant) => {
       variant.available = available.has(variant.id);
       const size = quickAddSizes?.querySelector(`[data-quick-variant="${variant.id}"]`);
-      if (size) { size.disabled = !variant.available; size.classList.toggle('is-unavailable', !variant.available); }
+      if (size) { size.hidden = variant.halfSize && soldOut.has(variant.id); size.disabled = !variant.available; size.classList.toggle('is-unavailable', !variant.available); }
     });
     if (quickAddProduct.selectedVariantId) {
       const selected = variants.find((variant) => variant.id === quickAddProduct.selectedVariantId);
-      if (selected) selectQuickAddVariant(selected, quickAddSizes?.querySelector(`[data-quick-variant="${selected.id}"]`));
+      if (selected && !(selected.halfSize && soldOut.has(selected.id))) selectQuickAddVariant(selected, quickAddSizes?.querySelector(`[data-quick-variant="${selected.id}"]`));
     }
     if (quickAddStatus && !quickAddVariant) quickAddStatus.textContent = available.size ? '' : t('These sizes are currently sold out.', 'Disse størrelsene er utsolgt nå.', "Diese Größen sind derzeit ausverkauft.");
   } catch {

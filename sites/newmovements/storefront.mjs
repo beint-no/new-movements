@@ -3,7 +3,7 @@ import { searchProducts } from "../../packages/reai-site-client/search.mjs";
 export { renderCheckoutPage } from "./checkout.mjs";
 import { STORE_SCRIPT, STORE_STYLE, FAVICON_SVG, FAVICON_ICO, TOUCH_ICON } from "./dist/assets.mjs";
 import { renderPaymentMarks, renderSocialLinks } from "./footer-icons.mjs";
-import { CART_UPSELL_HANDLES, sortProductSizes, VIEWS, selectedView, productView, productsForView, isProductShot, viewUrl } from "./merchandising.mjs";
+import { CART_UPSELL_HANDLES, sortProductSizes, sizeValue, VIEWS, selectedView, productView, productsForView, isProductShot, viewUrl } from "./merchandising.mjs";
 import { FEATURED_REVIEWS, GOOGLE_REVIEW_COUNT, GOOGLE_REVIEWS_URL } from "./reviews.mjs";
 import { isFootwearProduct, productMetaTitle, collectionMetaTitle, localizeMetaTitle, metaDescription, curatedMetaTitle, curatedMetaDescription } from "./metadata.mjs";
 import { canonicalPath } from "./routes.mjs";
@@ -285,6 +285,7 @@ function productCard(product, currency = "NOK", priority = false, includeCurrenc
     variants: (product.variants || []).map((variant) => ({
       id: variant.id,
       price: Number(variant.price),
+      halfSize: isFootwearProduct(product) && isHalfSize(variant),
       available: variant.available !== false && (variant.inventoryQuantity === undefined || Number(variant.inventoryQuantity) > 0),
       label: variant.options?.find((option) => option.name.toLowerCase().includes("size"))?.value || variant.options?.map((option) => option.value).join(" / ") || t("One size", "Én størrelse", "Einheitsgröße"),
     })),
@@ -304,6 +305,12 @@ function findCollection(store, needles) {
 }
 
 const optionCollator = new Intl.Collator(undefined, { numeric: true });
+const isHalfSize = (variant) => /^\d+(?:[.,]5|½)$/.test(String(sizeValue(variant)).trim());
+function hideSoldOutHalfSizes(product, availability) {
+  if (!isFootwearProduct(product)) return product;
+  return { ...product, variants: (product.variants || []).filter((variant) => !isHalfSize(variant) || availability[variant.id] !== false) };
+}
+
 function facetValues(products, optionName) {
   return [...new Set(products.flatMap((product) => (product.variants || []).flatMap((variant) => variant.options || []))
     .filter((option) => option.name.toLowerCase().includes(optionName))
@@ -505,8 +512,9 @@ function collectionSourceProducts(store, handle, context) {
 }
 
 export function collectionAvailabilityVariants(store, handle, context = {}) {
-  if (!context.url?.searchParams.has("filter.v.availability") && !context.url?.searchParams.has("filter.v.option.size")) return [];
-  const variants = collectionSourceProducts(store, handle, context).flatMap((product) => product.variants || []);
+  const allSizes = context.url?.searchParams.has("filter.v.availability") || context.url?.searchParams.has("filter.v.option.size");
+  const variants = collectionSourceProducts(store, handle, context).flatMap((product) =>
+    allSizes ? product.variants || [] : isFootwearProduct(product) ? (product.variants || []).filter(isHalfSize) : []);
   return [...new Map(variants.map((variant) => [variant.id, variant])).values()];
 }
 
@@ -548,7 +556,7 @@ export function renderCollectionPage(store, handle, context = {}) {
   const view = selectedView(context, Object.hasOwn(VIEWS, handle) ? handle : "");
   const collection = handle === "all" ? null : collectionByHandle(store, handle);
   if (handle !== "all" && !collection) return null;
-  const sourceProducts = collectionSourceProducts(store, handle, context);
+  const sourceProducts = collectionSourceProducts(store, handle, context).map((product) => hideSoldOutHalfSizes(product, context.availability || {}));
   const parameters = context.url?.searchParams || new URLSearchParams();
   const request = parseCollectionFilters(parameters, COLLECTION_FACETS);
   const selectedSizes = request.values.get("size") || [];
@@ -676,7 +684,7 @@ export function renderProductPage(store, product, availability = {}, context = {
   const requestedView = selectedView(context);
   const composed = productView(product, requestedView);
   const view = composed ? requestedView : "";
-  product = composed || product;
+  product = hideSoldOutHalfSizes(composed || product, availability);
   const productUrl = viewUrl(`/products/${product.handle}`, view);
   const currency = store.currency || product.currency || "NOK";
   const variants = product.variants || [];
@@ -712,7 +720,7 @@ export function renderProductPage(store, product, availability = {}, context = {
   const breadcrumbs = `<nav class="breadcrumbs" aria-label="${t("Breadcrumb", "Brødsmulesti", "Breadcrumb")}"><ol><li><a href="/collections">${t("Shop", "Handle", "Shop")}</a></li>${parentCollection ? `<li><a href="/collections/${escapeHtml(parentCollection.handle)}">${escapeHtml(parentCollection.title)}</a></li>` : ""}<li class="breadcrumb-current"><span aria-current="page">${escapeHtml(product.title)}</span></li></ol></nav>`;
   const body = `<section class="product-layout">${gallery}<div class="product-details">${breadcrumbs}<div class="product-heading"><h1>${escapeHtml(product.title)}</h1><p class="product-price" data-product-price>${priceRange(variants, currency)}</p></div>${viewSelector(`/products/${product.handle}`, view, { locale })}${view ? `<p class="size-view-note">EU ${VIEWS[view].minSize}–${VIEWS[view].maxSize}</p>` : ""}${colorSwatches ? `<div class="product-color-picker"><span>${t("Color", "Farge", "Farbe")}: ${escapeHtml(productColor(product))}</span><div class="product-color-grid">${colorSwatches}</div></div>` : ""}<div class="product-size-picker"><div class="product-size-heading"><span>${footwear ? t("Select size · EU", "Velg størrelse · EU", "Größe auswählen · EU") : t("Choose an option", "Velg et alternativ", "Wähle eine Option")}</span>${footwear ? `<a class="size-guide-link" href="${escapeHtml(sizeGuideUrl(sizeChartForProduct(sourceProduct), view, initialSize))}"${sizeChartForProduct(sourceProduct) ? " data-size-guide-open" : ""}>${t("Size guide ↗", "Størrelsesguide ↗", "Größenratgeber ↗")}</a>` : ""}</div><div class="product-size-grid">${sizeButtons}</div><select class="variant-fallback" aria-label="${t("Size / variant", "Størrelse / variant", "Größe / Variante")}" data-product-variant>${options}</select><p class="product-size-status" data-size-status role="status" aria-live="polite"></p></div><div class="purchase-row"><label>${t("Quantity", "Antall", "Menge")}<input type="number" value="1" min="1" max="20" inputmode="numeric" data-quantity></label><button type="button" data-add-to-cart data-id="${escapeHtml(product.id)}" data-handle="${escapeHtml(product.handle)}" data-title="${escapeHtml(product.title)}" data-url="${escapeHtml(productUrl)}" data-image="${escapeHtml(imageUrl(images[0], 480))}" data-image-alt="${escapeHtml(imageAltText(images[0], product.title, 0, locale))}" data-variant="${escapeHtml(initialVariant?.id || "")}" data-price="${escapeHtml(initialVariant?.price ?? "")}"${availability[initialVariant?.id] === true ? "" : " disabled"}>${!initialVariant ? t("Select your size", "Velg størrelse", "Wähle deine Größe") : availability[initialVariant?.id] === true ? t("Add to cart", "Legg i handlekurv", "In den Warenkorb") : availability[initialVariant?.id] === false ? t("Sold out", "Utsolgt", "Ausverkauft") : t("Check availability", "Sjekk tilgjengelighet", "Verfügbarkeit prüfen")}</button></div><div class="purchase-assurance"><p>${escapeHtml(shippingCopy(store).summary)} · ${t("Taxes &amp; duties included", "Avgifter og toll inkludert", "Steuern &amp; Abgaben inbegriffen")}</p><a href="/pages/returns">${t("Free returns within 30 days · Free exchanges ↗", "Gratis retur innen 30 dager · Gratis bytte ↗", "Kostenlose Rückgabe innerhalb von 30 Tagen · Kostenloser Umtausch ↗")}</a><a class="brand-review-link" href="${GOOGLE_REVIEWS_URL}" target="_blank" rel="noopener">${t("Read our customer reviews on Google ↗", "Les kundeanmeldelsene våre på Google ↗", "Lies unsere Kundenbewertungen auf Google ↗")}</a></div>${notifyForm}<div class="product-accordions"><details open><summary>${t("Details", "Detaljer", "Details")}</summary>${safeDescription(product.description || product.seoDescription)}</details>${footwear ? productFacts(product, t) : ""}<details><summary>${t("Shipping &amp; Delivery", "Frakt og levering", "Versand &amp; Lieferung")}</summary><p>${escapeHtml(shippingCopy(store).detail)} ${t("Delivery uses PostNord or Bring in Norway, and DHL Express for other supported destinations. Taxes and duties are included. Choose your delivery country in the store header to see its shipping terms.", "Levering skjer med PostNord eller Bring i Norge, og DHL Express til andre land vi sender til. Avgifter og toll er inkludert. Velg leveringsland øverst i butikken for å se fraktvilkårene som gjelder.", "Die Lieferung erfolgt mit PostNord oder Bring in Norwegen und mit DHL Express in andere unterstützte Länder. Steuern und Abgaben sind inbegriffen. Wähle dein Lieferland im Store-Header, um die Versandbedingungen zu sehen.")}</p></details><details><summary>${t("Returns &amp; Exchanges", "Retur og bytte", "Rückgabe &amp; Umtausch")}</summary><p><a href="/pages/returns">${t("Read our returns &amp; exchanges policy ↗", "Les vilkårene for retur og bytte ↗", "Lies unsere Richtlinie zu Rückgabe &amp; Umtausch ↗")}</a></p></details></div></div></section>${recommendations.length ? `<section class="recommendations"><header><h2>${t("You may also like", "Du vil kanskje også like", "Das könnte dir auch gefallen")}</h2></header>${productGrid(recommendations, currency, 4, { priorityCards: 0, locale })}</section>` : ""}${promises}${footwear ? renderSizeGuideDialog(locale) : ""}<dialog class="product-zoom" data-product-zoom aria-label="${t("Product image", "Produktbilde", "Produktbild")}"><button type="button" data-zoom-close aria-label="${t("Close enlarged image", "Lukk det store bildet", "Vergrößertes Bild schließen")}">${t("Close", "Lukk", "Schließen")} ×</button><img alt=""></dialog><div class="mobile-purchase" data-mobile-purchase><span>${escapeHtml(product.title)}</span><button type="button" data-mobile-purchase-action>${t("Choose size", "Velg størrelse", "Größe wählen")}</button></div>`;
   const curatedTitle = view ? "" : curatedMetaTitle(product);
-  return documentHtml({ title: curatedTitle || productMetaTitle(product, view, locale), localizeTitle: !curatedTitle, description: curatedMetaDescription(product) || stripHtml(product.description) || product.title, path: `/products/${product.handle}`, body, store, view, noindex: Boolean(view), schema: productSchema(sourceProduct, availability, currency, store.marketHandle, store.markets?.flatMap((market) => market.countries || []), context.pathPrefix || store?.pathPrefix || ""), image: images[0]?.url || "", type: "product" });
+  return documentHtml({ title: curatedTitle || productMetaTitle(product, view, locale), localizeTitle: !curatedTitle, description: curatedMetaDescription(product) || stripHtml(product.description) || product.title, path: `/products/${product.handle}`, body, store, view, noindex: Boolean(view), schema: productSchema(hideSoldOutHalfSizes(sourceProduct, availability), availability, currency, store.marketHandle, store.markets?.flatMap((market) => market.countries || []), context.pathPrefix || store?.pathPrefix || ""), image: images[0]?.url || "", type: "product" });
 }
 
 export function renderMessagePage(store, { title, heading, text }) {
