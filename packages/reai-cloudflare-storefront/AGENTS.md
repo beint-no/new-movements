@@ -130,3 +130,8 @@ otherwise choose a configured route for its default/supported locale. Optional
 Preserve page/query context and mutation bodies/idempotency; rebase checkout/return
 URLs to the selected route. Redirect mismatched public GET/HEAD pages privately,
 never cache cookie-dependent language redirects. Hreflang lists supported routes.
+
+Analytics batches may include emailVisitTracking: true and a campaignRecipient UUID
+on a page_view. Preserve these explicitly through the private proxy; reject invalid
+recipient UUIDs and continue stripping unknown properties. The flag reports deployed
+client support, not a merchant preference.

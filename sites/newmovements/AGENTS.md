@@ -444,3 +444,10 @@ Apply this to product choices, their offers, collection size filters and quick-a
 Keep stocked half sizes and sold-out whole sizes visible, and retain unknown
 availability on read failures. Do not remove ReAI variants or alter inventory;
 half sizes reappear automatically when available again.
+
+Email landing attribution reads the existing opaque campaign_recipient UUID only on
+page_view, forwarding it through the existing analytics batch. Use the normal batch and pagehide flush; add no separate tracking request or navigation wait. The batch advertises emailVisitTracking;
+ReAI automatically enables direct email links for this Site after a live batch is accepted.
+Respect the existing GPC/DNT and preview exclusions. No email/customer ID, persistent
+recipient storage or subsequent customer-session identity linkage. Repeated visits count
+once per original email recipient in ReAI. UTM tags remain automatic.
