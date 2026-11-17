@@ -143,9 +143,9 @@ export class ReaiSiteClient {
    * @returns {Promise<SiteApiResponse<SiteStorefront>>}
    */
   async storefront(context, ifNoneMatch = null) {
-    /** @type {SiteApiOperations["storefront"]["parameters"]["query"]} */
+    /** @type {SiteApiOperations["siteDeliveryApi_storefront"]["parameters"]["query"]} */
     const query = context;
-    /** @type {NonNullable<SiteApiOperations["storefront"]["parameters"]["header"]>} */
+    /** @type {NonNullable<SiteApiOperations["siteDeliveryApi_storefront"]["parameters"]["header"]>} */
     const operationHeaders = ifNoneMatch ? { "If-None-Match": ifNoneMatch } : {};
     const headers = new Headers();
     if (operationHeaders["If-None-Match"]) headers.set("If-None-Match", operationHeaders["If-None-Match"]);
@@ -158,9 +158,9 @@ export class ReaiSiteClient {
    * @returns {Promise<SiteApiResponse<SiteCatalog>>}
    */
   async catalog(context, ifNoneMatch = null) {
-    /** @type {SiteApiOperations["catalog"]["parameters"]["query"]} */
+    /** @type {SiteApiOperations["siteDeliveryApi_catalog"]["parameters"]["query"]} */
     const query = context;
-    /** @type {NonNullable<SiteApiOperations["catalog"]["parameters"]["header"]>} */
+    /** @type {NonNullable<SiteApiOperations["siteDeliveryApi_catalog"]["parameters"]["header"]>} */
     const operationHeaders = ifNoneMatch ? { "If-None-Match": ifNoneMatch } : {};
     const headers = new Headers();
     if (operationHeaders["If-None-Match"]) headers.set("If-None-Match", operationHeaders["If-None-Match"]);
@@ -173,9 +173,9 @@ export class ReaiSiteClient {
    * @returns {Promise<SiteApiResponse<SiteProduct>>}
    */
   async product(handle, context) {
-    /** @type {SiteApiOperations["product"]["parameters"]["path"]} */
+    /** @type {SiteApiOperations["siteDeliveryApi_product"]["parameters"]["path"]} */
     const path = { handle };
-    /** @type {SiteApiOperations["product"]["parameters"]["query"]} */
+    /** @type {SiteApiOperations["siteDeliveryApi_product"]["parameters"]["query"]} */
     const query = context;
     return new SiteApiResponse(await this.#request(expandPath(PRODUCT_PATH, path), query));
   }
@@ -185,7 +185,7 @@ export class ReaiSiteClient {
    * @returns {Promise<SiteApiResponse<SiteCollections>>}
    */
   async collections(context) {
-    /** @type {SiteApiOperations["collections"]["parameters"]["query"]} */
+    /** @type {SiteApiOperations["siteDeliveryApi_collections"]["parameters"]["query"]} */
     const query = context;
     return new SiteApiResponse(await this.#request(COLLECTIONS_PATH, query));
   }
@@ -196,9 +196,9 @@ export class ReaiSiteClient {
    * @returns {Promise<SiteApiResponse<SiteCollection>>}
    */
   async collection(handle, context) {
-    /** @type {SiteApiOperations["collection"]["parameters"]["path"]} */
+    /** @type {SiteApiOperations["siteDeliveryApi_collection"]["parameters"]["path"]} */
     const path = { handle };
-    /** @type {SiteApiOperations["collection"]["parameters"]["query"]} */
+    /** @type {SiteApiOperations["siteDeliveryApi_collection"]["parameters"]["query"]} */
     const query = context;
     return new SiteApiResponse(await this.#request(expandPath(COLLECTION_PATH, path), query));
   }
@@ -209,7 +209,7 @@ export class ReaiSiteClient {
    * @returns {Promise<SiteApiResponse<SiteAvailabilities>>}
    */
   async availabilities(variantIds, context) {
-    /** @type {SiteApiOperations["availabilities"]["parameters"]["query"]} */
+    /** @type {SiteApiOperations["siteDeliveryApi_availabilities"]["parameters"]["query"]} */
     const query = { ...context, variantId: variantIds };
     return new SiteApiResponse(await this.#request(AVAILABILITIES_PATH, query));
   }
@@ -220,9 +220,9 @@ export class ReaiSiteClient {
    * @returns {Promise<SiteApiResponse<SiteAvailability>>}
    */
   async availability(variantId, context) {
-  /** @type {SiteApiOperations["availability"]["parameters"]["path"]} */
+  /** @type {SiteApiOperations["siteDeliveryApi_availability"]["parameters"]["path"]} */
     const path = { variantId };
-    /** @type {SiteApiOperations["availability"]["parameters"]["query"]} */
+    /** @type {SiteApiOperations["siteDeliveryApi_availability"]["parameters"]["query"]} */
     const query = context;
     return new SiteApiResponse(await this.#request(expandPath(AVAILABILITY_PATH, path), query));
   }
@@ -263,9 +263,9 @@ export class ReaiSiteClient {
    * @returns {Promise<SiteApiResponse<SiteCheckoutSession>>}
    */
   async createCheckoutSession(body, context, idempotencyKey) {
-    /** @type {SiteApiOperations["createCheckoutSession"]["parameters"]["query"]} */
+    /** @type {SiteApiOperations["siteDeliveryApi_createCheckoutSession"]["parameters"]["query"]} */
     const query = context;
-    /** @type {SiteApiOperations["createCheckoutSession"]["parameters"]["header"]} */
+    /** @type {SiteApiOperations["siteDeliveryApi_createCheckoutSession"]["parameters"]["header"]} */
     const operationHeaders = { "Idempotency-Key": idempotencyKey };
     const headers = new Headers({ ...operationHeaders, "Content-Type": "application/json", "Accept-Language": context.locale });
     return new SiteApiResponse(await this.#request(CHECKOUT_PATH, query, {

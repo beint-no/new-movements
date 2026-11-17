@@ -15,9 +15,9 @@ export interface paths {
         put?: never;
         /**
          * Record anonymous storefront events
-         * @description Up to 25 events per batch, deduplicated by Site and event UUID. No email, address, arbitrary properties or URL query strings. Server receipt time is authoritative. Browser events are untrusted funnel signals; checkout/order counts come from ReAI sessions. Never send personal data. Raw events retained 180 days.
+         * @description Up to 25 events per batch, deduplicated by Site and event UUID. No email, address, arbitrary properties or URL query strings. Server receipt time is authoritative. Browser events are untrusted funnel signals; checkout/order counts come from ReAI sessions. Never send personal data. Raw events retained 180 days. A page_view may include campaignRecipient, the opaque UUID from an email link, to record the original recipient’s first landing visit within this tenant; it does not identify the visitor or link their browsing history. emailVisitTracking=true advertises client support and automatically enables direct campaign links after a live batch. Preview/unknown origins do not record email clicks or enable this capability.
          */
-        post: operations["record"];
+        post: operations["siteAnalyticsApi_record"];
         delete?: never;
         options?: never;
         head?: never;
@@ -32,7 +32,7 @@ export interface paths {
             cookie?: never;
         };
         /** Get coarse availability for up to 100 published variants */
-        get: operations["availabilities"];
+        get: operations["siteDeliveryApi_availabilities"];
         put?: never;
         post?: never;
         delete?: never;
@@ -49,7 +49,7 @@ export interface paths {
             cookie?: never;
         };
         /** Get coarse availability for a published variant */
-        get: operations["availability"];
+        get: operations["siteDeliveryApi_availability"];
         put?: never;
         post?: never;
         delete?: never;
@@ -71,7 +71,7 @@ export interface paths {
          * Quote a cart with current prices and stock
          * @description Read-only. Uses checkout pricing and validates the complete requested stock demand. Discounts require an explicit checkout code; no promotion is selected automatically. Returns product totals before shipping. Creates no checkout, customer, order, payment, reservation or tracking event. Works with read-only preview credentials. Never accepts browser prices or discount amounts.
          */
-        post: operations["cartQuote"];
+        post: operations["siteDeliveryApi_cartQuote"];
         delete?: never;
         options?: never;
         head?: never;
@@ -86,7 +86,7 @@ export interface paths {
             cookie?: never;
         };
         /** Get the published catalog */
-        get: operations["catalog"];
+        get: operations["siteDeliveryApi_catalog"];
         put?: never;
         post?: never;
         delete?: never;
@@ -108,7 +108,7 @@ export interface paths {
          * Create an immutable checkout snapshot
          * @description Call this from a trusted backend or Worker with a Site credential and Idempotency-Key. The request supplies the frozen checkout lines and optional returnUrl and delivery countryCode within the selected market. Keep the Site credential server-side; never send it to the browser. Open the returned checkoutUrl in the shopper's browser to complete contact, shipping, and payment. Submit bundle variant IDs and bundle counts without expanding components. Stock validation combines shared components across the whole cart and returns 409 INSUFFICIENT_STOCK with stockIssues when it cannot fit. Creating a session does not reserve stock; the components are atomically reserved when payment starts.
          */
-        post: operations["createCheckoutSession"];
+        post: operations["siteDeliveryApi_createCheckoutSession"];
         delete?: never;
         options?: never;
         head?: never;
@@ -126,7 +126,7 @@ export interface paths {
          * Resume a merchant checkout
          * @description Server-side Site credential and opaque checkout ID required. Contains personal data: never cache or log the response. Hosted checkouts are deliberately excluded.
          */
-        get: operations["read"];
+        get: operations["siteCheckoutDetailsApi_read"];
         put?: never;
         post?: never;
         delete?: never;
@@ -136,7 +136,7 @@ export interface paths {
          * Save merchant checkout details
          * @description Uses optimistic revision locking. Set complete for final contact/address validation. Submit code to apply an explicitly entered discount or gift card; whitespace is ignored and a matching gift card takes precedence. Do not combine code with discountCode or giftCardCode. Omitted fields preserve applied codes. Empty discountCode or giftCardCode removes that specific code. Gift cards are prepaid tender, not a discount; applying a code does not spend its balance. Changing the address clears delivery selection. Locked payments cannot be edited.
          */
-        patch: operations["update"];
+        patch: operations["siteCheckoutDetailsApi_update"];
         trace?: never;
     };
     "/site/v1/commerce/checkout-sessions/{id}/address-suggestions": {
@@ -150,7 +150,7 @@ export interface paths {
          * Suggest a Norwegian delivery address
          * @description Optional autocomplete with a minimum of three characters. Returns streetAddress, postalCode and city. Country must belong to this checkout market; other supported countries return an empty list and use manual entry. Provider credentials remain server-side. Never cache or log address queries.
          */
-        get: operations["addresses"];
+        get: operations["siteCheckoutDetailsApi_addresses"];
         put?: never;
         post?: never;
         delete?: never;
@@ -172,7 +172,7 @@ export interface paths {
          * Change the delivery country
          * @description Uses configured countries and currency prices. For a different market, creates a fresh quote and retires the previous draft atomically. Idempotency-Key is required. Contact/address are retained; shipping and discounts must be selected again.
          */
-        post: operations["country"];
+        post: operations["siteCheckoutDetailsApi_country"];
         delete?: never;
         options?: never;
         head?: never;
@@ -192,7 +192,7 @@ export interface paths {
          * Find delivery options and pickup points
          * @description Read-only discovery for the supplied address. Returns localized service names/descriptions, carrier identity/logo, pickup label, location type and optional distance in meters. Pass an optionToken to fetch only its pickup points; filter name/address/postalCode/city locally without further carrier calls. Persist selection with PATCH and the current revision.
          */
-        post: operations["options"];
+        post: operations["siteCheckoutDetailsApi_options"];
         delete?: never;
         options?: never;
         head?: never;
@@ -212,7 +212,7 @@ export interface paths {
          * Prepare payment for a merchant checkout
          * @description Validates complete details and prepares an unpayable provider session. Returns a ReAI paymentUrl; no provider credentials or sessionData are delivered to the merchant. ReAI reserves stock and finalizes payment on the payment page.
          */
-        post: operations["prepare"];
+        post: operations["siteCheckoutDetailsApi_prepare"];
         delete?: never;
         options?: never;
         head?: never;
@@ -227,7 +227,7 @@ export interface paths {
             cookie?: never;
         };
         /** List published collections */
-        get: operations["collections"];
+        get: operations["siteDeliveryApi_collections"];
         put?: never;
         post?: never;
         delete?: never;
@@ -244,7 +244,7 @@ export interface paths {
             cookie?: never;
         };
         /** Get a published collection with ordered published products */
-        get: operations["collection"];
+        get: operations["siteDeliveryApi_collection"];
         put?: never;
         post?: never;
         delete?: never;
@@ -261,7 +261,7 @@ export interface paths {
             cookie?: never;
         };
         /** List published products */
-        get: operations["products"];
+        get: operations["siteDeliveryApi_products"];
         put?: never;
         post?: never;
         delete?: never;
@@ -278,7 +278,7 @@ export interface paths {
             cookie?: never;
         };
         /** Get a published product */
-        get: operations["product"];
+        get: operations["siteDeliveryApi_product"];
         put?: never;
         post?: never;
         delete?: never;
@@ -300,7 +300,7 @@ export interface paths {
          * Request one back-in-stock email for a published variant
          * @description Requires explicit consent for one notification. Only currently unavailable published variants qualify. Does not grant newsletter consent. Repeated waiting requests are idempotent. Requests expire after 180 days. Requires the configured back-in-stock flow.
          */
-        post: operations["subscribeStock"];
+        post: operations["siteDeliveryApi_subscribeStock"];
         delete?: never;
         options?: never;
         head?: never;
@@ -315,7 +315,7 @@ export interface paths {
             cookie?: never;
         };
         /** Get the complete published storefront snapshot */
-        get: operations["storefront"];
+        get: operations["siteDeliveryApi_storefront"];
         put?: never;
         post?: never;
         delete?: never;
@@ -337,7 +337,7 @@ export interface paths {
          * Subscribe to the Site owner's newsletter
          * @description Accepts an email and optional name with explicit newsletter consent. Reuses the tenant's customer consent records without changing existing customer details. Repeated submissions are idempotent. Returns the same receipt for new and existing contacts; ensures enrollment in the configured welcome flow at most once per email and store, including existing subscribers. Explicit welcomeDiscount=true selects the separately enabled welcome_discount flow instead, at most once per email and store even for existing subscribers. An unavailable offer rejects the request without saving consent. Does not create a discount.
          */
-        post: operations["subscribeNewsletter"];
+        post: operations["siteDeliveryApi_subscribeNewsletter"];
         delete?: never;
         options?: never;
         head?: never;
@@ -352,7 +352,7 @@ export interface paths {
             cookie?: never;
         };
         /** Get the authenticated site */
-        get: operations["site"];
+        get: operations["siteDeliveryApi_site"];
         put?: never;
         post?: never;
         delete?: never;
@@ -452,10 +452,13 @@ export interface components {
             width: number;
         };
         SiteAnalyticsBatchDto: {
+            emailVisitTracking?: boolean;
             events: components["schemas"]["SiteAnalyticsEventDto"][];
             origin?: string | null;
         };
         SiteAnalyticsEventDto: {
+            /** Format: uuid */
+            campaignRecipient?: string | null;
             /** Format: uuid */
             id: string;
             /** @enum {string} */
@@ -921,7 +924,7 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    record: {
+    siteAnalyticsApi_record: {
         parameters: {
             query?: never;
             header?: never;
@@ -995,7 +998,7 @@ export interface operations {
             };
         };
     };
-    availabilities: {
+    siteDeliveryApi_availabilities: {
         parameters: {
             query: {
                 variantId: string[];
@@ -1079,7 +1082,7 @@ export interface operations {
             };
         };
     };
-    availability: {
+    siteDeliveryApi_availability: {
         parameters: {
             query?: {
                 /**
@@ -1164,7 +1167,7 @@ export interface operations {
             };
         };
     };
-    cartQuote: {
+    siteDeliveryApi_cartQuote: {
         parameters: {
             query?: {
                 market?: string | null;
@@ -1243,7 +1246,7 @@ export interface operations {
             };
         };
     };
-    catalog: {
+    siteDeliveryApi_catalog: {
         parameters: {
             query?: {
                 /**
@@ -1336,7 +1339,7 @@ export interface operations {
             };
         };
     };
-    createCheckoutSession: {
+    siteDeliveryApi_createCheckoutSession: {
         parameters: {
             query?: {
                 /**
@@ -1425,7 +1428,7 @@ export interface operations {
             };
         };
     };
-    read: {
+    siteCheckoutDetailsApi_read: {
         parameters: {
             query?: never;
             header?: never;
@@ -1499,7 +1502,7 @@ export interface operations {
             };
         };
     };
-    update: {
+    siteCheckoutDetailsApi_update: {
         parameters: {
             query?: never;
             header?: never;
@@ -1577,12 +1580,11 @@ export interface operations {
             };
         };
     };
-    addresses: {
+    siteCheckoutDetailsApi_addresses: {
         parameters: {
             query: {
                 query: string;
-                /** @example NO */
-                countryCode: string;
+                countryCode?: string;
             };
             header?: never;
             path: {
@@ -1655,7 +1657,7 @@ export interface operations {
             };
         };
     };
-    country: {
+    siteCheckoutDetailsApi_country: {
         parameters: {
             query?: never;
             header: {
@@ -1735,7 +1737,7 @@ export interface operations {
             };
         };
     };
-    options: {
+    siteCheckoutDetailsApi_options: {
         parameters: {
             query?: never;
             header?: never;
@@ -1813,7 +1815,7 @@ export interface operations {
             };
         };
     };
-    prepare: {
+    siteCheckoutDetailsApi_prepare: {
         parameters: {
             query?: never;
             header?: never;
@@ -1891,7 +1893,7 @@ export interface operations {
             };
         };
     };
-    collections: {
+    siteDeliveryApi_collections: {
         parameters: {
             query?: {
                 /**
@@ -1984,7 +1986,7 @@ export interface operations {
             };
         };
     };
-    collection: {
+    siteDeliveryApi_collection: {
         parameters: {
             query?: {
                 /**
@@ -2079,7 +2081,7 @@ export interface operations {
             };
         };
     };
-    products: {
+    siteDeliveryApi_products: {
         parameters: {
             query?: {
                 /**
@@ -2172,7 +2174,7 @@ export interface operations {
             };
         };
     };
-    product: {
+    siteDeliveryApi_product: {
         parameters: {
             query?: {
                 /**
@@ -2267,7 +2269,7 @@ export interface operations {
             };
         };
     };
-    subscribeStock: {
+    siteDeliveryApi_subscribeStock: {
         parameters: {
             query?: never;
             header?: never;
@@ -2343,7 +2345,7 @@ export interface operations {
             };
         };
     };
-    storefront: {
+    siteDeliveryApi_storefront: {
         parameters: {
             query?: {
                 /**
@@ -2436,7 +2438,7 @@ export interface operations {
             };
         };
     };
-    subscribeNewsletter: {
+    siteDeliveryApi_subscribeNewsletter: {
         parameters: {
             query?: never;
             header?: never;
@@ -2512,7 +2514,7 @@ export interface operations {
             };
         };
     };
-    site: {
+    siteDeliveryApi_site: {
         parameters: {
             query?: never;
             header?: never;

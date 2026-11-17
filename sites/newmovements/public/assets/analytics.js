@@ -42,7 +42,7 @@ function flush() {
     try {
       const response = await fetch(sitePath('/reai/analytics/events'), {
         method: 'POST', headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({events: batch.map(item => item.event)}), keepalive: true,
+        body: JSON.stringify({events: batch.map(item => item.event), emailVisitTracking: true}), keepalive: true,
       });
       retry = response.status >= 500;
       return response.ok;
@@ -72,6 +72,10 @@ export function track(kind, details = {}) {
   try {
     if (!enabled() || !kinds.has(kind)) return;
     const event = {id: crypto.randomUUID(), sessionId: sessionId(), kind, path: location.pathname};
+    if (kind === 'page_view') {
+      const recipient = new URL(location.href).searchParams.get('campaign_recipient');
+      if (uuid.test(recipient)) event.campaignRecipient = recipient;
+    }
     if (uuid.test(details.productId)) event.productId = details.productId;
     if (uuid.test(details.variantId)) event.variantId = details.variantId;
     if (Number.isFinite(details.quantity)) event.quantity = Math.min(100, Math.max(1, Math.trunc(details.quantity)));
