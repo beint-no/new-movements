@@ -7,7 +7,7 @@
 // - Returns and credit notes are netted off.
 // - Sizes 35-41 count as women's and 42-48 as men's (half sizes by their number).
 //
-// Women: 43 products / 168 pairs. Men: 47 products / 173 pairs.
+// Women: 43 products / 164 pairs. Men: 47 products / 173 pairs.
 // Report lines used: 224. Skipped: 37 without a product, 0 not storefront products, 23 without a 35-48 size.
 
 export const WINTER_SALES_PERIOD = { from: "2026-10-01", to: "2026-11-18", generatedOn: "2026-11-18" };
@@ -15,9 +15,9 @@ export const WINTER_SALES_PERIOD = { from: "2026-10-01", to: "2026-11-18", gener
 export const WINTER_SALES = {
   women: {
     "cloud-boot-macchiato-brown": 24,
-    "cloud-boot-black": 20,
     "low-cloud-macchiato-brown": 18,
-    "high-flow-boot-black": 13,
+    "cloud-boot-black": 17,
+    "high-flow-boot-black": 12,
     "low-cloud-boot-night-blue": 8,
     "moss-leather-macchiato": 7,
     "low-cloud-black": 6,
