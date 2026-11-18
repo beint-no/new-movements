@@ -4,6 +4,7 @@ export { renderCheckoutPage } from "./checkout.mjs";
 import { STORE_SCRIPT, STORE_STYLE, FAVICON_SVG, FAVICON_ICO, TOUCH_ICON } from "./dist/assets.mjs";
 import { renderPaymentMarks, renderSocialLinks } from "./footer-icons.mjs";
 import { CART_UPSELL_HANDLES, sortProductSizes, sizeValue, VIEWS, selectedView, productView, productsForView, isProductShot, viewUrl } from "./merchandising.mjs";
+import { WINTER_COLLECTION_HANDLE, rankForWinter } from "./seasonal-ranking.mjs";
 import { FEATURED_REVIEWS, GOOGLE_REVIEW_COUNT, GOOGLE_REVIEWS_URL } from "./reviews.mjs";
 import { isFootwearProduct, productMetaTitle, collectionMetaTitle, localizeMetaTitle, metaDescription, curatedMetaTitle, curatedMetaDescription } from "./metadata.mjs";
 import { canonicalPath } from "./routes.mjs";
@@ -508,7 +509,10 @@ function collectionSourceProducts(store, handle, context) {
   const view = selectedView(context, Object.hasOwn(VIEWS, handle) ? handle : "");
   const collection = handle === "all" ? null : collectionByHandle(store, handle);
   const source = handle === "all" ? store.products || [] : collectionProducts(store, collection);
-  return productsForView(source, view);
+  const products = productsForView(source, view);
+  if (!Object.hasOwn(VIEWS, handle) || view !== handle) return products;
+  const winterHandles = collectionProducts(store, collectionByHandle(store, WINTER_COLLECTION_HANDLE)).map((product) => product.handle);
+  return rankForWinter(products, view, { winterHandles, now: context?.now });
 }
 
 export function collectionAvailabilityVariants(store, handle, context = {}) {
