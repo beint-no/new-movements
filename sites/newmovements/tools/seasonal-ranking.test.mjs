@@ -70,8 +70,9 @@ const store = {
   ],
 };
 const gridOrder = (html) => [...new Set([...html.matchAll(/href="\/products\/([a-z0-9-]+)/g)].map((match) => match[1]))];
+// The page test passes its own sales so a weekly refresh of winter-sales.mjs cannot change the outcome.
 const render = (handle, now, query = "") => renderCollectionPage(store, handle, {
-  now, url: new URL(`https://newmovements.com/collections/${handle}${query}`),
+  now, winterSales: sales, url: new URL(`https://newmovements.com/collections/${handle}${query}`),
 });
 
 test("the Men and Women pages show winter shoes first in winter", () => {
