@@ -28,7 +28,7 @@ const sales = {
 };
 const winterNow = at("2026-11-18T12:00:00Z");
 const handles = (list) => list.map((product) => product.handle);
-const rank = (view, extra = {}) => handles(rankForWinter(products, view, { winterHandles, now: winterNow, sales, ...extra }));
+const rank = (view, extra = {}) => handles(rankForWinter(products, view, { winterHandles, now: winterNow, sales, newArrivals: [], ...extra }));
 
 test("best sellers come first whatever their type, then winter shoes, then everything else", () => {
   assert.equal(MIN_PROVEN_SALES, 3);
@@ -44,29 +44,58 @@ test("a shoe needs at least three pairs sold to count as a best seller", () => {
 
 test("a proven non-winter best seller outranks a winter shoe with no sales", () => {
   const ranked = rankForWinter([{ handle: "quiet-boot" }, { handle: "seller" }], "men", {
-    winterHandles: ["quiet-boot"], now: winterNow, sales: { men: { seller: 50 } },
+    winterHandles: ["quiet-boot"], now: winterNow, sales: { men: { seller: 50 } }, newArrivals: [],
   });
   assert.deepEqual(handles(ranked), ["seller", "quiet-boot"]);
 });
 
 test("among equal best sellers a winter shoe comes first, otherwise the current order is kept", () => {
   const ranked = rankForWinter([{ handle: "b" }, { handle: "winter" }, { handle: "a" }], "men", {
-    winterHandles: ["winter"], now: winterNow, sales: { men: { a: 4, b: 4, winter: 4 } },
+    winterHandles: ["winter"], now: winterNow, sales: { men: { a: 4, b: 4, winter: 4 } }, newArrivals: [],
   });
   assert.deepEqual(handles(ranked), ["winter", "b", "a"]);
 });
 
 test("ties keep the original order and the input is not modified", () => {
   const input = [{ handle: "b" }, { handle: "a" }, { handle: "c" }];
-  const ranked = rankForWinter(input, "men", { winterHandles: [], now: winterNow, sales: { men: {} } });
+  const ranked = rankForWinter(input, "men", { winterHandles: [], now: winterNow, sales: { men: {} }, newArrivals: [] });
   assert.deepEqual(handles(ranked), ["b", "a", "c"]);
   assert.deepEqual(handles(input), ["b", "a", "c"]);
 });
 
 test("outside winter and for other views the order is untouched", () => {
   const summer = at("2026-06-15T12:00:00Z");
-  assert.equal(rankForWinter(products, "men", { winterHandles, now: summer, sales }), products);
-  assert.equal(rankForWinter(products, "", { winterHandles, now: winterNow, sales }), products);
+  assert.equal(rankForWinter(products, "men", { winterHandles, now: summer, sales, newArrivals: [] }), products);
+  assert.equal(rankForWinter(products, "", { winterHandles, now: winterNow, sales, newArrivals: [{ handle: "zen-white", since: "2026-11-18" }] }), products);
+});
+
+// New arrivals: no sales yet, so they have to be lifted to the top by hand.
+const fresh = (...entries) => entries.map(([handle, since]) => ({ handle, since }));
+
+test("new arrivals go first, newest first and then in list order, ahead of best sellers", () => {
+  const ranked = handles(rankForWinter(products, "men", {
+    winterHandles, now: winterNow, sales, minProvenSales: 3,
+    newArrivals: fresh(["zen-white", "2026-11-10"], ["original-olive-brown", "2026-11-17"], ["quiet-boot", "2026-11-17"]),
+  }));
+  assert.deepEqual(ranked.slice(0, 3), ["original-olive-brown", "quiet-boot", "zen-white"]);
+  assert.deepEqual(ranked.slice(3), ["loafer-hit", "cloud-boot-black", "allrounder-y-smooth-forest"]);
+});
+
+test("a new arrival also comes first out of season, and nothing else moves", () => {
+  const ranked = handles(rankForWinter(products, "women", {
+    winterHandles, now: at("2026-06-15T12:00:00Z"), sales, newArrivals: fresh(["loafer-hit", "2026-06-10"]),
+  }));
+  assert.deepEqual(ranked, ["loafer-hit", "zen-white", "original-olive-brown", "quiet-boot", "cloud-boot-black", "allrounder-y-smooth-forest"]);
+});
+
+test("a new arrival expires after the set number of days and is not active before its date", () => {
+  const entry = fresh(["zen-white", "2026-11-18"]);
+  const first = (now) => rankForWinter(products, "men", { winterHandles, now, sales, newArrivals: entry, newArrivalDays: 45 })[0].handle;
+  assert.equal(first(at("2026-11-18T12:00:00Z")), "zen-white"); // day 0
+  assert.equal(first(at("2026-12-31T12:00:00Z")), "zen-white"); // day 43
+  assert.equal(first(at("2027-01-01T12:00:00Z")), "zen-white"); // day 44, the last day
+  assert.notEqual(first(at("2027-01-02T12:00:00Z")), "zen-white"); // day 45: back in the normal order
+  assert.notEqual(first(at("2026-11-17T12:00:00Z")), "zen-white"); // listed for tomorrow
 });
 
 // The real Men and Women pages: the ranking has to reach the rendered product grid.
@@ -89,13 +118,20 @@ const store = {
 };
 const gridOrder = (html) => [...new Set([...html.matchAll(/href="\/products\/([a-z0-9-]+)/g)].map((match) => match[1]))];
 // The page test passes its own sales so a weekly refresh of winter-sales.mjs cannot change the outcome.
-const render = (handle, now, query = "") => renderCollectionPage(store, handle, {
-  now, winterSales: sales, url: new URL(`https://newmovements.com/collections/${handle}${query}`),
+const render = (handle, now, query = "", newArrivals = []) => renderCollectionPage(store, handle, {
+  now, winterSales: sales, newArrivals, url: new URL(`https://newmovements.com/collections/${handle}${query}`),
 });
 
 test("the Men and Women pages show best sellers, then winter shoes, then the rest in winter", () => {
   assert.deepEqual(gridOrder(render("men", winterNow)), rank("men"));
   assert.deepEqual(gridOrder(render("women", winterNow)), rank("women"));
+});
+
+test("new arrivals lead the rendered Men and Women pages", () => {
+  const arrivals = fresh(["zen-white", "2026-11-17"]);
+  assert.equal(gridOrder(render("men", winterNow, "", arrivals))[0], "zen-white");
+  assert.equal(gridOrder(render("women", winterNow, "", arrivals))[0], "zen-white");
+  assert.equal(gridOrder(render("men", winterNow, "?sort_by=title-ascending", arrivals))[0], [...handlesInOrder].sort()[0]);
 });
 
 test("the pages keep the Featured order out of season and when another sort is chosen", () => {
