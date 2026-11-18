@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { isWinterSeason, rankForWinter } from "../seasonal-ranking.mjs";
+import { MIN_PROVEN_SALES, isWinterSeason, rankForWinter } from "../seasonal-ranking.mjs";
 import { renderCollectionPage } from "../storefront.mjs";
 
 const at = (iso) => new Date(iso);
@@ -18,24 +18,42 @@ test("winter runs from 1 October through 1 March, measured on the Oslo calendar"
   assert.equal(isWinterSeason(at("2027-03-01T23:30:00Z")), false);
 });
 
-const products = ["zen-white", "original-olive-brown", "allrounder-y-smooth-forest", "cloud-boot-black"].map((handle) => ({ handle }));
-const sales = { men: { "allrounder-y-smooth-forest": 5, "cloud-boot-black": 4, "original-olive-brown": 2 }, women: { "cloud-boot-black": 9, "allrounder-y-smooth-forest": 3 } };
-const winterHandles = ["cloud-boot-black", "allrounder-y-smooth-forest"];
+// Default (Featured) order, with the winter shoes and what each audience bought.
+const handlesInOrder = ["zen-white", "original-olive-brown", "quiet-boot", "cloud-boot-black", "allrounder-y-smooth-forest", "loafer-hit"];
+const products = handlesInOrder.map((handle) => ({ handle }));
+const winterHandles = ["quiet-boot", "cloud-boot-black", "allrounder-y-smooth-forest"];
+const sales = {
+  men: { "loafer-hit": 11, "allrounder-y-smooth-forest": 5, "cloud-boot-black": 5, "original-olive-brown": 2 },
+  women: { "cloud-boot-black": 9, "allrounder-y-smooth-forest": 3 },
+};
 const winterNow = at("2026-11-18T12:00:00Z");
 const handles = (list) => list.map((product) => product.handle);
+const rank = (view, extra = {}) => handles(rankForWinter(products, view, { winterHandles, now: winterNow, sales, ...extra }));
 
-test("in winter, winter shoes come first and each audience is ordered by its own sales", () => {
-  assert.deepEqual(handles(rankForWinter(products, "men", { winterHandles, now: winterNow, sales })),
-    ["allrounder-y-smooth-forest", "cloud-boot-black", "original-olive-brown", "zen-white"]);
-  assert.deepEqual(handles(rankForWinter(products, "women", { winterHandles, now: winterNow, sales })),
-    ["cloud-boot-black", "allrounder-y-smooth-forest", "zen-white", "original-olive-brown"]);
+test("best sellers come first whatever their type, then winter shoes, then everything else", () => {
+  assert.equal(MIN_PROVEN_SALES, 3);
+  assert.deepEqual(rank("men"), ["loafer-hit", "cloud-boot-black", "allrounder-y-smooth-forest", "quiet-boot", "original-olive-brown", "zen-white"]);
+  assert.deepEqual(rank("women"), ["cloud-boot-black", "allrounder-y-smooth-forest", "quiet-boot", "zen-white", "original-olive-brown", "loafer-hit"]);
 });
 
-test("a winter shoe with no sales still outranks a non-winter best seller", () => {
-  const ranked = rankForWinter([{ handle: "seller" }, { handle: "quiet-boot" }], "men", {
+test("a shoe needs at least three pairs sold to count as a best seller", () => {
+  // original-olive-brown sold 2 to men: not a best seller, so the unsold winter shoe stays ahead of it
+  assert.ok(rank("men").indexOf("quiet-boot") < rank("men").indexOf("original-olive-brown"));
+  assert.ok(rank("men", { minProvenSales: 2 }).indexOf("original-olive-brown") < rank("men", { minProvenSales: 2 }).indexOf("quiet-boot"));
+});
+
+test("a proven non-winter best seller outranks a winter shoe with no sales", () => {
+  const ranked = rankForWinter([{ handle: "quiet-boot" }, { handle: "seller" }], "men", {
     winterHandles: ["quiet-boot"], now: winterNow, sales: { men: { seller: 50 } },
   });
-  assert.deepEqual(handles(ranked), ["quiet-boot", "seller"]);
+  assert.deepEqual(handles(ranked), ["seller", "quiet-boot"]);
+});
+
+test("among equal best sellers a winter shoe comes first, otherwise the current order is kept", () => {
+  const ranked = rankForWinter([{ handle: "b" }, { handle: "winter" }, { handle: "a" }], "men", {
+    winterHandles: ["winter"], now: winterNow, sales: { men: { a: 4, b: 4, winter: 4 } },
+  });
+  assert.deepEqual(handles(ranked), ["winter", "b", "a"]);
 });
 
 test("ties keep the original order and the input is not modified", () => {
@@ -75,14 +93,12 @@ const render = (handle, now, query = "") => renderCollectionPage(store, handle, 
   now, winterSales: sales, url: new URL(`https://newmovements.com/collections/${handle}${query}`),
 });
 
-test("the Men and Women pages show winter shoes first in winter", () => {
-  assert.deepEqual(gridOrder(render("men", winterNow)), ["allrounder-y-smooth-forest", "cloud-boot-black", "original-olive-brown", "zen-white"]);
-  assert.deepEqual(gridOrder(render("women", winterNow)), ["cloud-boot-black", "allrounder-y-smooth-forest", "zen-white", "original-olive-brown"]);
+test("the Men and Women pages show best sellers, then winter shoes, then the rest in winter", () => {
+  assert.deepEqual(gridOrder(render("men", winterNow)), rank("men"));
+  assert.deepEqual(gridOrder(render("women", winterNow)), rank("women"));
 });
 
 test("the pages keep the Featured order out of season and when another sort is chosen", () => {
-  const original = products.map((product) => product.handle);
-  assert.deepEqual(gridOrder(render("men", at("2026-06-15T12:00:00Z"))), original);
-  assert.deepEqual(gridOrder(render("men", winterNow, "?sort_by=title-ascending")),
-    [...original].sort());
+  assert.deepEqual(gridOrder(render("men", at("2026-06-15T12:00:00Z"))), handlesInOrder);
+  assert.deepEqual(gridOrder(render("men", winterNow, "?sort_by=title-ascending")), [...handlesInOrder].sort());
 });
