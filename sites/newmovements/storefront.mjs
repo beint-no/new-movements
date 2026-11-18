@@ -512,7 +512,7 @@ function collectionSourceProducts(store, handle, context) {
   const products = productsForView(source, view);
   if (!Object.hasOwn(VIEWS, handle) || view !== handle) return products;
   const winterHandles = collectionProducts(store, collectionByHandle(store, WINTER_COLLECTION_HANDLE)).map((product) => product.handle);
-  return rankForWinter(products, view, { winterHandles, now: context?.now, sales: context?.winterSales });
+  return rankForWinter(products, view, { winterHandles, now: context?.now, sales: context?.winterSales, newArrivals: context?.newArrivals });
 }
 
 export function collectionAvailabilityVariants(store, handle, context = {}) {
