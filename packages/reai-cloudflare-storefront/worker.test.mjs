@@ -714,3 +714,99 @@ test('only successful content-addressed image responses receive immutable cachin
     assert.equal(response.headers.get('Cache-Control').includes('immutable'), status === 200);
   }
 });
+
+test('background storefront refresh failures are caught and logged in waitUntil', async (context) => {
+  const originalFetch = globalThis.fetch;
+  const originalCaches = globalThis.caches;
+  const originalNow = Date.now;
+  const originalError = console.error;
+  context.after(() => {
+    globalThis.fetch = originalFetch;
+    globalThis.caches = originalCaches;
+    Date.now = originalNow;
+    console.error = originalError;
+  });
+  let now = 1_000_000;
+  Date.now = () => now;
+  const cachedResponses = new Map();
+  globalThis.caches = {
+    default: {
+      async match(request) { return cachedResponses.get(request.url)?.clone(); },
+      async put(request, response) { cachedResponses.set(request.url, response.clone()); },
+    },
+  };
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls += 1;
+    if (calls === 1) {
+      return Response.json({ catalogVersion: 1, marketId: 'm', marketHandle: 'default', locale: 'en', currency: 'NOK', products: [], collections: [] });
+    }
+    throw new Error('upstream down');
+  };
+  const logged = [];
+  console.error = (...args) => logged.push(args);
+
+  const worker = createReaiStorefrontWorker({ cacheKey: 'bg-refresh-error', storefront, market: 'default', locale: 'en' });
+  const env = { REAI_SITE_TOKEN: 'test-token' };
+  await worker.fetch(new Request('https://shop.example/reai/catalog'), env);
+  now += 61_000;
+  let pending;
+  const stale = await worker.fetch(new Request('https://shop.example/reai/catalog'), env, {
+    waitUntil(promise) { pending = promise; },
+  });
+  assert.equal(stale.headers.get('X-ReAI-Storefront-Cache'), 'STALE');
+  await assert.doesNotReject(pending);
+  assert.equal(logged.length, 1);
+  assert.equal(logged[0][0], 'Background storefront refresh failed');
+});
+
+test('renders unavailable page on upstream 5xx product and collection lookup errors', async (context) => {
+  const originalFetch = globalThis.fetch;
+  context.after(() => { globalThis.fetch = originalFetch; });
+  let lookupStatus = 503;
+  globalThis.fetch = async (input) => {
+    const url = new URL(input);
+    if (url.pathname.endsWith('/commerce/storefront')) {
+      return Response.json({ catalogVersion: 1, marketId: 'm', marketHandle: 'default', locale: 'en', currency: 'NOK', products: [], collections: [] });
+    }
+    return new Response(null, { status: lookupStatus });
+  };
+  const worker = createReaiStorefrontWorker({
+    cacheKey: 'upstream-5xx-page',
+    market: 'default',
+    locale: 'en',
+    storefront: {
+      ...storefront,
+      matchRoute: (pathname) => pathname.startsWith('/products/')
+        ? { type: 'product', valid: true, needsSlash: false, handle: 'missing', canonicalPath: pathname }
+        : pathname.startsWith('/collections/')
+          ? { type: 'collection', valid: true, needsSlash: false, handle: 'missing', canonicalPath: pathname }
+          : null,
+      productByHandle: () => null,
+      collectionByHandle: () => null,
+      renderNotFoundPage: () => '<h1>Not Found</h1>',
+      renderUnavailablePage: () => '<h1>Temporarily Unavailable</h1>',
+    },
+  });
+  const env = { REAI_SITE_TOKEN: 'test-token' };
+  for (const route of ['/products/missing', '/collections/missing']) {
+    lookupStatus = 503;
+    const unavailable = await worker.fetch(new Request(`https://shop.example${route}`), env);
+    assert.equal(unavailable.status, 502);
+    assert.match(await unavailable.text(), /Temporarily Unavailable/);
+
+    lookupStatus = 404;
+    const notFound = await worker.fetch(new Request(`https://shop.example${route}`), env);
+    assert.equal(notFound.status, 404);
+    assert.match(await notFound.text(), /Not Found/);
+  }
+});
+
+test('adds Strict-Transport-Security only on HTTPS responses', async () => {
+  const worker = createReaiStorefrontWorker({ cacheKey: 'hsts-test', storefront, market: 'default', locale: 'en' });
+  const env = { ASSETS: { fetch: async () => new Response('ok') } };
+  const httpsRes = await worker.fetch(new Request('https://shop.example/asset.css'), env);
+  assert.equal(httpsRes.headers.get('Strict-Transport-Security'), 'max-age=31536000');
+  const httpRes = await worker.fetch(new Request('http://shop.example/asset.css'), env);
+  assert.equal(httpRes.headers.get('Strict-Transport-Security'), null);
+});

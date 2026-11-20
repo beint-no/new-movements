@@ -10,6 +10,13 @@ const cookieValue = (request) => {
 };
 const choiceCookie = (handle, country) => `${COOKIE}=${encodeURIComponent(`${handle}:${country}`)}; Path=/; Max-Age=31536000; HttpOnly; Secure; SameSite=Lax`;
 
+function withHsts(response, url) {
+  if (url.protocol !== 'https:' || response.headers.has('Strict-Transport-Security')) return response;
+  const headers = new Headers(response.headers);
+  headers.set('Strict-Transport-Security', 'max-age=31536000');
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
 function normalizePathPrefix(pathPrefix = "") {
   const value = String(pathPrefix).trim();
   if (!value || value === "/") return "";
@@ -104,85 +111,89 @@ export function createReaiMarketStorefrontWorker(options) {
     return markets;
   }
 
+  async function handleFetch(request, env, url, executionContext) {
+    const localeRoute = localeRouteFor(routes, url.pathname);
+    const routedPath = localeRoute ? stripPathPrefix(url.pathname, localeRoute.pathPrefix) : null;
+    const localeOptions = localeRoute ? { ...options, ...localeRoute, pathPrefix: localeRoute.pathPrefix } : options;
+    // Assets need neither market discovery nor personalized response headers.
+    if (!localeRoute || (!options.storefront.matchRoute(routedPath) && !routedPath.startsWith('/reai/'))) {
+      return createReaiStorefrontWorker(localeOptions).fetch(request, env, executionContext);
+    }
+    let markets;
+    try { markets = await marketsFor(env); }
+    catch {
+      return new Response('The store is temporarily unavailable. Please try again.', { status: 503, headers: { 'Cache-Control': 'no-store', 'Content-Type': 'text/plain; charset=utf-8' } });
+    }
+    const requested = url.searchParams.get('market');
+    const requestedCountry = url.searchParams.get('country');
+    const countryMarket = requestedCountry && markets.find((market) => market.countries?.includes(requestedCountry));
+    if (requestedCountry && (!countryMarket || (requested && !markets.find((market) => market.handle === requested)?.countries?.includes(requestedCountry)))) return new Response('This delivery country is unavailable.', { status: 400, headers: { 'Cache-Control': 'no-store' } });
+    if (requested && !markets.some((market) => market.handle === requested)) return new Response('This market is unavailable.', { status: 400, headers: { 'Cache-Control': 'no-store' } });
+    if (routedPath === '/reai/market') {
+      if (request.method !== 'POST') return new Response(null, { status: 405, headers: { Allow: 'POST' } });
+      if (request.headers.get('Origin') && request.headers.get('Origin') !== url.origin) return new Response(null, { status: 403 });
+      const form = await request.formData();
+      const selectedCountry = form.get('country');
+      const market = selectedCountry ? markets.find((item) => (item.countries?.length ? item.countries : ['NO']).includes(String(selectedCountry))) : markets.find((item) => item.handle === form.get('market'));
+      const country = selectedCountry || market?.countries?.[0] || 'NO';
+      if (!market) return new Response('This market is unavailable.', { status: 400, headers: { 'Cache-Control': 'no-store' } });
+      let returnTo;
+      try { returnTo = new URL(String(form.get('returnTo') || '/'), url.origin); }
+      catch { return new Response(null, { status: 400 }); }
+      if (returnTo.origin !== url.origin) return new Response(null, { status: 400 });
+      returnTo = routeUrl(returnTo, supportedRoute(market, localeRoute, options.countryLocales?.[country]));
+      returnTo.searchParams.delete('market');
+      returnTo.searchParams.delete('country');
+      returnTo.searchParams.delete('filter.v.price.gte');
+      returnTo.searchParams.delete('filter.v.price.lte');
+      return new Response(null, { status: 303, headers: { Location: returnTo.href, 'Set-Cookie': choiceCookie(market.handle, country), 'Cache-Control': 'no-store' } });
+    }
+    const geoCountry = request.cf?.country || request.headers.get('CF-IPCountry');
+    const [saved, savedCountry] = cookieValue(request);
+    const destination = selectDestination(markets, { requested: requested || countryMarket?.handle, saved: requestedCountry ? undefined : saved, savedCountry, country: requestedCountry || geoCountry });
+    if (!destination) return new Response('This market is unavailable.', { status: 503 });
+    const { market, country } = destination;
+    const activeRoute = supportedRoute(market, localeRoute);
+    const activeUrl = routeUrl(url, activeRoute);
+    if (activeRoute.pathPrefix !== localeRoute.pathPrefix && ['GET', 'HEAD'].includes(request.method) && !routedPath.startsWith('/reai/')) {
+      return new Response(null, { status: 303, headers: {
+        Location: activeUrl.href, 'Cache-Control': 'private, no-store',
+        'Set-Cookie': choiceCookie(market.handle, country),
+      } });
+    }
+    // Mutations keep their body/idempotency but use supported delivery and checkout-return paths.
+    const activeRequest = activeRoute.pathPrefix === localeRoute.pathPrefix ? request : new Request(activeUrl, request);
+    const renderer = Object.fromEntries(Object.entries(options.storefront).map(([name, value]) => [name,
+      (name.startsWith('render') || name === 'localizeStorefront') && typeof value === 'function'
+        ? (store, ...args) => value(store ? {
+          ...store,
+          markets,
+          countryCode: country,
+          marketReturnTo: activeUrl.pathname + activeUrl.search,
+          pathPrefix: activeRoute.pathPrefix,
+          localeRoutes: routes.filter(route => !market.locales?.length || market.locales.includes(route.locale)),
+        } : store, ...args)
+        : value,
+    ]));
+    const response = await createReaiStorefrontWorker({ ...options, ...activeRoute, storefront: renderer, market: market.handle, countryCode: country, locale: activeRoute.locale }).fetch(activeRequest, env, executionContext);
+    const headers = new Headers(response.headers);
+    headers.set('Cache-Control', 'private, no-store');
+    headers.set('Vary', 'Cookie, CF-IPCountry');
+    headers.set('X-ReAI-Market', market.handle);
+    headers.set('X-ReAI-Country', country);
+    const checkoutMarket = markets.find(item => item.handle === headers.get('X-Reai-Checkout-Market'));
+    const checkoutCountry = headers.get('X-Reai-Checkout-Country');
+    headers.delete('X-Reai-Checkout-Market');
+    headers.delete('X-Reai-Checkout-Country');
+    if (checkoutMarket?.countries?.includes(checkoutCountry)) headers.append('Set-Cookie', choiceCookie(checkoutMarket.handle, checkoutCountry));
+    else if (requested || saved !== market.handle || savedCountry !== country) headers.append('Set-Cookie', choiceCookie(market.handle, country));
+    return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+  }
+
   return {
     async fetch(request, env, executionContext) {
       const url = new URL(request.url);
-      const localeRoute = localeRouteFor(routes, url.pathname);
-      const routedPath = localeRoute ? stripPathPrefix(url.pathname, localeRoute.pathPrefix) : null;
-      const localeOptions = localeRoute ? { ...options, ...localeRoute, pathPrefix: localeRoute.pathPrefix } : options;
-      // Assets need neither market discovery nor personalized response headers.
-      if (!localeRoute || (!options.storefront.matchRoute(routedPath) && !routedPath.startsWith('/reai/'))) {
-        return createReaiStorefrontWorker(localeOptions).fetch(request, env, executionContext);
-      }
-      let markets;
-      try { markets = await marketsFor(env); }
-      catch {
-        return new Response('The store is temporarily unavailable. Please try again.', { status: 503, headers: { 'Cache-Control': 'no-store', 'Content-Type': 'text/plain; charset=utf-8' } });
-      }
-      const requested = url.searchParams.get('market');
-      const requestedCountry = url.searchParams.get('country');
-      const countryMarket = requestedCountry && markets.find((market) => market.countries?.includes(requestedCountry));
-      if (requestedCountry && (!countryMarket || (requested && !markets.find((market) => market.handle === requested)?.countries?.includes(requestedCountry)))) return new Response('This delivery country is unavailable.', { status: 400, headers: { 'Cache-Control': 'no-store' } });
-      if (requested && !markets.some((market) => market.handle === requested)) return new Response('This market is unavailable.', { status: 400, headers: { 'Cache-Control': 'no-store' } });
-      if (routedPath === '/reai/market') {
-        if (request.method !== 'POST') return new Response(null, { status: 405, headers: { Allow: 'POST' } });
-        if (request.headers.get('Origin') && request.headers.get('Origin') !== url.origin) return new Response(null, { status: 403 });
-        const form = await request.formData();
-        const selectedCountry = form.get('country');
-        const market = selectedCountry ? markets.find((item) => (item.countries?.length ? item.countries : ['NO']).includes(String(selectedCountry))) : markets.find((item) => item.handle === form.get('market'));
-        const country = selectedCountry || market?.countries?.[0] || 'NO';
-        if (!market) return new Response('This market is unavailable.', { status: 400, headers: { 'Cache-Control': 'no-store' } });
-        let returnTo;
-        try { returnTo = new URL(String(form.get('returnTo') || '/'), url.origin); }
-        catch { return new Response(null, { status: 400 }); }
-        if (returnTo.origin !== url.origin) return new Response(null, { status: 400 });
-        returnTo = routeUrl(returnTo, supportedRoute(market, localeRoute, options.countryLocales?.[country]));
-        returnTo.searchParams.delete('market');
-        returnTo.searchParams.delete('country');
-        returnTo.searchParams.delete('filter.v.price.gte');
-        returnTo.searchParams.delete('filter.v.price.lte');
-        return new Response(null, { status: 303, headers: { Location: returnTo.href, 'Set-Cookie': choiceCookie(market.handle, country), 'Cache-Control': 'no-store' } });
-      }
-      const geoCountry = request.cf?.country || request.headers.get('CF-IPCountry');
-      const [saved, savedCountry] = cookieValue(request);
-      const destination = selectDestination(markets, { requested: requested || countryMarket?.handle, saved: requestedCountry ? undefined : saved, savedCountry, country: requestedCountry || geoCountry });
-      if (!destination) return new Response('This market is unavailable.', { status: 503 });
-      const { market, country } = destination;
-      const activeRoute = supportedRoute(market, localeRoute);
-      const activeUrl = routeUrl(url, activeRoute);
-      if (activeRoute.pathPrefix !== localeRoute.pathPrefix && ['GET', 'HEAD'].includes(request.method) && !routedPath.startsWith('/reai/')) {
-        return new Response(null, { status: 303, headers: {
-          Location: activeUrl.href, 'Cache-Control': 'private, no-store',
-          'Set-Cookie': choiceCookie(market.handle, country),
-        } });
-      }
-      // Mutations keep their body/idempotency but use supported delivery and checkout-return paths.
-      const activeRequest = activeRoute.pathPrefix === localeRoute.pathPrefix ? request : new Request(activeUrl, request);
-      const renderer = Object.fromEntries(Object.entries(options.storefront).map(([name, value]) => [name,
-        (name.startsWith('render') || name === 'localizeStorefront') && typeof value === 'function'
-          ? (store, ...args) => value(store ? {
-            ...store,
-            markets,
-            countryCode: country,
-            marketReturnTo: activeUrl.pathname + activeUrl.search,
-            pathPrefix: activeRoute.pathPrefix,
-            localeRoutes: routes.filter(route => !market.locales?.length || market.locales.includes(route.locale)),
-          } : store, ...args)
-          : value,
-      ]));
-      const response = await createReaiStorefrontWorker({ ...options, ...activeRoute, storefront: renderer, market: market.handle, countryCode: country, locale: activeRoute.locale }).fetch(activeRequest, env, executionContext);
-      const headers = new Headers(response.headers);
-      headers.set('Cache-Control', 'private, no-store');
-      headers.set('Vary', 'Cookie, CF-IPCountry');
-      headers.set('X-ReAI-Market', market.handle);
-      headers.set('X-ReAI-Country', country);
-      const checkoutMarket = markets.find(item => item.handle === headers.get('X-Reai-Checkout-Market'));
-      const checkoutCountry = headers.get('X-Reai-Checkout-Country');
-      headers.delete('X-Reai-Checkout-Market');
-      headers.delete('X-Reai-Checkout-Country');
-      if (checkoutMarket?.countries?.includes(checkoutCountry)) headers.append('Set-Cookie', choiceCookie(checkoutMarket.handle, checkoutCountry));
-      else if (requested || saved !== market.handle || savedCountry !== country) headers.append('Set-Cookie', choiceCookie(market.handle, country));
-      return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+      return withHsts(await handleFetch(request, env, url, executionContext), url);
     },
   };
 }

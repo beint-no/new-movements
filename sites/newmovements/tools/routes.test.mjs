@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { canonicalPath, handleStorefrontRequest, redirectStorefrontRequest } from "../routes.mjs";
+import worker from "../worker.js";
 
 test("canonicalizes legacy Shopify paths", () => {
   assert.equal(canonicalPath("/collections/all-shoes-1"), "/collections/all");
@@ -41,4 +42,27 @@ test("redirects storefront HTTP requests to HTTPS", async () => {
   const response = await handleStorefrontRequest({ request, env: {}, url: new URL(request.url) });
   assert.equal(response.status, 308);
   assert.equal(response.headers.get("Location"), "https://newmovements.com/collections/women?view=women");
+});
+
+test("sets noindex on workers.dev and HSTS on HTTPS responses", async () => {
+  const env = { ASSETS: { fetch: async () => new Response("ok") } };
+  const previewAsset = await worker.fetch(new Request("https://newmovements.respiro.workers.dev/brand-assets/logo.svg"), env);
+  assert.equal(previewAsset.headers.get("X-Robots-Tag"), "noindex, nofollow");
+  assert.equal(previewAsset.headers.get("Strict-Transport-Security"), "max-age=31536000");
+
+  const previewRobots = await worker.fetch(new Request("https://newmovements.respiro.workers.dev/robots.txt"), env);
+  assert.equal(previewRobots.headers.get("X-Robots-Tag"), "noindex, nofollow");
+  assert.equal(previewRobots.headers.get("Strict-Transport-Security"), "max-age=31536000");
+
+  const previewDe = await worker.fetch(new Request("https://newmovements.respiro.workers.dev/de/collections/all"), env);
+  assert.equal(previewDe.status, 308);
+  assert.equal(previewDe.headers.get("X-Robots-Tag"), "noindex, nofollow");
+  assert.equal(previewDe.headers.get("Strict-Transport-Security"), "max-age=31536000");
+
+  const canonicalRobots = await worker.fetch(new Request("https://newmovements.com/robots.txt"), env);
+  assert.equal(canonicalRobots.headers.get("X-Robots-Tag"), null);
+  assert.equal(canonicalRobots.headers.get("Strict-Transport-Security"), "max-age=31536000");
+
+  const localHttp = await worker.fetch(new Request("http://localhost:8787/robots.txt"), env);
+  assert.equal(localHttp.headers.get("Strict-Transport-Security"), null);
 });

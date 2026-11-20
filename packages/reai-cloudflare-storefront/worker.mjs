@@ -67,6 +67,13 @@ function baseSecurityHeaders(headers, env, extraImageOrigins) {
   return headers;
 }
 
+function withHsts(response, url) {
+  if (url.protocol !== "https:" || response.headers.has("Strict-Transport-Security")) return response;
+  const headers = new Headers(response.headers);
+  headers.set("Strict-Transport-Security", "max-age=31536000");
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
 function cacheRequest(cacheKey) {
   return new Request(`https://reai-storefront-cache.invalid/${encodeURIComponent(cacheKey)}`);
 }
@@ -337,7 +344,9 @@ export function createReaiStorefrontWorker({
       age <= STOREFRONT_FRESH_MILLISECONDS + STOREFRONT_STALE_WHILE_REVALIDATE_MILLISECONDS &&
       executionContext?.waitUntil
     ) {
-      executionContext.waitUntil(refreshStorefront(env, cached));
+      executionContext.waitUntil(
+        refreshStorefront(env, cached).catch((error) => console.error("Background storefront refresh failed", error)),
+      );
       return { store: cached.store, etag: cached.etag, cacheStatus: "STALE" };
     }
     try {
@@ -759,7 +768,10 @@ export function createReaiStorefrontWorker({
           const detail = await siteJson(await siteClient(env).collection(route.handle, deliveryContext));
           store = { ...store, collections: [...store.collections, detail] };
         } catch (error) {
-          return htmlResponse(storefront.renderNotFoundPage(store, pageContext, route.canonicalPath), env, error.status === 404 ? 404 : 502);
+          if (error.status === 404) {
+            return htmlResponse(storefront.renderNotFoundPage(store, pageContext, route.canonicalPath), env, 404);
+          }
+          return htmlResponse(storefront.renderUnavailablePage(store, pageContext, route.canonicalPath), env, 502);
         }
       }
       const requestedVariants = storefront.collectionAvailabilityVariants?.(store, route.handle, pageContext) || [];
@@ -779,7 +791,10 @@ export function createReaiStorefrontWorker({
         try {
           product = await siteJson(await siteClient(env).product(route.handle, deliveryContext));
         } catch (error) {
-          return htmlResponse(storefront.renderNotFoundPage(store, pageContext, route.canonicalPath), env, error.status === 404 ? 404 : 502);
+          if (error.status === 404) {
+            return htmlResponse(storefront.renderNotFoundPage(store, pageContext, route.canonicalPath), env, 404);
+          }
+          return htmlResponse(storefront.renderUnavailablePage(store, pageContext, route.canonicalPath), env, 502);
         }
       }
       const availability = await variantAvailability(env, storefront.productAvailabilityVariants?.(store, product, pageContext) || product.variants);
@@ -791,48 +806,52 @@ export function createReaiStorefrontWorker({
     return null;
   }
 
+  async function handleFetch(request, env, url, executionContext) {
+    const earlyResponse = await beforeRequest?.({ request, env, url, renderContext });
+    if (earlyResponse) return earlyResponse;
+    const checkoutResponse = await merchantCheckout(request, env, url);
+    if (checkoutResponse) return checkoutResponse;
+    const storefrontPath = stripPathPrefix(url.pathname, pathPrefix);
+    if (storefrontPath?.startsWith("/reai/")) return siteApiResponse(request, env, url, executionContext);
+
+    const rendered = await renderCommerce(request, env, url, executionContext);
+    if (rendered) {
+      if (request.method === "HEAD") return new Response(null, { status: rendered.status, headers: rendered.headers });
+      return rendered;
+    }
+
+    // Locale-prefixed storefronts share the same static asset bundle. Strip
+    // the public locale prefix before asking the Assets binding for a file.
+    const assetRequest = storefrontPath !== url.pathname
+      ? new Request(new URL(storefrontPath || "/", url.origin), request)
+      : request;
+    const response = await env.ASSETS.fetch(assetRequest);
+    const headers = securityHeaders(new Headers(response.headers), env);
+    const localPath = storefrontPath || url.pathname;
+    const path = localPath.endsWith("/") ? localPath : `${localPath}/`;
+    headers.set("Content-Language", canonicalLocale);
+    headers.set(
+      "Cache-Control",
+      noStorePaths.includes(path)
+        ? "no-store"
+        : response.ok && /\.\d+\.[a-f0-9]{16}\.avif$/.test(url.pathname)
+          ? "public, max-age=31536000, immutable"
+        : STATIC_ASSET.test(url.pathname)
+          ? "public, max-age=3600, stale-while-revalidate=86400"
+          : "public, max-age=300, stale-while-revalidate=3600",
+    );
+
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
+    });
+  }
+
   return {
     async fetch(request, env, executionContext) {
       const url = new URL(request.url);
-      const earlyResponse = await beforeRequest?.({ request, env, url, renderContext });
-      if (earlyResponse) return earlyResponse;
-      const checkoutResponse = await merchantCheckout(request, env, url);
-      if (checkoutResponse) return checkoutResponse;
-      const storefrontPath = stripPathPrefix(url.pathname, pathPrefix);
-      if (storefrontPath?.startsWith("/reai/")) return siteApiResponse(request, env, url, executionContext);
-
-      const rendered = await renderCommerce(request, env, url, executionContext);
-      if (rendered) {
-        if (request.method === "HEAD") return new Response(null, { status: rendered.status, headers: rendered.headers });
-        return rendered;
-      }
-
-      // Locale-prefixed storefronts share the same static asset bundle. Strip
-      // the public locale prefix before asking the Assets binding for a file.
-      const assetRequest = storefrontPath !== url.pathname
-        ? new Request(new URL(storefrontPath || "/", url.origin), request)
-        : request;
-      const response = await env.ASSETS.fetch(assetRequest);
-      const headers = securityHeaders(new Headers(response.headers), env);
-      const localPath = storefrontPath || url.pathname;
-      const path = localPath.endsWith("/") ? localPath : `${localPath}/`;
-      headers.set("Content-Language", canonicalLocale);
-      headers.set(
-        "Cache-Control",
-        noStorePaths.includes(path)
-          ? "no-store"
-          : response.ok && /\.\d+\.[a-f0-9]{16}\.avif$/.test(url.pathname)
-            ? "public, max-age=31536000, immutable"
-          : STATIC_ASSET.test(url.pathname)
-            ? "public, max-age=3600, stale-while-revalidate=86400"
-            : "public, max-age=300, stale-while-revalidate=3600",
-      );
-
-      return new Response(response.body, {
-        status: response.status,
-        statusText: response.statusText,
-        headers,
-      });
+      return withHsts(await handleFetch(request, env, url, executionContext), url);
     },
   };
 }
