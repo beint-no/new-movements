@@ -108,7 +108,8 @@ export class ReaiSiteClient {
     const headers = new Headers(init.headers);
     headers.set("Accept", "application/json");
     headers.set("Authorization", `Bearer ${this.#token}`);
-    return this.#fetch(url.href, { ...init, headers });
+    const signal = init.signal ?? AbortSignal.timeout(15_000);
+    return this.#fetch(url.href, { ...init, headers, signal });
   }
 
   /** @param {import("./site-api.d.ts").components["schemas"]["SiteAnalyticsBatchDto"]} body */

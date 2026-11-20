@@ -98,3 +98,17 @@ test("calls fetch as a free function and trims the Site credential", async () =>
   assert.equal(invokedThis, undefined);
   assert.equal(authorization, "Bearer site-token");
 });
+
+test("attaches a default timeout AbortSignal to upstream requests", async () => {
+  let receivedSignal;
+  const client = new ReaiSiteClient({
+    token: "site-token",
+    async fetch(_input, init) {
+      receivedSignal = init?.signal;
+      return Response.json({ ok: true });
+    },
+  });
+  await client.site();
+  assert.ok(receivedSignal instanceof AbortSignal);
+  assert.equal(receivedSignal.aborted, false);
+});

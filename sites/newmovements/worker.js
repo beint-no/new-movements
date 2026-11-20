@@ -27,13 +27,14 @@ const worker = createReaiMarketStorefrontWorker({
 export default {
   async fetch(request, env, context) {
     const requestUrl = new URL(request.url);
+    const review = !["newmovements.com", "www.newmovements.com"].includes(requestUrl.hostname);
+    const hsts = requestUrl.protocol === "https:" ? { "Strict-Transport-Security": "max-age=31536000" } : {};
     if (['GET', 'HEAD'].includes(request.method) && /^\/de(?:\/|$)/.test(requestUrl.pathname)) {
       requestUrl.pathname = requestUrl.pathname.slice(3) || '/';
-      return new Response(null, { status: 308, headers: { Location: requestUrl.href, 'Cache-Control': 'public, max-age=3600' } });
+      return new Response(null, { status: 308, headers: { Location: requestUrl.href, 'Cache-Control': 'public, max-age=3600', ...hsts, ...(review ? { "X-Robots-Tag": "noindex, nofollow" } : {}) } });
     }
-    const review = !["newmovements.com", "www.newmovements.com"].includes(requestUrl.hostname);
-    if (review && /^(?:\/(?:nb|de))?\/robots\.txt$/.test(requestUrl.pathname)) return new Response("User-agent: *\nDisallow: /\n", { headers: { "Content-Type": "text/plain", "X-Robots-Tag": "noindex, nofollow" } });
-    if (!review && /^(?:\/(?:nb|de))?\/robots\.txt$/.test(requestUrl.pathname)) return new Response("User-agent: *\nAllow: /\nSitemap: https://newmovements.com/sitemap.xml\nSitemap: https://newmovements.com/nb/sitemap.xml\n", { headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=3600" } });
+    if (review && /^(?:\/(?:nb|de))?\/robots\.txt$/.test(requestUrl.pathname)) return new Response("User-agent: *\nDisallow: /\n", { headers: { "Content-Type": "text/plain", "X-Robots-Tag": "noindex, nofollow", ...hsts } });
+    if (!review && /^(?:\/(?:nb|de))?\/robots\.txt$/.test(requestUrl.pathname)) return new Response("User-agent: *\nAllow: /\nSitemap: https://newmovements.com/sitemap.xml\nSitemap: https://newmovements.com/nb/sitemap.xml\n", { headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=3600", ...hsts } });
     const response = await worker.fetch(request, env, context);
     const headers = new Headers(response.headers);
     // Only this storefront opts into consent-controlled advertising measurement.
@@ -44,6 +45,7 @@ export default {
       .replace(/img-src ([^;]+)/, `img-src $1 https://www.facebook.com ${transport}`)
       .replace(/script-src ([^;]+)/, `script-src $1 ${google}`)
       + `; connect-src 'self' ${transport}; frame-src https://www.googletagmanager.com`);
+    if (requestUrl.protocol === "https:") headers.set("Strict-Transport-Security", "max-age=31536000");
     if (review) headers.set("X-Robots-Tag", "noindex, nofollow");
     return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
   },
