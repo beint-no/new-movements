@@ -77,10 +77,10 @@ schema, gender taxonomy or second catalog is needed.
 
 Name model photos with `women` / `men` (legacy `woman`, `female`, `her`, `man`,
 `male`, `him` also work). Matching photos lead the gallery; opposite markers are
-excluded. Unmarked side/front/back product shots remain neutral. Unmarked lifestyle
-photos are omitted from gender views rather than classified from appearance; they
-remain in All sizes. Rename/curate images through ReAI when more model photos are
-needed. Keep alt text descriptive; do not use it as a hidden merchandising tag.
+excluded. Unmarked studio and lifestyle photos appear in both views. All sizes
+shows every photo in the catalog order. Rename images through ReAI to assign them
+to a gender view. Keep alt text descriptive; do not use it as a hidden
+merchandising tag.
 
 Women’s collection cards show studio product shots at 88% scale, with feathered
 background edges. The same ReAI images and proportions are retained; tagged model

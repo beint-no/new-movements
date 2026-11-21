@@ -40,7 +40,6 @@ export function productView(product, view) {
       .map((option) => option.value),
     imageTokens: configuration.imageTokens,
     excludedImageTokens: Object.entries(VIEWS).filter(([key]) => key !== view).flatMap(([, value]) => value.imageTokens),
-    neutralImageTokens: PRODUCT_SHOT_TOKENS,
   });
 }
 
