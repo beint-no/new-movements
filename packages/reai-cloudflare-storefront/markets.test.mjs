@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { selectMarket, selectDestination, createReaiMarketStorefrontWorker } from './markets.mjs';
 const markets = [
-  { handle: 'default', currency: 'NOK', countries: ['NO'], isDefault: true },
+  { handle: 'default', currency: 'NOK', countries: ['NO'], default: true },
   { handle: 'de', currency: 'EUR', countries: ['AT', 'DE', 'FR'] },
   { handle: 'ch', currency: 'CHF', countries: ['CH'] },
 ];

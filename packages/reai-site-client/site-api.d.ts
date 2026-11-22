@@ -759,11 +759,12 @@ export interface components {
         SiteDeliveryMarketRes: {
             countries: string[];
             currency: string;
+            /** @description The site's default market. Markets are listed default first, so the first market is the default. */
+            default: boolean;
             defaultLocale: string;
             handle: string;
             /** Format: uuid */
             id: string;
-            isDefault: boolean;
             locales: string[];
             name: string;
             /** @description Configured delivery prices in this market currency for storefront shipping information. Excludes store pickup. Country restrictions and optional weight tiers apply; checkout remains authoritative. Free-shipping threshold uses product total after discounts, before gift-card payment. */
@@ -842,6 +843,7 @@ export interface components {
         SiteDeliveryVariantRes: {
             /** @description Attributes bound to this variant's selected option values. Combine with product-wide attributes when filtering; keep size, price and availability predicates on the same variant. */
             attributes: components["schemas"]["ProductAttributeDto"][];
+            /** @description Null for an ordinary variant. A bundle has its own price and SKU and shares inventory with these components. Component quantities are per bundle; component publication is not required. Use live availability and checkout validation for shared stock. */
             bundle?: components["schemas"]["SiteDeliveryBundleRes"] | null;
             compareAtPrice?: number | null;
             /** Format: uuid */
