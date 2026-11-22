@@ -59,7 +59,7 @@ export function selectMarket(markets, { requested, saved, country } = {}) {
   return markets.find((market) => market.handle === requested)
     || markets.find((market) => market.handle === saved)
     || markets.find((market) => country && market.countries?.includes(country))
-    || markets.find((market) => market.isDefault)
+    || markets.find((market) => market.default)
     || markets[0];
 }
 
