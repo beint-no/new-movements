@@ -13,6 +13,8 @@ const MARKET_HANDLE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const STOREFRONT_FRESH_MILLISECONDS = 60_000;
 const STOREFRONT_STALE_WHILE_REVALIDATE_MILLISECONDS = 300_000;
 const STOREFRONT_CACHE_RETENTION_SECONDS = 86_400;
+const CUSTOMER_SESSION_COOKIE = "reai-customer-session";
+const CUSTOMER_SESSION_MAX_AGE = 604_800;
 
 const defaultMessages = {
   invalidJson: "Invalid JSON.",
@@ -98,7 +100,7 @@ function stripPathPrefix(pathname, pathPrefix) {
  * @param {{
  *   cacheKey: string,
  *   storefront: any,
- *   checkoutReturnPath?: string, merchantCheckoutPath?: string,
+ *   checkoutReturnPath?: string, merchantCheckoutPath?: string, customerReturnsPath?: string,
  *   noStorePaths?: string[],
  *   messages?: Partial<typeof defaultMessages>,
  *   locale: string,
@@ -113,6 +115,7 @@ export function createReaiStorefrontWorker({
   storefront,
   checkoutReturnPath = "/bestilling/fullfort/",
   merchantCheckoutPath = undefined,
+  customerReturnsPath = "/pages/returns",
   noStorePaths = ["/handlekurv/", checkoutReturnPath],
   messages: messageOverrides = {},
   locale,
@@ -655,6 +658,205 @@ export function createReaiStorefrontWorker({
     return !result.success;
   }
 
+  function customerCookieValue(request) {
+    const raw = request.headers.get("Cookie")?.split(";")
+      .map((part) => part.trim())
+      .find((part) => part.startsWith(`${CUSTOMER_SESSION_COOKIE}=`))
+      ?.slice(CUSTOMER_SESSION_COOKIE.length + 1);
+    if (!raw) return null;
+    try {
+      const value = decodeURIComponent(raw).trim();
+      return value && value.length <= 200 ? value : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function customerSessionCookie(token, url, maxAge = CUSTOMER_SESSION_MAX_AGE) {
+    const secure = url.protocol === "https:" ? "; Secure" : "";
+    return `${CUSTOMER_SESSION_COOKIE}=${encodeURIComponent(token)}; Path=/; Max-Age=${maxAge}; HttpOnly; SameSite=Lax${secure}`;
+  }
+
+  async function customerPortal(request, env, url) {
+    const path = stripPathPrefix(url.pathname, pathPrefix);
+    if (!path?.startsWith("/reai/customer/")) return null;
+    const privateHeaders = (extra = {}) => {
+      const headers = securityHeaders(new Headers({
+        "Cache-Control": "no-store",
+        "X-Robots-Tag": "noindex, nofollow",
+        "Content-Language": canonicalLocale,
+        ...extra,
+      }), env);
+      headers.set("Referrer-Policy", "no-referrer");
+      return headers;
+    };
+    const privateJson = (body, status = 200, extraHeaders = {}) => new Response(JSON.stringify(body), {
+      status,
+      headers: privateHeaders({ "Content-Type": "application/json; charset=utf-8", ...extraHeaders }),
+    });
+    const isSameOriginMutation = () => request.headers.get("Origin") === url.origin && request.headers.get("Sec-Fetch-Site") !== "cross-site";
+    const readJson = async (maxBytes = 8192) => {
+      const text = await request.text();
+      if (text.length > maxBytes) return { error: privateJson({ error: "Request too large." }, 413) };
+      try { return { body: JSON.parse(text) }; } catch { return { error: privateJson({ error: messages.invalidJson }, 400) }; }
+    };
+
+    let client;
+    try { client = siteClient(env); } catch (error) {
+      return privateJson({ error: error.message || messages.notConfigured }, error.status || 503);
+    }
+
+    try {
+      if (path === "/reai/customer/login") {
+        if (request.method !== "POST") return privateJson({ error: messages.methodNotAllowed }, 405);
+        if (!isSameOriginMutation()) return privateJson({ error: "Invalid request origin." }, 403);
+        if (await checkoutRateLimited(request, env, url)) return privateJson({ error: "Too many attempts. Please wait a moment." }, 429);
+        const parsed = await readJson(1024);
+        if (parsed.error) return parsed.error;
+        const email = typeof parsed.body?.email === "string" ? parsed.body.email.trim() : "";
+        const orderNumber = typeof parsed.body?.orderNumber === "string" ? parsed.body.orderNumber.trim() : "";
+        if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !orderNumber || orderNumber.length > 100) {
+          return privateJson({ error: "Provide a valid email address and order number." }, 400);
+        }
+        const upstream = (await client.createCustomerSession({ email, orderNumber })).response;
+        if (!upstream.ok) return new Response(upstream.body, { status: upstream.status, headers: privateHeaders({ "Content-Type": upstream.headers.get("Content-Type") || "application/json; charset=utf-8" }) });
+        const data = await upstream.json();
+        return privateJson({ customer: data.customer, expiresAt: data.expiresAt }, 200, {
+          "Set-Cookie": customerSessionCookie(data.token, url),
+        });
+      }
+
+      if (path === "/reai/customer/login-link") {
+        if (request.method !== "POST") return privateJson({ error: messages.methodNotAllowed }, 405);
+        if (!isSameOriginMutation()) return privateJson({ error: "Invalid request origin." }, 403);
+        if (env.NEWSLETTER_RATE_LIMIT) {
+          const { success } = await env.NEWSLETTER_RATE_LIMIT.limit({ key: `customer-link:${url.host}:${request.headers.get("CF-Connecting-IP") || "local"}` });
+          if (!success) return privateJson({ error: "Please wait a moment before requesting another link." }, 429);
+        }
+        const parsed = await readJson(1024);
+        if (parsed.error) return parsed.error;
+        const email = typeof parsed.body?.email === "string" ? parsed.body.email.trim() : "";
+        if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          return privateJson({ error: "Provide a valid email address." }, 400);
+        }
+        const returnUrl = new URL(publicPath("/reai/customer/verify"), url.origin).href;
+        const upstream = (await client.requestCustomerLoginLink({ email, returnUrl, locale: canonicalLocale })).response;
+        if (!upstream.ok) return new Response(upstream.body, { status: upstream.status, headers: privateHeaders({ "Content-Type": upstream.headers.get("Content-Type") || "application/json; charset=utf-8" }) });
+        return privateJson({ accepted: true }, 200);
+      }
+
+      if (path === "/reai/customer/verify") {
+        if (request.method !== "GET") return privateJson({ error: messages.methodNotAllowed }, 405);
+        const token = url.searchParams.get("token")?.trim() || "";
+        const target = new URL(publicPath(customerReturnsPath), url.origin);
+        if (!token || token.length > 200) {
+          target.searchParams.set("loginError", "expired");
+          return new Response(null, { status: 303, headers: privateHeaders({ Location: target.href }) });
+        }
+        const upstream = (await client.createCustomerSessionFromLink({ token })).response;
+        if (!upstream.ok) {
+          target.searchParams.set("loginError", "expired");
+          return new Response(null, { status: 303, headers: privateHeaders({ Location: target.href }) });
+        }
+        const data = await upstream.json();
+        return new Response(null, {
+          status: 303,
+          headers: privateHeaders({
+            Location: target.href,
+            "Set-Cookie": customerSessionCookie(data.token, url),
+          }),
+        });
+      }
+
+      if (path === "/reai/customer/logout") {
+        if (request.method !== "POST") return privateJson({ error: messages.methodNotAllowed }, 405);
+        if (!isSameOriginMutation()) return privateJson({ error: "Invalid request origin." }, 403);
+        const token = customerCookieValue(request);
+        if (token) await client.deleteCustomerSession(token).catch(() => null);
+        return privateJson({ ok: true }, 200, { "Set-Cookie": customerSessionCookie("", url, 0) });
+      }
+
+      const sessionToken = customerCookieValue(request);
+      if (!sessionToken) return privateJson({ error: "Customer sign-in required." }, 401);
+
+      if (path === "/reai/customer/session" && request.method === "GET") {
+        const upstream = (await client.customerSession(sessionToken)).response;
+        const extra = upstream.status === 401 ? { "Set-Cookie": customerSessionCookie("", url, 0) } : {};
+        return new Response(upstream.body, {
+          status: upstream.status,
+          headers: privateHeaders({ "Content-Type": upstream.headers.get("Content-Type") || "application/json; charset=utf-8", ...extra }),
+        });
+      }
+
+      if (path === "/reai/customer/orders" && request.method === "GET") {
+        const upstream = (await client.customerOrders(sessionToken)).response;
+        const extra = upstream.status === 401 ? { "Set-Cookie": customerSessionCookie("", url, 0) } : {};
+        return new Response(upstream.body, {
+          status: upstream.status,
+          headers: privateHeaders({ "Content-Type": upstream.headers.get("Content-Type") || "application/json; charset=utf-8", ...extra }),
+        });
+      }
+
+      if (path === "/reai/customer/returns" && request.method === "POST") {
+        if (env.CHECKOUT_ENABLED === "false") return privateJson({ error: "Returns are disabled in this preview." }, 403);
+        if (!isSameOriginMutation()) return privateJson({ error: "Invalid request origin." }, 403);
+        if (await checkoutRateLimited(request, env, url)) return privateJson({ error: "Too many requests. Please wait a moment." }, 429);
+        const parsed = await readJson(16384);
+        if (parsed.error) return parsed.error;
+        const body = parsed.body;
+        const type = body?.type === "EXCHANGE" ? "EXCHANGE" : "RETURN";
+        if (typeof body?.orderId !== "string" || !body.orderId.trim() || !Array.isArray(body?.items) || body.items.length < 1 || body.items.length > 50) {
+          return privateJson({ error: "Select at least one item to return." }, 400);
+        }
+        const items = body.items.map((item) => ({
+          lineNumber: item?.lineNumber,
+          quantity: item?.quantity,
+          ...(typeof item?.reason === "string" && item.reason.trim() ? { reason: item.reason.trim().slice(0, 100) } : {}),
+          ...(typeof item?.exchangeVariantId === "string" && VARIANT_ID.test(item.exchangeVariantId) ? { exchangeVariantId: item.exchangeVariantId } : {}),
+        }));
+        if (items.some((item) => !Number.isInteger(item.lineNumber) || item.lineNumber < 1 || !Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 100)) {
+          return privateJson({ error: "Invalid return item selection." }, 400);
+        }
+        const idempotencyKey = request.headers.get("Idempotency-Key") || crypto.randomUUID();
+        const upstream = (await client.createCustomerReturn(sessionToken, {
+          orderId: body.orderId.trim(),
+          type,
+          items,
+          ...(typeof body.comment === "string" && body.comment.trim() ? { comment: body.comment.trim().slice(0, 500) } : {}),
+          locale: canonicalLocale,
+        }, idempotencyKey)).response;
+        const extra = upstream.status === 401 ? { "Set-Cookie": customerSessionCookie("", url, 0) } : {};
+        return new Response(upstream.body, {
+          status: upstream.status,
+          headers: privateHeaders({ "Content-Type": upstream.headers.get("Content-Type") || "application/json; charset=utf-8", ...extra }),
+        });
+      }
+
+      const labelMatch = path.match(/^\/reai\/customer\/returns\/([0-9a-f-]{36})\/label$/i);
+      if (labelMatch && request.method === "GET" && VARIANT_ID.test(labelMatch[1])) {
+        const upstream = (await client.customerReturnLabel(sessionToken, labelMatch[1], canonicalLocale)).response;
+        if (!upstream.ok) {
+          return new Response(upstream.body, {
+            status: upstream.status,
+            headers: privateHeaders({ "Content-Type": upstream.headers.get("Content-Type") || "application/json; charset=utf-8" }),
+          });
+        }
+        return new Response(upstream.body, {
+          status: 200,
+          headers: privateHeaders({
+            "Content-Type": upstream.headers.get("Content-Type") || "application/pdf",
+            "Content-Disposition": upstream.headers.get("Content-Disposition") || 'attachment; filename="return-label.pdf"',
+          }),
+        });
+      }
+
+      return privateJson({ error: messages.routeNotFound }, 404);
+    } catch (error) {
+      console.error("Customer Site API request failed", error);
+      return privateJson({ error: messages.temporarilyUnavailable }, 502);
+    }
+  }
+
   async function merchantCheckout(request, env, url) {
     if (!merchantCheckoutPath) return null;
     const path = stripPathPrefix(url.pathname, pathPrefix);
@@ -811,6 +1013,8 @@ export function createReaiStorefrontWorker({
     if (earlyResponse) return earlyResponse;
     const checkoutResponse = await merchantCheckout(request, env, url);
     if (checkoutResponse) return checkoutResponse;
+    const customerResponse = await customerPortal(request, env, url);
+    if (customerResponse) return customerResponse;
     const storefrontPath = stripPathPrefix(url.pathname, pathPrefix);
     if (storefrontPath?.startsWith("/reai/")) return siteApiResponse(request, env, url, executionContext);
 

@@ -41,6 +41,20 @@ const AVAILABILITIES_PATH = "/site/v1/commerce/availability";
 const AVAILABILITY_PATH = "/site/v1/commerce/availability/{variantId}";
 /** @type {keyof SiteApiPaths} */
 const CHECKOUT_PATH = "/site/v1/commerce/checkout-sessions";
+/** @type {keyof SiteApiPaths} */
+const CUSTOMER_SESSIONS_PATH = "/site/v1/customer/sessions";
+/** @type {keyof SiteApiPaths} */
+const CUSTOMER_LOGIN_LINKS_PATH = "/site/v1/customer/login-links";
+/** @type {keyof SiteApiPaths} */
+const CUSTOMER_SESSION_LINK_PATH = "/site/v1/customer/sessions/link";
+/** @type {keyof SiteApiPaths} */
+const CUSTOMER_SESSION_PATH = "/site/v1/customer/session";
+/** @type {keyof SiteApiPaths} */
+const CUSTOMER_ORDERS_PATH = "/site/v1/customer/orders";
+/** @type {keyof SiteApiPaths} */
+const CUSTOMER_RETURNS_PATH = "/site/v1/customer/returns";
+/** @type {keyof SiteApiPaths} */
+const CUSTOMER_RETURN_LABEL_PATH = "/site/v1/customer/returns/{returnId}/label";
 
 /**
  * @param {string} template
@@ -274,5 +288,90 @@ export class ReaiSiteClient {
       headers,
       body: JSON.stringify(body),
     }));
+  }
+
+  /** @param {import("./site-api.d.ts").components["schemas"]["SiteCustomerSessionOrderReq"]} body
+   * @returns {Promise<SiteApiResponse<import("./site-api.d.ts").components["schemas"]["SiteCustomerSessionRes"]>>} */
+  async createCustomerSession(body) {
+    return new SiteApiResponse(await this.#request(CUSTOMER_SESSIONS_PATH, undefined, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }));
+  }
+
+  /** @param {import("./site-api.d.ts").components["schemas"]["SiteCustomerLoginLinkReq"]} body
+   * @returns {Promise<SiteApiResponse<import("./site-api.d.ts").components["schemas"]["SiteCustomerLoginLinkRes"]>>} */
+  async requestCustomerLoginLink(body) {
+    return new SiteApiResponse(await this.#request(CUSTOMER_LOGIN_LINKS_PATH, undefined, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }));
+  }
+
+  /** @param {import("./site-api.d.ts").components["schemas"]["SiteCustomerSessionLinkReq"]} body
+   * @returns {Promise<SiteApiResponse<import("./site-api.d.ts").components["schemas"]["SiteCustomerSessionRes"]>>} */
+  async createCustomerSessionFromLink(body) {
+    return new SiteApiResponse(await this.#request(CUSTOMER_SESSION_LINK_PATH, undefined, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }));
+  }
+
+  /** @param {string} sessionToken
+   * @returns {Promise<SiteApiResponse<import("./site-api.d.ts").components["schemas"]["SiteCustomerIdentityRes"]>>} */
+  async customerSession(sessionToken) {
+    return new SiteApiResponse(await this.#request(CUSTOMER_SESSION_PATH, undefined, {
+      headers: { "X-Customer-Session": sessionToken },
+    }));
+  }
+
+  /** @param {string} sessionToken
+   * @returns {Promise<SiteApiResponse<import("./site-api.d.ts").components["schemas"]["SiteCustomerLogoutRes"]>>} */
+  async deleteCustomerSession(sessionToken) {
+    return new SiteApiResponse(await this.#request(CUSTOMER_SESSION_PATH, undefined, {
+      method: "DELETE",
+      headers: { "X-Customer-Session": sessionToken },
+    }));
+  }
+
+  /** @param {string} sessionToken
+   * @returns {Promise<SiteApiResponse<import("./site-api.d.ts").components["schemas"]["SiteCustomerOrdersRes"]>>} */
+  async customerOrders(sessionToken) {
+    return new SiteApiResponse(await this.#request(CUSTOMER_ORDERS_PATH, undefined, {
+      headers: { "X-Customer-Session": sessionToken },
+    }));
+  }
+
+  /** @param {string} sessionToken
+   * @param {import("./site-api.d.ts").components["schemas"]["SiteCustomerReturnCreateReq"]} body
+   * @param {string} idempotencyKey
+   * @returns {Promise<SiteApiResponse<import("./site-api.d.ts").components["schemas"]["SiteCustomerReturnRes"]>>} */
+  async createCustomerReturn(sessionToken, body, idempotencyKey) {
+    return new SiteApiResponse(await this.#request(CUSTOMER_RETURNS_PATH, undefined, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Customer-Session": sessionToken,
+        "Idempotency-Key": idempotencyKey,
+      },
+      body: JSON.stringify(body),
+    }));
+  }
+
+  /** @param {string} sessionToken @param {string} returnId @param {string} [locale] */
+  async customerReturnLabel(sessionToken, returnId, locale) {
+    return new SiteApiResponse(await this.#request(
+      expandPath(CUSTOMER_RETURN_LABEL_PATH, { returnId }),
+      locale ? { locale } : undefined,
+      {
+        headers: {
+          Accept: "application/pdf",
+          "X-Customer-Session": sessionToken,
+        },
+      },
+    ));
   }
 }
