@@ -804,27 +804,46 @@ export function createReaiStorefrontWorker({
         const parsed = await readJson(16384);
         if (parsed.error) return parsed.error;
         const body = parsed.body;
-        const type = body?.type === "EXCHANGE" ? "EXCHANGE" : "RETURN";
+        const fallbackResolution = body?.type === "EXCHANGE" ? "EXCHANGE" : "REFUND";
         if (typeof body?.orderId !== "string" || !body.orderId.trim() || !Array.isArray(body?.items) || body.items.length < 1 || body.items.length > 50) {
           return privateJson({ error: "Select at least one item to return." }, 400);
         }
-        const items = body.items.map((item) => ({
-          lineNumber: item?.lineNumber,
-          quantity: item?.quantity,
-          ...(typeof item?.reason === "string" && item.reason.trim() ? { reason: item.reason.trim().slice(0, 100) } : {}),
-          ...(typeof item?.exchangeVariantId === "string" && VARIANT_ID.test(item.exchangeVariantId) ? { exchangeVariantId: item.exchangeVariantId } : {}),
-        }));
+        const items = body.items.map((item) => {
+          /** @type {"REFUND" | "EXCHANGE" | "STORE_CREDIT"} */
+          const resolution = item?.resolution === "EXCHANGE" || item?.resolution === "STORE_CREDIT" || item?.resolution === "REFUND"
+            ? item.resolution
+            : fallbackResolution;
+          return {
+            lineNumber: item?.lineNumber,
+            quantity: item?.quantity,
+            resolution,
+            ...(typeof item?.reason === "string" && item.reason.trim() ? { reason: item.reason.trim().slice(0, 100) } : {}),
+            ...(resolution === "EXCHANGE" && typeof item?.exchangeVariantId === "string" && VARIANT_ID.test(item.exchangeVariantId) ? { exchangeVariantId: item.exchangeVariantId } : {}),
+          };
+        });
         if (items.some((item) => !Number.isInteger(item.lineNumber) || item.lineNumber < 1 || !Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 100)) {
           return privateJson({ error: "Invalid return item selection." }, 400);
         }
         const idempotencyKey = request.headers.get("Idempotency-Key") || crypto.randomUUID();
         const upstream = (await client.createCustomerReturn(sessionToken, {
           orderId: body.orderId.trim(),
-          type,
           items,
           ...(typeof body.comment === "string" && body.comment.trim() ? { comment: body.comment.trim().slice(0, 500) } : {}),
           locale: canonicalLocale,
         }, idempotencyKey)).response;
+        const extra = upstream.status === 401 ? { "Set-Cookie": customerSessionCookie("", url, 0) } : {};
+        return new Response(upstream.body, {
+          status: upstream.status,
+          headers: privateHeaders({ "Content-Type": upstream.headers.get("Content-Type") || "application/json; charset=utf-8", ...extra }),
+        });
+      }
+
+      const cancelMatch = path.match(/^\/reai\/customer\/returns\/([0-9a-f-]{36})$/i);
+      if (cancelMatch && request.method === "DELETE" && VARIANT_ID.test(cancelMatch[1])) {
+        if (env.CHECKOUT_ENABLED === "false") return privateJson({ error: "Returns are disabled in this preview." }, 403);
+        if (!isSameOriginMutation()) return privateJson({ error: "Invalid request origin." }, 403);
+        if (await checkoutRateLimited(request, env, url)) return privateJson({ error: "Too many requests. Please wait a moment." }, 429);
+        const upstream = (await client.cancelCustomerReturn(sessionToken, cancelMatch[1])).response;
         const extra = upstream.status === 401 ? { "Set-Cookie": customerSessionCookie("", url, 0) } : {};
         return new Response(upstream.body, {
           status: upstream.status,

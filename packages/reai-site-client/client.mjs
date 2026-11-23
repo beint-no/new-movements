@@ -54,6 +54,8 @@ const CUSTOMER_ORDERS_PATH = "/site/v1/customer/orders";
 /** @type {keyof SiteApiPaths} */
 const CUSTOMER_RETURNS_PATH = "/site/v1/customer/returns";
 /** @type {keyof SiteApiPaths} */
+const CUSTOMER_RETURN_PATH = "/site/v1/customer/returns/{returnId}";
+/** @type {keyof SiteApiPaths} */
 const CUSTOMER_RETURN_LABEL_PATH = "/site/v1/customer/returns/{returnId}/label";
 
 /**
@@ -359,6 +361,19 @@ export class ReaiSiteClient {
       },
       body: JSON.stringify(body),
     }));
+  }
+
+  /** @param {string} sessionToken @param {string} returnId
+   * @returns {Promise<SiteApiResponse<import("./site-api.d.ts").components["schemas"]["SiteCustomerReturnRes"]>>} */
+  async cancelCustomerReturn(sessionToken, returnId) {
+    return new SiteApiResponse(await this.#request(
+      expandPath(CUSTOMER_RETURN_PATH, { returnId }),
+      undefined,
+      {
+        method: "DELETE",
+        headers: { "X-Customer-Session": sessionToken },
+      },
+    ));
   }
 
   /** @param {string} sessionToken @param {string} returnId @param {string} [locale] */
