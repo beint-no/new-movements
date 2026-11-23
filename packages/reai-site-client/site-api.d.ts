@@ -324,6 +324,144 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/site/v1/customer/login-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Email a one-time customer sign-in link
+         * @description Fallback login when a customer does not have an order number handy. Always returns accepted=true without revealing whether the email exists. Appends ?token=... to returnUrl on the site's registered domain.
+         */
+        post: operations["siteCustomerApi_requestLoginLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/site/v1/customer/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the signed-in customer's orders
+         * @description Returns the customer's non-draft orders with returnable quantities, published variant handles for exchanges, outbound tracking, and any previously submitted returns (including QR codes).
+         */
+        get: operations["siteCustomerApi_listOrders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/site/v1/customer/returns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit a return or exchange request for an order
+         * @description Idempotent by Idempotency-Key. Validates remaining returnable quantities, records the return or exchange request, automatically books a carrier return label/QR code when configured in tenant shipping settings, and sends confirmation emails.
+         */
+        post: operations["siteCustomerApi_createReturn"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/site/v1/customer/returns/{returnId}/label": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download the PDF return label or QR return sheet for a customer return
+         * @description Streams the PDF return label or printable QR return sheet for a return belonging to the signed-in customer.
+         */
+        get: operations["siteCustomerApi_downloadReturnLabel"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/site/v1/customer/session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the signed-in customer profile */
+        get: operations["siteCustomerApi_currentSession"];
+        put?: never;
+        post?: never;
+        /** Sign out the current customer session */
+        delete: operations["siteCustomerApi_deleteSession"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/site/v1/customer/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sign in a customer with email and order number
+         * @description Verifies that the email matches an existing non-draft order with the supplied order number and creates a customer session token. Store the returned token in an HttpOnly cookie on the storefront Worker and forward it in X-Customer-Session.
+         */
+        post: operations["siteCustomerApi_createSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/site/v1/customer/sessions/link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Exchange a one-time email sign-in link token for a customer session
+         * @description Atomically consumes a single-use login link token and returns a customer session token.
+         */
+        post: operations["siteCustomerApi_createSessionFromLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/site/v1/newsletter/subscriptions": {
         parameters: {
             query?: never;
@@ -693,6 +831,158 @@ export interface components {
             revision: number;
             /** Format: uuid */
             shippingMethodId?: string | null;
+        };
+        SiteCustomerIdentityRes: {
+            email: string;
+            /** Format: date-time */
+            expiresAt: string;
+            name?: string | null;
+        };
+        SiteCustomerLoginLinkReq: {
+            email: string;
+            locale?: string | null;
+            /** @description HTTPS URL on the site's registered domain where the sign-in link sends the customer; ReAI appends ?token=... */
+            returnUrl: string;
+        };
+        SiteCustomerLoginLinkRes: {
+            accepted: boolean;
+        };
+        SiteCustomerLogoutRes: {
+            ok: boolean;
+        };
+        SiteCustomerOrderLineRes: {
+            /** Format: int32 */
+            lineNumber: number;
+            lineTotal: number;
+            options: components["schemas"]["SiteDeliveryOptionRes"][];
+            /** @description Published Site product handle when this item is currently published on the site. */
+            productHandle?: string | null;
+            /** Format: int32 */
+            quantity: number;
+            /** Format: int32 */
+            returnableQuantity: number;
+            /** Format: int32 */
+            returnedQuantity: number;
+            sku?: string | null;
+            title: string;
+            unitPrice: number;
+            /**
+             * Format: uuid
+             * @description Published Site variant UUID when this item is currently published on the site.
+             */
+            variantId?: string | null;
+        };
+        SiteCustomerOrderRes: {
+            canReturn: boolean;
+            currency: components["schemas"]["CurrencyCode"];
+            /** @description Stable site-scoped order identifier to submit when creating a return. */
+            id: string;
+            lines: components["schemas"]["SiteCustomerOrderLineRes"][];
+            /** @description Human-readable order number shown to the customer. */
+            orderNumber: string;
+            /** Format: date-time */
+            orderedAt: string;
+            returnBlockedReason?: string | null;
+            returns: components["schemas"]["SiteCustomerReturnRes"][];
+            shipments: components["schemas"]["SiteCustomerOrderShipmentRes"][];
+            shippingCountryCode?: string | null;
+            status: string;
+            total: number;
+        };
+        SiteCustomerOrderShipmentRes: {
+            carrier: string;
+            carrierName: string;
+            /** Format: date-time */
+            createdAt: string;
+            trackingNumber?: string | null;
+            trackingStatus: string;
+            trackingUrl?: string | null;
+        };
+        SiteCustomerOrdersRes: {
+            orders: components["schemas"]["SiteCustomerOrderRes"][];
+        };
+        SiteCustomerProfileRes: {
+            email: string;
+            name?: string | null;
+        };
+        SiteCustomerReturnCreateReq: {
+            comment?: string | null;
+            items: components["schemas"]["SiteCustomerReturnItemReq"][];
+            locale?: string | null;
+            orderId: string;
+            /**
+             * @description RETURN for refund or EXCHANGE for size/item exchange.
+             * @enum {string}
+             */
+            type?: "RETURN" | "EXCHANGE";
+        };
+        SiteCustomerReturnItemReq: {
+            /**
+             * Format: uuid
+             * @description Optional published Site variant UUID requested as the replacement when type is EXCHANGE.
+             */
+            exchangeVariantId?: string | null;
+            /** Format: int32 */
+            lineNumber: number;
+            /** Format: int32 */
+            quantity: number;
+            reason?: string | null;
+        };
+        SiteCustomerReturnItemRes: {
+            exchangeSku?: string | null;
+            exchangeTitle?: string | null;
+            /** Format: uuid */
+            exchangeVariantId?: string | null;
+            /** Format: int32 */
+            lineNumber: number;
+            /** Format: int32 */
+            quantity: number;
+            reason?: string | null;
+            sku?: string | null;
+            title: string;
+            /** Format: uuid */
+            variantId?: string | null;
+        };
+        SiteCustomerReturnRes: {
+            comment?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: uuid */
+            id: string;
+            items: components["schemas"]["SiteCustomerReturnItemRes"][];
+            orderId: string;
+            orderNumber: string;
+            shipping: components["schemas"]["SiteCustomerReturnShippingRes"];
+            status: string;
+            type: string;
+        };
+        SiteCustomerReturnShippingRes: {
+            carrier?: string | null;
+            carrierName?: string | null;
+            /** @description QR or PDF when a carrier return shipment was booked. */
+            format?: string | null;
+            labelAvailable: boolean;
+            /** @description Carrier print code / QR payload (e.g. PostNord 6-character code) when format is QR. */
+            printCode?: string | null;
+            /** @description Ready-to-render SVG data URL of the QR code when printCode is present. */
+            qrCodeDataUrl?: string | null;
+            /** @description READY when a carrier return label/QR code was booked, MANUAL when merchant handles return shipping, FAILED if carrier booking could not complete. */
+            status: string;
+            trackingNumber?: string | null;
+            trackingUrl?: string | null;
+        };
+        SiteCustomerSessionLinkReq: {
+            token: string;
+        };
+        SiteCustomerSessionOrderReq: {
+            email: string;
+            orderNumber: string;
+        };
+        SiteCustomerSessionRes: {
+            customer: components["schemas"]["SiteCustomerProfileRes"];
+            /** Format: date-time */
+            expiresAt: string;
+            token: string;
         };
         SiteDeliveryBundleItemRes: {
             options: components["schemas"]["SiteDeliveryOptionRes"][];
@@ -2385,6 +2675,613 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    siteCustomerApi_requestLoginLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SiteCustomerLoginLinkReq"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteCustomerLoginLinkRes"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    siteCustomerApi_listOrders: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Customer-Session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteCustomerOrdersRes"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    siteCustomerApi_createReturn: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Customer-Session"?: string | null;
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SiteCustomerReturnCreateReq"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteCustomerReturnRes"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    siteCustomerApi_downloadReturnLabel: {
+        parameters: {
+            query?: {
+                locale?: string | null;
+            };
+            header?: {
+                "X-Customer-Session"?: string | null;
+            };
+            path: {
+                returnId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    siteCustomerApi_currentSession: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Customer-Session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteCustomerIdentityRes"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    siteCustomerApi_deleteSession: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Customer-Session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteCustomerLogoutRes"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    siteCustomerApi_createSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SiteCustomerSessionOrderReq"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteCustomerSessionRes"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    siteCustomerApi_createSessionFromLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SiteCustomerSessionLinkReq"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteCustomerSessionRes"];
+                };
             };
             /** @description Bad request */
             400: {

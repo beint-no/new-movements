@@ -183,6 +183,10 @@ Collection controls progressively enhance the GET form: checkboxes update immedi
 
 Sold-out sizes offer an explicit one-time notification form posting exact opaque variant ID, email and consent through `/reai/stock/subscribe`. It shares the server-side signup rate limit and never implies newsletter consent. ReAI owns subscriptions, templates and sending; the Worker only renders the form. Size sorting is numeric, including fractional sizes; notification links select the exact variant.
 
+## Online returns & exchanges
+
+`/pages/returns` (and `/nb/pages/returns`, linked from the header account icon and mobile menu) hosts the self-service returns and exchanges portal powered by `public/assets/returns.js` and the shared Worker `/reai/customer/*` proxy. Customers sign in with email + order number or request a one-time sign-in email link; the Worker stores the ReAI customer session token in an `HttpOnly` cookie (`reai-customer-session`) and never exposes it to browser JS. Signed-in shoppers can view their orders, submit returns or size exchanges (fetching live size stock from `/reai/products/{handle}` and `/reai/availability`), and immediately view or download their PostNord QR return code (PDF). Returns are disabled in read-only previews when `CHECKOUT_ENABLED === "false"`.
+
 On portrait mobile/tablet, the homepage hero stacks men above women within the first viewport. Landscape puts them side by side to retain useful photo and button space. Keep both collection links visible, use the approved photos with shoe-focused crops, and preserve the two-column desktop composition.
 
 The seasonal homepage uses curated product handles with live batch availability, alternating women's and men's views. Only stocked variants in the relevant size range qualify. Approved hero photos accompany “Crafted through generations”. Keep curated handles as presentation data; inventory, variant identities, imagery and product content stay in ReAI.

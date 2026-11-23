@@ -810,3 +810,162 @@ test('adds Strict-Transport-Security only on HTTPS responses', async () => {
   const httpRes = await worker.fetch(new Request('http://shop.example/asset.css'), env);
   assert.equal(httpRes.headers.get('Strict-Transport-Security'), null);
 });
+
+test('customer portal proxies login, email links, orders, returns, labels and logout via HttpOnly session cookie', async (context) => {
+  const originalFetch = globalThis.fetch;
+  context.after(() => { globalThis.fetch = originalFetch; });
+
+  const calls = [];
+  globalThis.fetch = async (input, init = {}) => {
+    const url = new URL(String(input));
+    const headers = new Headers(init.headers);
+    calls.push({ method: init.method || 'GET', path: url.pathname + url.search, headers, body: init.body });
+    if (url.pathname.endsWith('/customer/sessions') && init.method === 'POST') {
+      return Response.json({
+        token: 'raw-session-token-123',
+        expiresAt: '2026-12-01T12:00:00Z',
+        customer: { email: 'ada@example.no', name: 'Ada' },
+      }, { status: 201 });
+    }
+    if (url.pathname.endsWith('/customer/login-links') && init.method === 'POST') {
+      return Response.json({ accepted: true }, { status: 202 });
+    }
+    if (url.pathname.endsWith('/customer/sessions/link') && init.method === 'POST') {
+      return Response.json({
+        token: 'magic-session-token-456',
+        expiresAt: '2026-12-01T12:00:00Z',
+        customer: { email: 'ada@example.no', name: 'Ada' },
+      }, { status: 201 });
+    }
+    if (url.pathname.endsWith('/customer/orders') && (!init.method || init.method === 'GET')) {
+      if (headers.get('X-Customer-Session') === 'expired') {
+        return Response.json({ detail: 'Session expired' }, { status: 401 });
+      }
+      return Response.json({ orders: [{ id: '1042', orderNumber: '#1042' }] });
+    }
+    if (url.pathname.endsWith('/customer/returns') && init.method === 'POST') {
+      return Response.json({ id: '018f3c2e-8b1a-4d3e-9c4f-5a6b7c8d9e0f', type: 'EXCHANGE' }, { status: 201 });
+    }
+    if (url.pathname.endsWith('/label')) {
+      return new Response('%PDF-1.4', { status: 200, headers: { 'Content-Type': 'application/pdf' } });
+    }
+    if (url.pathname.endsWith('/customer/session') && init.method === 'DELETE') {
+      return new Response(null, { status: 204 });
+    }
+    return new Response(null, { status: 404 });
+  };
+
+  const worker = createReaiStorefrontWorker({
+    cacheKey: 'customer-portal-test',
+    storefront,
+    market: 'norway',
+    locale: 'nb-NO',
+    pathPrefix: '/nb',
+  });
+  const env = { REAI_SITE_TOKEN: 'site-token' };
+
+  // Rejects cross-origin login attempts
+  const crossOrigin = await worker.fetch(new Request('https://shop.example/nb/reai/customer/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Origin: 'https://evil.example' },
+    body: JSON.stringify({ email: 'ada@example.no', orderNumber: '#1042' }),
+  }), env);
+  assert.equal(crossOrigin.status, 403);
+
+  // Logs in with email + order number, sets HttpOnly cookie, hides raw token
+  const login = await worker.fetch(new Request('https://shop.example/nb/reai/customer/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Origin: 'https://shop.example' },
+    body: JSON.stringify({ email: 'ada@example.no', orderNumber: '#1042' }),
+  }), env);
+  assert.equal(login.status, 200);
+  const loginBody = await login.json();
+  assert.equal(loginBody.token, undefined);
+  assert.equal(loginBody.customer.email, 'ada@example.no');
+  const setCookie = login.headers.get('Set-Cookie') || '';
+  assert.match(setCookie, /reai-customer-session=raw-session-token-123/);
+  assert.match(setCookie, /HttpOnly/);
+  assert.match(setCookie, /Secure/);
+  assert.equal(login.headers.get('Cache-Control'), 'no-store');
+  assert.equal(login.headers.get('Referrer-Policy'), 'no-referrer');
+
+  // Requests login link pointing at localized /nb/reai/customer/verify
+  const linkReq = await worker.fetch(new Request('https://shop.example/nb/reai/customer/login-link', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Origin: 'https://shop.example' },
+    body: JSON.stringify({ email: 'ada@example.no' }),
+  }), env);
+  assert.equal(linkReq.status, 200);
+  assert.deepEqual(JSON.parse(calls.at(-1).body), {
+    email: 'ada@example.no',
+    returnUrl: 'https://shop.example/nb/reai/customer/verify',
+    locale: 'nb-NO',
+  });
+
+  // Verifies magic link, sets cookie, redirects to /nb/pages/returns without token
+  const verify = await worker.fetch(new Request('https://shop.example/nb/reai/customer/verify?token=one-time-tok'), env);
+  assert.equal(verify.status, 303);
+  assert.equal(verify.headers.get('Location'), 'https://shop.example/nb/pages/returns');
+  assert.match(verify.headers.get('Set-Cookie') || '', /reai-customer-session=magic-session-token-456/);
+
+  // Proxies orders with X-Customer-Session header from cookie
+  const orders = await worker.fetch(new Request('https://shop.example/nb/reai/customer/orders', {
+    headers: { Cookie: 'reai-customer-session=raw-session-token-123' },
+  }), env);
+  assert.equal(orders.status, 200);
+  assert.equal(calls.at(-1).headers.get('X-Customer-Session'), 'raw-session-token-123');
+
+  // Clears cookie when upstream returns 401
+  const expired = await worker.fetch(new Request('https://shop.example/nb/reai/customer/orders', {
+    headers: { Cookie: 'reai-customer-session=expired' },
+  }), env);
+  assert.equal(expired.status, 401);
+  assert.match(expired.headers.get('Set-Cookie') || '', /Max-Age=0/);
+
+  // Blocks return submission when CHECKOUT_ENABLED === "false"
+  const blocked = await worker.fetch(new Request('https://shop.example/nb/reai/customer/returns', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Origin: 'https://shop.example',
+      Cookie: 'reai-customer-session=raw-session-token-123',
+    },
+    body: JSON.stringify({ orderId: '1042', type: 'RETURN', items: [{ lineNumber: 1, quantity: 1 }] }),
+  }), { ...env, CHECKOUT_ENABLED: 'false' });
+  assert.equal(blocked.status, 403);
+
+  // Submits exchange with Idempotency-Key and locale
+  const exchangeVariantId = '018f3c2e-8b1a-4d3e-9c4f-5a6b7c8d9e0f';
+  const ret = await worker.fetch(new Request('https://shop.example/nb/reai/customer/returns', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Origin: 'https://shop.example',
+      'Idempotency-Key': 'idem-key-1',
+      Cookie: 'reai-customer-session=raw-session-token-123',
+    },
+    body: JSON.stringify({
+      orderId: '1042',
+      type: 'EXCHANGE',
+      items: [{ lineNumber: 1, quantity: 1, reason: 'For liten', exchangeVariantId }],
+    }),
+  }), env);
+  assert.equal(ret.status, 201);
+  assert.equal(calls.at(-1).headers.get('Idempotency-Key'), 'idem-key-1');
+  assert.equal(JSON.parse(calls.at(-1).body).locale, 'nb-NO');
+
+  // Downloads return label PDF
+  const label = await worker.fetch(new Request('https://shop.example/nb/reai/customer/returns/018f3c2e-8b1a-4d3e-9c4f-5a6b7c8d9e0f/label', {
+    headers: { Cookie: 'reai-customer-session=raw-session-token-123' },
+  }), env);
+  assert.equal(label.status, 200);
+  assert.equal(label.headers.get('Content-Type'), 'application/pdf');
+
+  // Logs out and clears cookie
+  const logout = await worker.fetch(new Request('https://shop.example/nb/reai/customer/logout', {
+    method: 'POST',
+    headers: { Origin: 'https://shop.example', Cookie: 'reai-customer-session=raw-session-token-123' },
+  }), env);
+  assert.equal(logout.status, 200);
+  assert.match(logout.headers.get('Set-Cookie') || '', /Max-Age=0/);
+});
