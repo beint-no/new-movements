@@ -353,7 +353,7 @@ export interface paths {
         };
         /**
          * List the signed-in customer's orders
-         * @description Returns the customer's non-draft orders with returnable quantities, published variant handles for exchanges, outbound tracking, and any previously submitted returns (including QR codes).
+         * @description Returns the customer's non-draft orders with returnable quantities, published variant handles for exchanges, outbound tracking, and submitted returns with live lifecycle status, refund/store-credit outcomes, and replacement order tracking.
          */
         get: operations["siteCustomerApi_listOrders"];
         put?: never;
@@ -374,11 +374,31 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Submit a return or exchange request for an order
-         * @description Idempotent by Idempotency-Key. Validates remaining returnable quantities, records the return or exchange request, automatically books a carrier return label/QR code when configured in tenant shipping settings, and sends confirmation emails.
+         * Submit a return, exchange, or mixed return/exchange request for an order
+         * @description Idempotent by Idempotency-Key. Supports per-item resolutions (REFUND, EXCHANGE, STORE_CREDIT) in a single parcel, automatically books a carrier return label/QR code when configured in tenant shipping settings, and sends confirmation emails.
          */
         post: operations["siteCustomerApi_createReturn"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/site/v1/customer/returns/{returnId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Cancel an unused customer return request
+         * @description Cancels a return request while its status is still REQUESTED (before carrier scan or warehouse receipt), freeing the item quantities so the customer can submit a corrected request.
+         */
+        delete: operations["siteCustomerApi_cancelReturn"];
         options?: never;
         head?: never;
         patch?: never;
@@ -911,15 +931,15 @@ export interface components {
             locale?: string | null;
             orderId: string;
             /**
-             * @description RETURN for refund or EXCHANGE for size/item exchange.
+             * @description Optional default resolution fallback when items omit resolution: RETURN defaults items to REFUND, EXCHANGE defaults items to EXCHANGE.
              * @enum {string}
              */
-            type?: "RETURN" | "EXCHANGE";
+            type?: "RETURN" | "EXCHANGE" | "MIXED" | null;
         };
         SiteCustomerReturnItemReq: {
             /**
              * Format: uuid
-             * @description Optional published Site variant UUID requested as the replacement when type is EXCHANGE.
+             * @description Optional published Site variant UUID requested as the replacement when resolution is EXCHANGE.
              */
             exchangeVariantId?: string | null;
             /** Format: int32 */
@@ -927,6 +947,11 @@ export interface components {
             /** Format: int32 */
             quantity: number;
             reason?: string | null;
+            /**
+             * @description Per-item requested resolution: REFUND, EXCHANGE, or STORE_CREDIT.
+             * @enum {string}
+             */
+            resolution?: "REFUND" | "EXCHANGE" | "STORE_CREDIT" | null;
         };
         SiteCustomerReturnItemRes: {
             exchangeSku?: string | null;
@@ -938,12 +963,28 @@ export interface components {
             /** Format: int32 */
             quantity: number;
             reason?: string | null;
+            resolution: string;
             sku?: string | null;
             title: string;
             /** Format: uuid */
             variantId?: string | null;
         };
+        SiteCustomerReturnRefundRes: {
+            amount: number;
+            currency: components["schemas"]["CurrencyCode"];
+            /** @description PENDING, COMPLETED, or REVIEW_REQUIRED. */
+            status: string;
+        };
+        SiteCustomerReturnReplacementOrderRes: {
+            orderNumber: string;
+            status: string;
+            trackingNumber?: string | null;
+            trackingStatus?: string | null;
+            trackingUrl?: string | null;
+        };
         SiteCustomerReturnRes: {
+            /** @description True while the customer can cancel this return request before carrier scan or warehouse receipt. */
+            canCancel: boolean;
             comment?: string | null;
             /** Format: date-time */
             createdAt: string;
@@ -952,8 +993,15 @@ export interface components {
             items: components["schemas"]["SiteCustomerReturnItemRes"][];
             orderId: string;
             orderNumber: string;
+            /** Format: date-time */
+            receivedAt?: string | null;
+            refund?: components["schemas"]["SiteCustomerReturnRefundRes"] | null;
+            replacementOrder?: components["schemas"]["SiteCustomerReturnReplacementOrderRes"] | null;
             shipping: components["schemas"]["SiteCustomerReturnShippingRes"];
+            /** @description Live return lifecycle status: REQUESTED, IN_TRANSIT, RECEIVED, COMPLETED, or CANCELLED. */
             status: string;
+            storeCredit?: components["schemas"]["SiteCustomerReturnStoreCreditRes"] | null;
+            /** @description RETURN, EXCHANGE, or MIXED derived from the requested item resolutions. */
             type: string;
         };
         SiteCustomerReturnShippingRes: {
@@ -964,12 +1012,18 @@ export interface components {
             labelAvailable: boolean;
             /** @description Carrier print code / QR payload (e.g. PostNord 6-character code) when format is QR. */
             printCode?: string | null;
-            /** @description Ready-to-render SVG data URL of the QR code when printCode is present. */
+            /** @description Ready-to-render SVG data URL of the QR code while status is REQUESTED and printCode is present. */
             qrCodeDataUrl?: string | null;
             /** @description READY when a carrier return label/QR code was booked, MANUAL when merchant handles return shipping, FAILED if carrier booking could not complete. */
             status: string;
             trackingNumber?: string | null;
+            trackingStatus?: string | null;
             trackingUrl?: string | null;
+        };
+        SiteCustomerReturnStoreCreditRes: {
+            amount: number;
+            code?: string | null;
+            currency: components["schemas"]["CurrencyCode"];
         };
         SiteCustomerSessionLinkReq: {
             token: string;
@@ -2895,6 +2949,82 @@ export interface operations {
                 "application/json": components["schemas"]["SiteCustomerReturnCreateReq"];
             };
         };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteCustomerReturnRes"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    siteCustomerApi_cancelReturn: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Customer-Session"?: string | null;
+            };
+            path: {
+                returnId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description OK */
             200: {

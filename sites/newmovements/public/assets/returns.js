@@ -217,67 +217,204 @@ function initReturnsPortal(portal) {
     return status;
   }
 
+  function returnStatusMeta(status) {
+    switch (status) {
+      case "IN_TRANSIT":
+        return { label: t("In transit", "Underveis"), step: 1, tone: "in-transit" };
+      case "RECEIVED":
+        return { label: t("Received", "Mottatt"), step: 2, tone: "received" };
+      case "COMPLETED":
+        return { label: t("Completed", "Fullført"), step: 3, tone: "completed" };
+      case "CANCELLED":
+        return { label: t("Cancelled", "Kansellert"), step: -1, tone: "cancelled" };
+      default:
+        return { label: t("Requested", "Forespurt"), step: 0, tone: "requested" };
+    }
+  }
+
+  function resolutionLabel(resolution) {
+    if (resolution === "EXCHANGE") return t("Exchange", "Bytte");
+    if (resolution === "STORE_CREDIT") return t("Store credit", "Tilgodelapp");
+    return t("Refund", "Refusjon");
+  }
+
+  function returnTypeBadge(type) {
+    if (type === "EXCHANGE") return { label: t("Exchange", "Bytte"), cls: " is-exchange" };
+    if (type === "MIXED") return { label: t("Return & exchange", "Retur og bytte"), cls: " is-mixed" };
+    return { label: t("Return", "Retur"), cls: "" };
+  }
+
   function renderReturnCard(ret) {
-    const isExchange = ret.type === "EXCHANGE";
-    const typeBadge = isExchange ? t("Exchange", "Bytte") : t("Return", "Retur");
+    const typeInfo = returnTypeBadge(ret.type);
+    const statusInfo = returnStatusMeta(ret.status);
+    const isCancelled = ret.status === "CANCELLED";
+    const isMixed = ret.type === "MIXED";
+
+    const progressSteps = [
+      t("Requested", "Forespurt"),
+      t("In transit", "Underveis"),
+      t("Received", "Mottatt"),
+      t("Completed", "Fullført"),
+    ];
+    const progressHtml = !isCancelled
+      ? `
+        <ol class="returns-progress" aria-label="${escapeHtml(t("Return progress", "Fremdrift for retur"))}">
+          ${progressSteps.map((label, idx) => {
+            const stateClass = idx < statusInfo.step
+              ? "is-done"
+              : idx === statusInfo.step
+                ? "is-current"
+                : "";
+            return `<li class="${stateClass}"${idx === statusInfo.step ? ' aria-current="step"' : ""}><span>${escapeHtml(label)}</span></li>`;
+          }).join("")}
+        </ol>
+      `
+      : "";
+
     const itemsHtml = (ret.items || []).map((item) => {
+      const resTag = isMixed || item.resolution === "STORE_CREDIT"
+        ? `<span class="returns-item-res-tag">${escapeHtml(resolutionLabel(item.resolution))}</span>`
+        : "";
       const exchangeLine = item.exchangeTitle
         ? `<span class="returns-exchange-target">${escapeHtml(t("Requested exchange:", "Ønsket bytte til:"))} <strong>${escapeHtml(item.exchangeTitle)}</strong></span>`
         : "";
       const reasonLine = item.reason ? `<span class="returns-item-meta">${escapeHtml(item.reason)}</span>` : "";
-      return `<li><span>${item.quantity} × ${escapeHtml(item.title)}</span>${reasonLine}${exchangeLine}</li>`;
+      return `<li><span>${item.quantity} × ${escapeHtml(item.title)}</span>${resTag}${reasonLine}${exchangeLine}</li>`;
     }).join("");
+
+    const outcomeRows = [];
+    if (ret.receivedAt) {
+      outcomeRows.push(`
+        <div>
+          <dt>${escapeHtml(t("Received at warehouse", "Mottatt på lager"))}</dt>
+          <dd><time datetime="${escapeHtml(ret.receivedAt)}">${escapeHtml(formatDate(ret.receivedAt))}</time></dd>
+        </div>
+      `);
+    }
+    if (ret.refund) {
+      const refundState = ret.refund.status === "COMPLETED"
+        ? t("Refunded", "Refundert")
+        : ret.refund.status === "REVIEW_REQUIRED"
+          ? t("Under review", "Under gjennomgang")
+          : t("Processing", "Behandles");
+      outcomeRows.push(`
+        <div>
+          <dt>${escapeHtml(t("Refund", "Refusjon"))}</dt>
+          <dd><strong>${escapeHtml(formatMoney(ret.refund.amount, ret.refund.currency))}</strong> · ${escapeHtml(refundState)}</dd>
+        </div>
+      `);
+    }
+    if (ret.storeCredit) {
+      const codePart = ret.storeCredit.code
+        ? ` · ${escapeHtml(t("Code", "Kode"))}: <code>${escapeHtml(ret.storeCredit.code)}</code>`
+        : "";
+      outcomeRows.push(`
+        <div>
+          <dt>${escapeHtml(t("Store credit", "Tilgodelapp"))}</dt>
+          <dd><strong>${escapeHtml(formatMoney(ret.storeCredit.amount, ret.storeCredit.currency))}</strong>${codePart}</dd>
+        </div>
+      `);
+    }
+    if (ret.replacementOrder) {
+      const rep = ret.replacementOrder;
+      const repTrack = rep.trackingUrl
+        ? ` · <a class="returns-link-btn" href="${escapeHtml(rep.trackingUrl)}" target="_blank" rel="noopener">${escapeHtml(t("Track replacement ↗", "Spor erstatningsordre ↗"))}</a>`
+        : rep.trackingNumber
+          ? ` · ${escapeHtml(rep.trackingNumber)}`
+          : "";
+      outcomeRows.push(`
+        <div>
+          <dt>${escapeHtml(t("Replacement order", "Erstatningsordre"))}</dt>
+          <dd><strong>#${escapeHtml(rep.orderNumber)}</strong> · ${escapeHtml(orderStatusLabel(rep.status))}${repTrack}</dd>
+        </div>
+      `);
+    }
+    const outcomeHtml = outcomeRows.length
+      ? `<dl class="returns-outcome-box">${outcomeRows.join("")}</dl>`
+      : "";
 
     let shippingHtml = "";
     const ship = ret.shipping;
-    if (ship?.status === "READY" && ship.format === "QR" && ship.printCode) {
-      const labelHref = apiUrl(`/reai/customer/returns/${encodeURIComponent(ret.id)}/label`);
-      shippingHtml = `
-        <div class="returns-qr-box">
-          <div class="returns-qr-header">
-            <strong>${escapeHtml(t("PostNord QR return code", "PostNord QR-kode for retur"))}</strong>
-            <span>${escapeHtml(t("No printer needed", "Ingen skriver nødvendig"))}</span>
-          </div>
-          ${ship.qrCodeDataUrl ? `<img class="returns-qr-img" src="${escapeHtml(ship.qrCodeDataUrl)}" alt="${escapeHtml(t("PostNord return QR code", "PostNord QR-kode for retur"))}" width="180" height="180">` : ""}
-          <p class="returns-qr-code" aria-label="${escapeHtml(t("Return code", "Returkode"))}">${escapeHtml(ship.printCode)}</p>
-          <p class="returns-qr-instructions">${escapeHtml(t(
-            "Pack the shoes in their original box inside protective outer packaging. Show this QR code or 6-character code at any PostNord service point — they will print and attach the return label for you. A copy has also been sent to your email.",
-            "Pakk skoene i originalemballasjen med beskyttende ytteremballasje. Vis denne QR-koden eller koden på 6 tegn hos et PostNord-innleveringssted, så skriver de ut og fester returetiketten for deg. En kopi er også sendt på e-post.",
-          ))}</p>
-          <div class="returns-qr-actions">
-            <a class="returns-secondary-btn" href="${escapeHtml(labelHref)}">${escapeHtml(t("Download QR sheet (PDF)", "Last ned QR-ark (PDF)"))}</a>
-            ${ship.trackingUrl ? `<a class="returns-link-btn" href="${escapeHtml(ship.trackingUrl)}" target="_blank" rel="noopener">${escapeHtml(t("Track return ↗", "Spor retur ↗"))}</a>` : ""}
-          </div>
-        </div>
-      `;
-    } else if (ship?.status === "READY" && ship.labelAvailable) {
-      const labelHref = apiUrl(`/reai/customer/returns/${encodeURIComponent(ret.id)}/label`);
-      shippingHtml = `
-        <div class="returns-shipping-note">
-          <p>${escapeHtml(t("Your prepaid return label is ready. A copy has also been sent to your email.", "Den forhåndsbetalte returetiketten din er klar. En kopi er også sendt på e-post."))}</p>
-          <a class="returns-secondary-btn" href="${escapeHtml(labelHref)}">${escapeHtml(t("Download return label (PDF)", "Last ned returetikett (PDF)"))}</a>
-        </div>
-      `;
-    } else {
-      shippingHtml = `
-        <div class="returns-shipping-note">
-          <p>${escapeHtml(t(
-            "Your request has been registered. Our team will email you return instructions shortly.",
-            "Forespørselen din er registrert. Vi sender deg instruksjoner for retur på e-post så snart som mulig.",
-          ))}</p>
-        </div>
-      `;
+    if (!isCancelled) {
+      if (ret.status === "REQUESTED") {
+        if (ship?.status === "READY" && ship.format === "QR" && ship.printCode) {
+          const labelHref = apiUrl(`/reai/customer/returns/${encodeURIComponent(ret.id)}/label`);
+          shippingHtml = `
+            <div class="returns-qr-box">
+              <div class="returns-qr-header">
+                <strong>${escapeHtml(t("PostNord QR return code", "PostNord QR-kode for retur"))}</strong>
+                <span>${escapeHtml(t("No printer needed", "Ingen skriver nødvendig"))}</span>
+              </div>
+              ${ship.qrCodeDataUrl ? `<img class="returns-qr-img" src="${escapeHtml(ship.qrCodeDataUrl)}" alt="${escapeHtml(t("PostNord return QR code", "PostNord QR-kode for retur"))}" width="180" height="180">` : ""}
+              <p class="returns-qr-code" aria-label="${escapeHtml(t("Return code", "Returkode"))}">${escapeHtml(ship.printCode)}</p>
+              <p class="returns-qr-instructions">${escapeHtml(t(
+                "Pack the shoes in their original box inside protective outer packaging. Show this QR code or 6-character code at any PostNord service point — they will print and attach the return label for you. A copy has also been sent to your email.",
+                "Pakk skoene i originalemballasjen med beskyttende ytteremballasje. Vis denne QR-koden eller koden på 6 tegn hos et PostNord-innleveringssted, så skriver de ut og fester returetiketten for deg. En kopi er også sendt på e-post.",
+              ))}</p>
+              <div class="returns-qr-actions">
+                <a class="returns-secondary-btn" href="${escapeHtml(labelHref)}">${escapeHtml(t("Download QR sheet (PDF)", "Last ned QR-ark (PDF)"))}</a>
+                ${ship.trackingUrl ? `<a class="returns-link-btn" href="${escapeHtml(ship.trackingUrl)}" target="_blank" rel="noopener">${escapeHtml(t("Track return ↗", "Spor retur ↗"))}</a>` : ""}
+              </div>
+            </div>
+          `;
+        } else if (ship?.status === "READY" && ship.labelAvailable) {
+          const labelHref = apiUrl(`/reai/customer/returns/${encodeURIComponent(ret.id)}/label`);
+          shippingHtml = `
+            <div class="returns-shipping-note">
+              <p>${escapeHtml(t("Your prepaid return label is ready. A copy has also been sent to your email.", "Den forhåndsbetalte returetiketten din er klar. En kopi er også sendt på e-post."))}</p>
+              <a class="returns-secondary-btn" href="${escapeHtml(labelHref)}">${escapeHtml(t("Download return label (PDF)", "Last ned returetikett (PDF)"))}</a>
+            </div>
+          `;
+        } else {
+          shippingHtml = `
+            <div class="returns-shipping-note">
+              <p>${escapeHtml(t(
+                "Your request has been registered. Our team will email you return instructions shortly.",
+                "Forespørselen din er registrert. Vi sender deg instruksjoner for retur på e-post så snart som mulig.",
+              ))}</p>
+            </div>
+          `;
+        }
+      } else if (ship?.trackingUrl || ship?.trackingNumber) {
+        const carrierLabel = ship.carrierName ? `${ship.carrierName}: ` : "";
+        const trackContent = ship.trackingUrl
+          ? `<a class="returns-link-btn" href="${escapeHtml(ship.trackingUrl)}" target="_blank" rel="noopener">${escapeHtml(t("Track return parcel ↗", "Spor returpakke ↗"))}</a>`
+          : `<span class="returns-item-meta">${escapeHtml(carrierLabel + ship.trackingNumber)}</span>`;
+        shippingHtml = `<div class="returns-transit-row">${trackContent}</div>`;
+      }
     }
 
+    const cancelHtml = ret.canCancel
+      ? `
+        <div class="returns-cancel-bar" data-cancel-bar="${escapeHtml(ret.id)}">
+          <button type="button" class="returns-cancel-trigger" data-cancel-return-open="${escapeHtml(ret.id)}">${escapeHtml(t("Cancel request", "Avbryt forespørsel"))}</button>
+          <div class="returns-cancel-confirm" data-cancel-confirm="${escapeHtml(ret.id)}" hidden>
+            <p>${escapeHtml(t("Cancel this request? You can submit a new one afterward.", "Avbryte denne forespørselen? Du kan sende inn en ny etterpå."))}</p>
+            <div class="returns-cancel-actions">
+              <button type="button" class="returns-ghost-btn returns-cancel-yes" data-cancel-return-confirm="${escapeHtml(ret.id)}">${escapeHtml(t("Yes, cancel", "Ja, avbryt"))}</button>
+              <button type="button" class="returns-ghost-btn" data-cancel-return-abort="${escapeHtml(ret.id)}">${escapeHtml(t("Keep", "Behold"))}</button>
+            </div>
+            <p class="returns-form-error" data-cancel-error="${escapeHtml(ret.id)}" role="alert" hidden></p>
+          </div>
+        </div>
+      `
+      : "";
+
     return `
-      <article class="returns-submitted-card" data-return-id="${escapeHtml(ret.id)}">
+      <article class="returns-submitted-card${isCancelled ? " is-cancelled" : ""}" data-return-id="${escapeHtml(ret.id)}">
         <header>
-          <span class="returns-pill${isExchange ? " is-exchange" : ""}">${escapeHtml(typeBadge)}</span>
+          <div class="returns-card-badges">
+            <span class="returns-pill${typeInfo.cls}">${escapeHtml(typeInfo.label)}</span>
+            <span class="returns-status-pill is-${escapeHtml(statusInfo.tone)}">${escapeHtml(statusInfo.label)}</span>
+          </div>
           <time datetime="${escapeHtml(ret.createdAt)}">${escapeHtml(formatDate(ret.createdAt))}</time>
         </header>
+        ${progressHtml}
         <ul class="returns-submitted-items">${itemsHtml}</ul>
         ${ret.comment ? `<p class="returns-submitted-comment">${escapeHtml(ret.comment)}</p>` : ""}
+        ${outcomeHtml}
         ${shippingHtml}
+        ${cancelHtml}
       </article>
     `;
   }
@@ -294,6 +431,7 @@ function initReturnsPortal(portal) {
       const hasOriginalProduct = Boolean(line.productHandle);
       const originalHandle = line.productHandle || "";
       const originalDisplayTitle = line.title.replace(/\s+[—–-]\s+[^—–-]+$/, "").trim() || line.title;
+      const resolutionName = `resolution-${escapeHtml(order.id)}-${line.lineNumber}`;
       const exchangeRow = `
         <div class="returns-exchange-panel" data-exchange-field="${line.lineNumber}" hidden>
           <div class="returns-exchange-product-bar">
@@ -330,6 +468,17 @@ function initReturnsPortal(portal) {
             <span class="returns-item-price">${escapeHtml(formatMoney(line.lineTotal, order.currency))}</span>
           </label>
           <div class="returns-item-controls" data-item-controls="${line.lineNumber}"${defaultSelected ? "" : " hidden"}>
+            <fieldset class="returns-item-resolution">
+              <legend class="sr-only">${escapeHtml(t("Choose exchange or refund", "Velg bytte eller refusjon"))}</legend>
+              <label class="returns-resolution-option">
+                <input type="radio" name="${resolutionName}" value="EXCHANGE" data-item-resolution="${line.lineNumber}" checked>
+                <span><strong>${escapeHtml(t("Exchange", "Bytte"))}</strong><small>${escapeHtml(t("Free size or item exchange", "Gratis bytte av størrelse eller vare"))}</small></span>
+              </label>
+              <label class="returns-resolution-option">
+                <input type="radio" name="${resolutionName}" value="REFUND" data-item-resolution="${line.lineNumber}">
+                <span><strong>${escapeHtml(t("Return for refund", "Retur for refusjon"))}</strong><small>${escapeHtml(t("Free return within 30 days", "Gratis retur innen 30 dager"))}</small></span>
+              </label>
+            </fieldset>
             ${qtySelect}
             <label class="returns-reason-field">
               <span>${escapeHtml(t("Reason", "Årsak"))}</span>
@@ -341,21 +490,13 @@ function initReturnsPortal(portal) {
       `;
     }).join("");
 
+    const multiItemLead = returnableLines.length > 1
+      ? `<p class="returns-composer-lead">${escapeHtml(t("Select the items to send back — you can mix exchanges and returns in the same parcel.", "Velg varene du vil sende tilbake – du kan kombinere bytte og retur i samme pakke."))}</p>`
+      : "";
+
     return `
       <form class="returns-composer" data-return-composer="${escapeHtml(order.id)}" hidden>
-        <fieldset class="returns-type-fieldset">
-          <legend>${escapeHtml(t("What would you like to do?", "Hva ønsker du å gjøre?"))}</legend>
-          <div class="returns-type-options">
-            <label class="returns-type-option">
-              <input type="radio" name="returnType-${escapeHtml(order.id)}" value="EXCHANGE" checked>
-              <span><strong>${escapeHtml(t("Exchange", "Bytte"))}</strong><small>${escapeHtml(t("Free size or item exchange", "Gratis bytte av størrelse eller vare"))}</small></span>
-            </label>
-            <label class="returns-type-option">
-              <input type="radio" name="returnType-${escapeHtml(order.id)}" value="RETURN">
-              <span><strong>${escapeHtml(t("Return for refund", "Retur for refusjon"))}</strong><small>${escapeHtml(t("Free return within 30 days", "Gratis retur innen 30 dager"))}</small></span>
-            </label>
-          </div>
-        </fieldset>
+        ${multiItemLead}
         <div class="returns-form-items">${rowsHtml}</div>
         <label class="returns-comment-field">
           <span>${escapeHtml(t("Note (optional)", "Kommentar (valgfritt)"))}</span>
@@ -448,7 +589,12 @@ function initReturnsPortal(portal) {
 
       let idempotencyKey = crypto.randomUUID();
 
-      const currentType = () => form.querySelector(`input[name="returnType-${CSS.escape(order.id)}"]:checked`)?.value || "RETURN";
+      const itemResolution = (lineNumber) => {
+        const checkedRadio = /** @type {HTMLInputElement | null} */ (
+          form.querySelector(`input[data-item-resolution="${lineNumber}"]:checked`)
+        );
+        return checkedRadio?.value || "EXCHANGE";
+      };
 
       const updatePriceDifference = (select) => {
         const lineNumber = select.getAttribute("data-exchange-select");
@@ -524,17 +670,25 @@ function initReturnsPortal(portal) {
       };
 
       const syncExchangeVisibility = async () => {
-        const isExchange = currentType() === "EXCHANGE";
+        const checkedBoxes = [...form.querySelectorAll("[data-item-check]:checked")];
+        const resolutions = new Set(
+          checkedBoxes.map((box) => itemResolution(box.getAttribute("data-item-check") || "")),
+        );
         if (submitBtn) {
-          submitBtn.textContent = isExchange
-            ? t("Submit exchange", "Send bytteforespørsel")
-            : t("Submit return", "Send returforespørsel");
+          if (resolutions.has("EXCHANGE") && resolutions.has("REFUND")) {
+            submitBtn.textContent = t("Submit return & exchange", "Send retur og bytte");
+          } else if (resolutions.size === 1 && resolutions.has("REFUND")) {
+            submitBtn.textContent = t("Submit return", "Send returforespørsel");
+          } else {
+            submitBtn.textContent = t("Submit exchange", "Send bytteforespørsel");
+          }
         }
         const selects = /** @type {NodeListOf<HTMLSelectElement>} */ (form.querySelectorAll("[data-exchange-select]"));
         for (const select of selects) {
-          const lineNumber = select.getAttribute("data-exchange-select");
+          const lineNumber = select.getAttribute("data-exchange-select") || "";
           const field = /** @type {HTMLElement | null} */ (form.querySelector(`[data-exchange-field="${lineNumber}"]`));
-          const checked = /** @type {HTMLInputElement | null} */ (form.querySelector(`[data-item-check="${lineNumber}"]`))?.checked;
+          const checked = Boolean(/** @type {HTMLInputElement | null} */ (form.querySelector(`[data-item-check="${lineNumber}"]`))?.checked);
+          const isExchange = itemResolution(lineNumber) === "EXCHANGE";
           if (field) field.hidden = !isExchange || !checked;
           if (isExchange && checked) {
             populateExchangeSelect(select);
@@ -686,7 +840,6 @@ function initReturnsPortal(portal) {
           errorEl.textContent = "";
           errorEl.hidden = true;
         }
-        const type = currentType();
         const checkedBoxes = [...form.querySelectorAll("[data-item-check]:checked")];
         if (!checkedBoxes.length) {
           if (errorEl) {
@@ -696,16 +849,19 @@ function initReturnsPortal(portal) {
           return;
         }
         const items = checkedBoxes.map((checkbox) => {
-          const lineNumber = Number(checkbox.getAttribute("data-item-check"));
+          const lineAttr = checkbox.getAttribute("data-item-check") || "";
+          const lineNumber = Number(lineAttr);
+          const resolution = itemResolution(lineAttr);
           const qtyEl = /** @type {HTMLInputElement | HTMLSelectElement | null} */ (form.querySelector(`[data-item-qty="${lineNumber}"]`));
           const reasonEl = /** @type {HTMLSelectElement | null} */ (form.querySelector(`[data-item-reason="${lineNumber}"]`));
           const exchangeEl = /** @type {HTMLSelectElement | null} */ (form.querySelector(`[data-exchange-select="${lineNumber}"]`));
           const quantity = Number(qtyEl?.value || 1);
           const reason = reasonEl?.value?.trim() || undefined;
-          const exchangeVariantId = type === "EXCHANGE" && exchangeEl?.value ? exchangeEl.value : undefined;
+          const exchangeVariantId = resolution === "EXCHANGE" && exchangeEl?.value ? exchangeEl.value : undefined;
           return {
             lineNumber,
             quantity,
+            resolution,
             ...(reason ? { reason } : {}),
             ...(exchangeVariantId ? { exchangeVariantId } : {}),
           };
@@ -724,7 +880,6 @@ function initReturnsPortal(portal) {
             },
             body: JSON.stringify({
               orderId: order.id,
-              type,
               items,
               ...(comment ? { comment } : {}),
             }),
@@ -755,6 +910,69 @@ function initReturnsPortal(portal) {
       });
     }
   }
+
+  ordersContainer?.addEventListener("click", async (event) => {
+    const target = /** @type {HTMLElement | null} */ (event.target);
+    const openBtn = /** @type {HTMLButtonElement | null} */ (target?.closest("[data-cancel-return-open]"));
+    if (openBtn) {
+      const returnId = openBtn.getAttribute("data-cancel-return-open") || "";
+      const confirmEl = /** @type {HTMLElement | null} */ (ordersContainer.querySelector(`[data-cancel-confirm="${CSS.escape(returnId)}"]`));
+      openBtn.hidden = true;
+      if (confirmEl) confirmEl.hidden = false;
+      return;
+    }
+    const abortBtn = /** @type {HTMLButtonElement | null} */ (target?.closest("[data-cancel-return-abort]"));
+    if (abortBtn) {
+      const returnId = abortBtn.getAttribute("data-cancel-return-abort") || "";
+      const confirmEl = /** @type {HTMLElement | null} */ (ordersContainer.querySelector(`[data-cancel-confirm="${CSS.escape(returnId)}"]`));
+      const triggerBtn = /** @type {HTMLButtonElement | null} */ (ordersContainer.querySelector(`[data-cancel-return-open="${CSS.escape(returnId)}"]`));
+      const errEl = /** @type {HTMLElement | null} */ (ordersContainer.querySelector(`[data-cancel-error="${CSS.escape(returnId)}"]`));
+      if (confirmEl) confirmEl.hidden = true;
+      if (triggerBtn) triggerBtn.hidden = false;
+      if (errEl) {
+        errEl.textContent = "";
+        errEl.hidden = true;
+      }
+      return;
+    }
+    const confirmBtn = /** @type {HTMLButtonElement | null} */ (target?.closest("[data-cancel-return-confirm]"));
+    if (confirmBtn) {
+      const returnId = confirmBtn.getAttribute("data-cancel-return-confirm") || "";
+      const errEl = /** @type {HTMLElement | null} */ (ordersContainer.querySelector(`[data-cancel-error="${CSS.escape(returnId)}"]`));
+      if (errEl) {
+        errEl.textContent = "";
+        errEl.hidden = true;
+      }
+      confirmBtn.disabled = true;
+      try {
+        const response = await fetch(apiUrl(`/reai/customer/returns/${encodeURIComponent(returnId)}`), {
+          method: "DELETE",
+          credentials: "same-origin",
+        });
+        if (response.status === 401) {
+          showSignedOut();
+          setAuthMessage(t("Your session expired. Please sign in again.", "Økten din er utløpt. Logg inn på nytt."), true);
+          return;
+        }
+        if (!response.ok) {
+          const msg = await extractError(response, t("This return can no longer be cancelled.", "Denne returen kan ikke lenger kanselleres."));
+          if (errEl) {
+            errEl.textContent = msg;
+            errEl.hidden = false;
+          }
+          return;
+        }
+        await loadSessionAndOrders();
+      } catch {
+        if (errEl) {
+          errEl.textContent = t("Connection error. Please try again.", "Tilkoblingsfeil. Prøv igjen.");
+          errEl.hidden = false;
+        }
+      } finally {
+        confirmBtn.disabled = false;
+      }
+    }
+  });
 
   toggleLinkBtn?.addEventListener("click", () => showAuthMode("link"));
   toggleOrderBtn?.addEventListener("click", () => showAuthMode("order"));

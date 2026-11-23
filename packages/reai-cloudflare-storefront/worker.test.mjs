@@ -844,7 +844,10 @@ test('customer portal proxies login, email links, orders, returns, labels and lo
       return Response.json({ orders: [{ id: '1042', orderNumber: '#1042' }] });
     }
     if (url.pathname.endsWith('/customer/returns') && init.method === 'POST') {
-      return Response.json({ id: '018f3c2e-8b1a-4d3e-9c4f-5a6b7c8d9e0f', type: 'EXCHANGE' }, { status: 201 });
+      return Response.json({ id: '018f3c2e-8b1a-4d3e-9c4f-5a6b7c8d9e0f', type: 'MIXED', status: 'REQUESTED', canCancel: true }, { status: 201 });
+    }
+    if (url.pathname.includes('/customer/returns/') && init.method === 'DELETE') {
+      return Response.json({ id: '018f3c2e-8b1a-4d3e-9c4f-5a6b7c8d9e0f', status: 'CANCELLED', canCancel: false }, { status: 200 });
     }
     if (url.pathname.endsWith('/label')) {
       return new Response('%PDF-1.4', { status: 200, headers: { 'Content-Type': 'application/pdf' } });
@@ -934,7 +937,7 @@ test('customer portal proxies login, email links, orders, returns, labels and lo
   }), { ...env, CHECKOUT_ENABLED: 'false' });
   assert.equal(blocked.status, 403);
 
-  // Submits exchange with Idempotency-Key and locale
+  // Submits mixed per-item exchange + refund with Idempotency-Key and locale
   const exchangeVariantId = '018f3c2e-8b1a-4d3e-9c4f-5a6b7c8d9e0f';
   const ret = await worker.fetch(new Request('https://shop.example/nb/reai/customer/returns', {
     method: 'POST',
@@ -946,13 +949,28 @@ test('customer portal proxies login, email links, orders, returns, labels and lo
     },
     body: JSON.stringify({
       orderId: '1042',
-      type: 'EXCHANGE',
-      items: [{ lineNumber: 1, quantity: 1, reason: 'For liten', exchangeVariantId }],
+      items: [
+        { lineNumber: 1, quantity: 1, resolution: 'EXCHANGE', reason: 'For liten', exchangeVariantId },
+        { lineNumber: 2, quantity: 1, resolution: 'REFUND', reason: 'Ombestemte meg' },
+      ],
     }),
   }), env);
   assert.equal(ret.status, 201);
   assert.equal(calls.at(-1).headers.get('Idempotency-Key'), 'idem-key-1');
-  assert.equal(JSON.parse(calls.at(-1).body).locale, 'nb-NO');
+  const forwarded = JSON.parse(calls.at(-1).body);
+  assert.equal(forwarded.locale, 'nb-NO');
+  assert.deepEqual(forwarded.items.map((i) => i.resolution), ['EXCHANGE', 'REFUND']);
+
+  // Cancels unused return request
+  const cancelRes = await worker.fetch(new Request('https://shop.example/nb/reai/customer/returns/018f3c2e-8b1a-4d3e-9c4f-5a6b7c8d9e0f', {
+    method: 'DELETE',
+    headers: {
+      Origin: 'https://shop.example',
+      Cookie: 'reai-customer-session=raw-session-token-123',
+    },
+  }), env);
+  assert.equal(cancelRes.status, 200);
+  assert.equal((await cancelRes.json()).status, 'CANCELLED');
 
   // Downloads return label PDF
   const label = await worker.fetch(new Request('https://shop.example/nb/reai/customer/returns/018f3c2e-8b1a-4d3e-9c4f-5a6b7c8d9e0f/label', {
