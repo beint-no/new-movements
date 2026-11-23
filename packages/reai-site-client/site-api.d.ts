@@ -404,6 +404,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/site/v1/customer/returns/{returnId}/customs-invoice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download the PDF return customs invoice for an international customer return
+         * @description Streams the PDF commercial/return customs invoice for an international return shipment belonging to the signed-in customer.
+         */
+        get: operations["siteCustomerApi_downloadReturnCustomsInvoice"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/site/v1/customer/returns/{returnId}/label": {
         parameters: {
             query?: never;
@@ -1007,6 +1027,8 @@ export interface components {
         SiteCustomerReturnShippingRes: {
             carrier?: string | null;
             carrierName?: string | null;
+            /** @description True when an international return shipment also includes a downloadable customs invoice PDF. */
+            customsInvoiceAvailable: boolean;
             /** @description QR or PDF when a carrier return shipment was booked. */
             format?: string | null;
             labelAvailable: boolean;
@@ -3033,6 +3055,82 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SiteCustomerReturnRes"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    siteCustomerApi_downloadReturnCustomsInvoice: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Customer-Session"?: string | null;
+            };
+            path: {
+                returnId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
                 };
             };
             /** @description Bad request */

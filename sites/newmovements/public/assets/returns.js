@@ -359,10 +359,30 @@ function initReturnsPortal(portal) {
           `;
         } else if (ship?.status === "READY" && ship.labelAvailable) {
           const labelHref = apiUrl(`/reai/customer/returns/${encodeURIComponent(ret.id)}/label`);
+          const customsHref = ship.customsInvoiceAvailable
+            ? apiUrl(`/reai/customer/returns/${encodeURIComponent(ret.id)}/customs-invoice`)
+            : "";
+          const heading = ship.carrierName
+            ? t(`${ship.carrierName} return label`, `${ship.carrierName} returetikett`)
+            : t("Prepaid return label", "Forhåndsbetalt returetikett");
+          const instructions = ship.customsInvoiceAvailable
+            ? t(
+              "Print and attach the return label to the outside of your parcel. A copy of both the return label and customs invoice has also been sent to your email.",
+              "Skriv ut og fest returetiketten på utsiden av pakken. En kopi av både returetiketten og tollfakturaen er også sendt på e-post.",
+            )
+            : t(
+              "Print and attach the return label to the outside of your parcel. A copy has also been sent to your email.",
+              "Skriv ut og fest returetiketten på utsiden av pakken. En kopi er også sendt på e-post.",
+            );
           shippingHtml = `
             <div class="returns-shipping-note">
-              <p>${escapeHtml(t("Your prepaid return label is ready. A copy has also been sent to your email.", "Den forhåndsbetalte returetiketten din er klar. En kopi er også sendt på e-post."))}</p>
-              <a class="returns-secondary-btn" href="${escapeHtml(labelHref)}">${escapeHtml(t("Download return label (PDF)", "Last ned returetikett (PDF)"))}</a>
+              <strong class="returns-shipping-title">${escapeHtml(heading)}</strong>
+              <p>${escapeHtml(instructions)}</p>
+              <div class="returns-label-actions">
+                <a class="returns-secondary-btn" href="${escapeHtml(labelHref)}">${escapeHtml(t("Download return label (PDF)", "Last ned returetikett (PDF)"))}</a>
+                ${customsHref ? `<a class="returns-ghost-btn" href="${escapeHtml(customsHref)}">${escapeHtml(t("Download customs invoice (PDF)", "Last ned tollfaktura (PDF)"))}</a>` : ""}
+                ${ship.trackingUrl ? `<a class="returns-link-btn" href="${escapeHtml(ship.trackingUrl)}" target="_blank" rel="noopener">${escapeHtml(t("Track return ↗", "Spor retur ↗"))}</a>` : ""}
+              </div>
             </div>
           `;
         } else {

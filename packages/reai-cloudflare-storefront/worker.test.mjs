@@ -849,7 +849,7 @@ test('customer portal proxies login, email links, orders, returns, labels and lo
     if (url.pathname.includes('/customer/returns/') && init.method === 'DELETE') {
       return Response.json({ id: '018f3c2e-8b1a-4d3e-9c4f-5a6b7c8d9e0f', status: 'CANCELLED', canCancel: false }, { status: 200 });
     }
-    if (url.pathname.endsWith('/label')) {
+    if (url.pathname.endsWith('/label') || url.pathname.endsWith('/customs-invoice')) {
       return new Response('%PDF-1.4', { status: 200, headers: { 'Content-Type': 'application/pdf' } });
     }
     if (url.pathname.endsWith('/customer/session') && init.method === 'DELETE') {
@@ -972,12 +972,18 @@ test('customer portal proxies login, email links, orders, returns, labels and lo
   assert.equal(cancelRes.status, 200);
   assert.equal((await cancelRes.json()).status, 'CANCELLED');
 
-  // Downloads return label PDF
+  // Downloads return label PDF and international customs invoice PDF
   const label = await worker.fetch(new Request('https://shop.example/nb/reai/customer/returns/018f3c2e-8b1a-4d3e-9c4f-5a6b7c8d9e0f/label', {
     headers: { Cookie: 'reai-customer-session=raw-session-token-123' },
   }), env);
   assert.equal(label.status, 200);
   assert.equal(label.headers.get('Content-Type'), 'application/pdf');
+
+  const customs = await worker.fetch(new Request('https://shop.example/nb/reai/customer/returns/018f3c2e-8b1a-4d3e-9c4f-5a6b7c8d9e0f/customs-invoice', {
+    headers: { Cookie: 'reai-customer-session=raw-session-token-123' },
+  }), env);
+  assert.equal(customs.status, 200);
+  assert.equal(customs.headers.get('Content-Type'), 'application/pdf');
 
   // Logs out and clears cookie
   const logout = await worker.fetch(new Request('https://shop.example/nb/reai/customer/logout', {

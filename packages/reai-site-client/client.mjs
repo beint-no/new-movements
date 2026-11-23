@@ -57,6 +57,8 @@ const CUSTOMER_RETURNS_PATH = "/site/v1/customer/returns";
 const CUSTOMER_RETURN_PATH = "/site/v1/customer/returns/{returnId}";
 /** @type {keyof SiteApiPaths} */
 const CUSTOMER_RETURN_LABEL_PATH = "/site/v1/customer/returns/{returnId}/label";
+/** @type {keyof SiteApiPaths} */
+const CUSTOMER_RETURN_CUSTOMS_INVOICE_PATH = "/site/v1/customer/returns/{returnId}/customs-invoice";
 
 /**
  * @param {string} template
@@ -381,6 +383,20 @@ export class ReaiSiteClient {
     return new SiteApiResponse(await this.#request(
       expandPath(CUSTOMER_RETURN_LABEL_PATH, { returnId }),
       locale ? { locale } : undefined,
+      {
+        headers: {
+          Accept: "application/pdf",
+          "X-Customer-Session": sessionToken,
+        },
+      },
+    ));
+  }
+
+  /** @param {string} sessionToken @param {string} returnId */
+  async customerReturnCustomsInvoice(sessionToken, returnId) {
+    return new SiteApiResponse(await this.#request(
+      expandPath(CUSTOMER_RETURN_CUSTOMS_INVOICE_PATH, { returnId }),
+      undefined,
       {
         headers: {
           Accept: "application/pdf",
