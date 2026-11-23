@@ -869,6 +869,24 @@ export function createReaiStorefrontWorker({
         });
       }
 
+      const customsMatch = path.match(/^\/reai\/customer\/returns\/([0-9a-f-]{36})\/customs-invoice$/i);
+      if (customsMatch && request.method === "GET" && VARIANT_ID.test(customsMatch[1])) {
+        const upstream = (await client.customerReturnCustomsInvoice(sessionToken, customsMatch[1])).response;
+        if (!upstream.ok) {
+          return new Response(upstream.body, {
+            status: upstream.status,
+            headers: privateHeaders({ "Content-Type": upstream.headers.get("Content-Type") || "application/json; charset=utf-8" }),
+          });
+        }
+        return new Response(upstream.body, {
+          status: 200,
+          headers: privateHeaders({
+            "Content-Type": upstream.headers.get("Content-Type") || "application/pdf",
+            "Content-Disposition": upstream.headers.get("Content-Disposition") || 'attachment; filename="return-customs-invoice.pdf"',
+          }),
+        });
+      }
+
       return privateJson({ error: messages.routeNotFound }, 404);
     } catch (error) {
       console.error("Customer Site API request failed", error);

@@ -942,7 +942,9 @@ dialog.store-drawer::backdrop{background:#0005}
 .returns-qr-instructions{margin:0;max-width:480px;color:#444;font-size:.86rem;line-height:1.55}
 .returns-qr-actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:14px;margin-top:4px}
 .returns-shipping-note{margin-top:14px;padding-top:14px;border-top:1px solid var(--line);font-size:.9rem;color:#333}
+.returns-shipping-title{display:block;margin-bottom:6px;font-size:.96rem;font-weight:500;color:var(--ink)}
 .returns-shipping-note p{margin:0 0 12px}
+.returns-label-actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
 .returns-order-footer{margin-top:20px}
 .returns-blocked-note{margin:0;color:#666;font-size:.88rem}
 .returns-composer{margin-top:20px;padding-top:22px;border-top:1px solid var(--ink);display:grid;gap:18px}
