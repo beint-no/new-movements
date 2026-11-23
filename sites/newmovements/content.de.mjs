@@ -28,7 +28,7 @@ export const CONTENT_PAGES = {
     "title": "Rücksendungen & Umtausch von Schuhen",
     "eyebrow": "Rücksendungen",
     "heading": "Stelle sicher, dass die Passform stimmt.",
-    "copy": "<p>Kostenlose Rücksendungen innerhalb von 30 Tagen und kostenloser Umtausch. Probiere Schuhe in Innenräumen an und bewahre deine Schuhe in neuwertigem Zustand mit der Originalverpackung auf, bis du dir bei der Passform sicher bist. Kontaktiere unser Team mit deiner Bestellreferenz, um ein vorfrankiertes Rücksendeetikett und Rücksendeanweisungen zu erhalten.</p><p><a href=\"/policies/refund-policy\">Lies die Rückerstattungsrichtlinie →</a></p>"
+    "copy": "<p>Kostenlose Rücksendungen innerhalb von 30 Tagen und kostenloser Umtausch. Probiere Schuhe in Innenräumen an und bewahre deine Schuhe in neuwertigem Zustand mit der Originalverpackung auf, bis du dir bei der Passform sicher bist. Melde dich unten mit deiner E-Mail-Adresse und Bestellnummer an, um eine Rücksendung oder einen Umtausch zu registrieren — Bestellungen in Norwegen erhalten sofort einen PostNord-QR-Code ohne Drucker.</p><p><a href=\"/policies/refund-policy\">Lies die Rückerstattungsrichtlinie →</a></p>"
   },
   "/pages/terms-and-conditions": {
     "title": "Allgemeine Geschäftsbedingungen",
@@ -64,7 +64,7 @@ export const CONTENT_PAGES = {
     "title": "Rückerstattungsrichtlinie",
     "eyebrow": "Richtlinie",
     "heading": "Rückerstattungsrichtlinie.",
-    "copy": "<p>Du hast ab Lieferung 30 Tage Zeit, die Rücksendung eines Online-Kaufs anzufordern. Die Rücksendung ist kostenlos. Produkte müssen in neuwertigem Zustand sein, mit ihrer Originalverpackung und den Etiketten.</p><p>Verwende das vorfrankierte Rücksendeetikett und das Rücksendeformular, die deinem Paket beiliegen. Verpacke den Schuhkarton in einer schützenden Umverpackung; bringe das Versandetikett nicht direkt auf dem Schuhkarton an. Wenn das Etikett oder das Formular fehlt, kontaktiere <a href=\"mailto:store@newmovements.com\">store@newmovements.com</a> mit deiner Bestellreferenz.</p><p>Sobald die Rücksendung eingegangen und genehmigt wurde, rechne mit bis zu 14 Werktagen für die Rückerstattung. Unter <a href=\"/pages/returns\">Rücksendungen und Umtausch</a> findest du die vollständigen Anweisungen.</p>"
+    "copy": "<p>Du hast ab Lieferung 30 Tage Zeit, die Rücksendung oder den Umtausch eines Online-Kaufs anzufordern. Die Rücksendung ist kostenlos. Produkte müssen in neuwertigem Zustand sein, mit ihrer Originalverpackung und den Etiketten.</p><p>Registriere deine Rücksendung oder deinen Umtausch online auf unserer <a href=\"/pages/returns\">Rücksendeseite</a> mit deiner E-Mail-Adresse und Bestellnummer. Bestellungen in Norwegen erhalten sofort einen PostNord-QR-Code ohne Drucker; für internationale Bestellungen senden wir dir Rücksendeanweisungen per E-Mail. Verpacke den Schuhkarton in einer schützenden Umverpackung und bringe das Versandetikett niemals direkt auf dem Schuhkarton an.</p><p>Sobald die Rücksendung eingegangen und genehmigt wurde, rechne mit bis zu 14 Werktagen für die Rückerstattung. Wenn du Hilfe brauchst, kontaktiere <a href=\"mailto:store@newmovements.com\">store@newmovements.com</a> mit deiner Bestellnummer.</p>"
   },
   "/pages/gift-cards": {
     "title": "Hilfe zu Geschenkkarten",
