@@ -132,15 +132,18 @@ function initReturnsPortal(portal) {
     return true;
   }
 
-  /** @param {string} handle */
+  /**
+   * @param {string} handle
+   * @returns {Promise<{ title: string, variants: Array<{ id: string, label: string, price: number | null, available: boolean | undefined }> }>}
+   */
   async function loadExchangeOptions(handle) {
     if (productCache.has(handle)) return productCache.get(handle);
     const promise = (async () => {
       const productRes = await fetch(apiUrl(`/reai/products/${encodeURIComponent(handle)}`), { credentials: "same-origin" });
-      if (!productRes.ok) return [];
+      if (!productRes.ok) return { title: "", variants: [] };
       const product = await productRes.json();
       const variants = product.variants || [];
-      if (!variants.length) return [];
+      if (!variants.length) return { title: product.title || "", variants: [] };
       const params = new URLSearchParams();
       for (const variant of variants) params.append("variantId", variant.id);
       const availRes = await fetch(apiUrl(`/reai/availability?${params.toString()}`), { credentials: "same-origin" });
@@ -151,17 +154,48 @@ function initReturnsPortal(portal) {
           availability[item.variantId] = item.status === "AVAILABLE";
         }
       }
-      return variants.map((variant) => {
-        const label = variant.options?.map((option) => option.value).filter(Boolean).join(" / ") || variant.sku || t("Default", "Standard");
-        return {
-          id: variant.id,
-          label,
-          available: availability[variant.id],
-        };
-      });
-    })().catch(() => []);
+      return {
+        title: product.title || "",
+        variants: variants.map((variant) => {
+          const label = variant.options?.map((option) => option.value).filter(Boolean).join(" / ") || variant.sku || t("Default", "Standard");
+          const numericPrice = Number(variant.price);
+          return {
+            id: variant.id,
+            label,
+            price: Number.isFinite(numericPrice) ? numericPrice : null,
+            available: availability[variant.id],
+          };
+        }),
+      };
+    })().catch(() => ({ title: "", variants: [] }));
     productCache.set(handle, promise);
     return promise;
+  }
+
+  /**
+   * @param {string} query
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{ currency: string, products: Array<{ title: string, handle: string, image: string, price: number | null }> }>}
+   */
+  async function searchExchangeProducts(query, signal) {
+    const res = await fetch(apiUrl(`/reai/search?q=${encodeURIComponent(query)}`), {
+      credentials: "same-origin",
+      signal,
+    });
+    if (!res.ok) return { currency: "NOK", products: [] };
+    const data = await res.json();
+    const products = (data.products || []).map((item) => {
+      const match = String(item.url || "").match(/\/products\/([^/?#]+)/);
+      const handle = match ? decodeURIComponent(match[1]) : "";
+      const price = Number(item.price);
+      return {
+        title: item.title || "",
+        handle,
+        image: item.image || "",
+        price: Number.isFinite(price) ? price : null,
+      };
+    }).filter((item) => item.handle);
+    return { currency: data.currency || "NOK", products };
   }
 
   function reasonOptionsHtml() {
@@ -257,9 +291,34 @@ function initReturnsPortal(portal) {
       const qtySelect = line.returnableQuantity > 1
         ? `<label class="returns-qty-field"><span>${escapeHtml(t("Qty", "Antall"))}</span><select data-item-qty="${line.lineNumber}">${Array.from({ length: line.returnableQuantity }, (_, idx) => `<option value="${idx + 1}">${idx + 1}</option>`).join("")}</select></label>`
         : `<input type="hidden" data-item-qty="${line.lineNumber}" value="1">`;
-      const exchangeRow = line.productHandle
-        ? `<label class="returns-exchange-field" data-exchange-field="${line.lineNumber}" hidden><span>${escapeHtml(t("New size / variant", "Ny størrelse / variant"))}</span><select data-exchange-select="${line.lineNumber}" data-product-handle="${escapeHtml(line.productHandle)}" data-current-variant="${escapeHtml(line.variantId || "")}"><option value="">${escapeHtml(t("Loading sizes…", "Laster størrelser …"))}</option></select></label>`
-        : "";
+      const hasOriginalProduct = Boolean(line.productHandle);
+      const originalHandle = line.productHandle || "";
+      const originalDisplayTitle = line.title.replace(/\s+[—–-]\s+[^—–-]+$/, "").trim() || line.title;
+      const exchangeRow = `
+        <div class="returns-exchange-panel" data-exchange-field="${line.lineNumber}" hidden>
+          <div class="returns-exchange-product-bar">
+            <div class="returns-exchange-product-current">
+              <span class="returns-exchange-kicker">${escapeHtml(t("Exchange for", "Bytt til"))}</span>
+              <strong data-exchange-product-name="${line.lineNumber}">${escapeHtml(hasOriginalProduct ? originalDisplayTitle : t("Choose a product", "Velg et produkt"))}</strong>
+            </div>
+            <div class="returns-exchange-product-actions">
+              <button type="button" class="returns-exchange-action" data-exchange-change-product="${line.lineNumber}">${escapeHtml(hasOriginalProduct ? t("Choose different product", "Velg annet produkt") : t("Search products", "Søk produkter"))}</button>
+              ${hasOriginalProduct ? `<button type="button" class="returns-exchange-action" data-exchange-reset-product="${line.lineNumber}" hidden>${escapeHtml(t("Same product", "Samme produkt"))}</button>` : ""}
+            </div>
+          </div>
+          <div class="returns-exchange-search" data-exchange-search="${line.lineNumber}"${hasOriginalProduct ? " hidden" : ""}>
+            <input type="search" data-exchange-search-input="${line.lineNumber}" autocomplete="off" maxlength="120" aria-label="${escapeHtml(t("Search replacement product", "Søk etter erstatningsprodukt"))}" placeholder="${escapeHtml(t("Search model or color (e.g. Cloud Boot, Allrounder, Zen)", "Søk etter modell eller farge (f.eks. Cloud Boot, Allrounder, Zen)"))}">
+            <div class="returns-exchange-results" data-exchange-results="${line.lineNumber}" role="listbox" hidden></div>
+          </div>
+          <label class="returns-exchange-field" data-exchange-size-wrap="${line.lineNumber}"${hasOriginalProduct ? "" : " hidden"}>
+            <span>${escapeHtml(t("New size / variant", "Ny størrelse / variant"))}</span>
+            <select data-exchange-select="${line.lineNumber}" data-product-handle="${escapeHtml(originalHandle)}" data-original-handle="${escapeHtml(originalHandle)}" data-original-title="${escapeHtml(originalDisplayTitle)}" data-original-price="${escapeHtml(line.unitPrice)}" data-currency="${escapeHtml(order.currency)}" data-current-variant="${escapeHtml(line.variantId || "")}">
+              <option value="">${escapeHtml(t("Loading sizes…", "Laster størrelser …"))}</option>
+            </select>
+          </label>
+          <p class="returns-exchange-price-note" data-exchange-price-note="${line.lineNumber}" hidden></p>
+        </div>
+      `;
       return `
         <div class="returns-form-item" data-form-line="${line.lineNumber}">
           <label class="returns-check-row">
@@ -391,6 +450,79 @@ function initReturnsPortal(portal) {
 
       const currentType = () => form.querySelector(`input[name="returnType-${CSS.escape(order.id)}"]:checked`)?.value || "RETURN";
 
+      const updatePriceDifference = (select) => {
+        const lineNumber = select.getAttribute("data-exchange-select");
+        const noteEl = form.querySelector(`[data-exchange-price-note="${lineNumber}"]`);
+        if (!noteEl) return;
+        const selectedOption = select.selectedOptions?.[0];
+        const newPrice = Number(selectedOption?.getAttribute("data-price"));
+        const originalPrice = Number(select.getAttribute("data-original-price"));
+        const currency = select.getAttribute("data-currency") || order.currency || "NOK";
+        if (!select.value || !Number.isFinite(newPrice) || !Number.isFinite(originalPrice) || Math.abs(newPrice - originalPrice) < 0.01) {
+          noteEl.textContent = "";
+          noteEl.hidden = true;
+          return;
+        }
+        const diff = newPrice - originalPrice;
+        const absFormatted = formatMoney(Math.abs(diff), currency);
+        const newFormatted = formatMoney(newPrice, currency);
+        noteEl.textContent = diff > 0
+          ? t(
+            `Selected item costs ${newFormatted} (+${absFormatted} vs. original item). Our team will follow up on the difference.`,
+            `Valgt vare koster ${newFormatted} (+${absFormatted} sammenlignet med opprinnelig vare). Vi følger opp mellomlegget med deg.`,
+          )
+          : t(
+            `Selected item costs ${newFormatted} (−${absFormatted} vs. original item). We will refund the difference once received.`,
+            `Valgt vare koster ${newFormatted} (−${absFormatted} sammenlignet med opprinnelig vare). Vi refunderer mellomlegget når returen er mottatt.`,
+          );
+        noteEl.hidden = false;
+      };
+
+      /** @param {HTMLSelectElement} select */
+      const populateExchangeSelect = async (select) => {
+        const lineNumber = select.getAttribute("data-exchange-select");
+        const handle = select.getAttribute("data-product-handle") || "";
+        const sizeWrap = form.querySelector(`[data-exchange-size-wrap="${lineNumber}"]`);
+        if (!handle) {
+          if (sizeWrap) /** @type {HTMLElement} */ (sizeWrap).hidden = true;
+          select.innerHTML = `<option value="">${escapeHtml(t("Choose a product above first", "Velg et produkt ovenfor først"))}</option>`;
+          updatePriceDifference(select);
+          return;
+        }
+        if (sizeWrap) /** @type {HTMLElement} */ (sizeWrap).hidden = false;
+        if (select.dataset.loadedHandle === handle) return;
+        select.dataset.loadedHandle = handle;
+        select.innerHTML = `<option value="">${escapeHtml(t("Loading sizes…", "Laster størrelser …"))}</option>`;
+        updatePriceDifference(select);
+        const currentVariantId = select.getAttribute("data-current-variant");
+        const productData = await loadExchangeOptions(handle);
+        if (select.getAttribute("data-product-handle") !== handle) return;
+        const nameEl = form.querySelector(`[data-exchange-product-name="${lineNumber}"]`);
+        if (nameEl && productData.title) nameEl.textContent = productData.title;
+        const variants = productData.variants || [];
+        const availableVariants = variants.filter((v) => v.available !== false);
+        const autoSelectId = variants.length === 1 && availableVariants.length === 1 && variants[0].id !== currentVariantId
+          ? variants[0].id
+          : "";
+        const options = [
+          `<option value="">${escapeHtml(t("Choose a new size (or describe in note)", "Velg ny størrelse (eller skriv i kommentarfeltet)"))}</option>`,
+          ...variants.map((variant) => {
+            const isCurrent = variant.id === currentVariantId;
+            const soldOut = variant.available === false;
+            const suffix = isCurrent
+              ? t(" (current size)", " (nåværende størrelse)")
+              : soldOut
+                ? t(" — Sold out", " – utsolgt")
+                : "";
+            const selected = variant.id === autoSelectId ? " selected" : "";
+            const priceAttr = variant.price != null ? ` data-price="${escapeHtml(variant.price)}"` : "";
+            return `<option value="${escapeHtml(variant.id)}"${priceAttr}${soldOut ? " disabled" : ""}${selected}>${escapeHtml(variant.label + suffix)}</option>`;
+          }),
+        ];
+        select.innerHTML = options.join("");
+        updatePriceDifference(select);
+      };
+
       const syncExchangeVisibility = async () => {
         const isExchange = currentType() === "EXCHANGE";
         if (submitBtn) {
@@ -398,35 +530,122 @@ function initReturnsPortal(portal) {
             ? t("Submit exchange", "Send bytteforespørsel")
             : t("Submit return", "Send returforespørsel");
         }
-        const selects = form.querySelectorAll("[data-exchange-select]");
+        const selects = /** @type {NodeListOf<HTMLSelectElement>} */ (form.querySelectorAll("[data-exchange-select]"));
         for (const select of selects) {
           const lineNumber = select.getAttribute("data-exchange-select");
-          const field = form.querySelector(`[data-exchange-field="${lineNumber}"]`);
-          const checked = form.querySelector(`[data-item-check="${lineNumber}"]`)?.checked;
+          const field = /** @type {HTMLElement | null} */ (form.querySelector(`[data-exchange-field="${lineNumber}"]`));
+          const checked = /** @type {HTMLInputElement | null} */ (form.querySelector(`[data-item-check="${lineNumber}"]`))?.checked;
           if (field) field.hidden = !isExchange || !checked;
-          if (isExchange && checked && !select.dataset.loaded) {
-            select.dataset.loaded = "loading";
-            const handle = select.getAttribute("data-product-handle");
-            const currentVariantId = select.getAttribute("data-current-variant");
-            const variants = handle ? await loadExchangeOptions(handle) : [];
-            select.dataset.loaded = "done";
-            const options = [
-              `<option value="">${escapeHtml(t("Choose a new size (or describe in note)", "Velg ny størrelse (eller skriv i kommentarfeltet)"))}</option>`,
-              ...variants.map((variant) => {
-                const isCurrent = variant.id === currentVariantId;
-                const soldOut = variant.available === false;
-                const suffix = isCurrent
-                  ? t(" (current size)", " (nåværende størrelse)")
-                  : soldOut
-                    ? t(" — Sold out", " – utsolgt")
-                    : "";
-                return `<option value="${escapeHtml(variant.id)}"${soldOut ? " disabled" : ""}>${escapeHtml(variant.label + suffix)}</option>`;
-              }),
-            ];
-            select.innerHTML = options.join("");
+          if (isExchange && checked) {
+            populateExchangeSelect(select);
           }
         }
       };
+
+      /** @type {Map<string, { timer: ReturnType<typeof setTimeout> | null, controller: AbortController | null }>} */
+      const searchState = new Map();
+
+      const setExchangeProduct = (lineNumber, handle, title) => {
+        const select = /** @type {HTMLSelectElement | null} */ (form.querySelector(`[data-exchange-select="${lineNumber}"]`));
+        const nameEl = form.querySelector(`[data-exchange-product-name="${lineNumber}"]`);
+        const searchBox = /** @type {HTMLElement | null} */ (form.querySelector(`[data-exchange-search="${lineNumber}"]`));
+        const searchInput = /** @type {HTMLInputElement | null} */ (form.querySelector(`[data-exchange-search-input="${lineNumber}"]`));
+        const resultsEl = /** @type {HTMLElement | null} */ (form.querySelector(`[data-exchange-results="${lineNumber}"]`));
+        const resetBtn = /** @type {HTMLElement | null} */ (form.querySelector(`[data-exchange-reset-product="${lineNumber}"]`));
+        if (!select) return;
+        const originalHandle = select.getAttribute("data-original-handle") || "";
+        select.setAttribute("data-product-handle", handle);
+        delete select.dataset.loadedHandle;
+        if (nameEl) nameEl.textContent = title || select.getAttribute("data-original-title") || "";
+        if (resetBtn) resetBtn.hidden = !originalHandle || handle === originalHandle;
+        if (searchBox) searchBox.hidden = true;
+        if (searchInput) searchInput.value = "";
+        if (resultsEl) {
+          resultsEl.innerHTML = "";
+          resultsEl.hidden = true;
+        }
+        idempotencyKey = crypto.randomUUID();
+        populateExchangeSelect(select);
+      };
+
+      form.addEventListener("click", (event) => {
+        const target = /** @type {HTMLElement | null} */ (event.target);
+        const changeBtn = target?.closest("[data-exchange-change-product]");
+        if (changeBtn) {
+          const lineNumber = changeBtn.getAttribute("data-exchange-change-product");
+          const searchBox = /** @type {HTMLElement | null} */ (form.querySelector(`[data-exchange-search="${lineNumber}"]`));
+          const searchInput = /** @type {HTMLInputElement | null} */ (form.querySelector(`[data-exchange-search-input="${lineNumber}"]`));
+          if (searchBox) {
+            searchBox.hidden = !searchBox.hidden;
+            if (!searchBox.hidden) searchInput?.focus();
+          }
+          return;
+        }
+        const resetBtn = target?.closest("[data-exchange-reset-product]");
+        if (resetBtn) {
+          const lineNumber = resetBtn.getAttribute("data-exchange-reset-product");
+          const select = form.querySelector(`[data-exchange-select="${lineNumber}"]`);
+          const originalHandle = select?.getAttribute("data-original-handle") || "";
+          const originalTitle = select?.getAttribute("data-original-title") || "";
+          if (lineNumber && originalHandle) setExchangeProduct(lineNumber, originalHandle, originalTitle);
+          return;
+        }
+        const resultBtn = target?.closest("[data-exchange-pick-handle]");
+        if (resultBtn) {
+          const lineNumber = resultBtn.getAttribute("data-exchange-pick-line");
+          const handle = resultBtn.getAttribute("data-exchange-pick-handle") || "";
+          const title = resultBtn.getAttribute("data-exchange-pick-title") || "";
+          if (lineNumber && handle) setExchangeProduct(lineNumber, handle, title);
+        }
+      });
+
+      form.addEventListener("input", (event) => {
+        const target = /** @type {HTMLElement | null} */ (event.target);
+        if (!target?.matches("[data-exchange-search-input]")) return;
+        const input = /** @type {HTMLInputElement} */ (target);
+        const lineNumber = input.getAttribute("data-exchange-search-input") || "";
+        const resultsEl = /** @type {HTMLElement | null} */ (form.querySelector(`[data-exchange-results="${lineNumber}"]`));
+        if (!resultsEl) return;
+        const state = searchState.get(lineNumber) || { timer: null, controller: null };
+        if (state.timer) clearTimeout(state.timer);
+        if (state.controller) state.controller.abort();
+        const query = input.value.trim();
+        if (query.length < 2) {
+          resultsEl.innerHTML = "";
+          resultsEl.hidden = true;
+          searchState.set(lineNumber, { timer: null, controller: null });
+          return;
+        }
+        const timer = setTimeout(async () => {
+          const controller = new AbortController();
+          searchState.set(lineNumber, { timer: null, controller });
+          try {
+            const { currency, products } = await searchExchangeProducts(query, controller.signal);
+            if (controller.signal.aborted) return;
+            if (!products.length) {
+              resultsEl.innerHTML = `<p class="returns-exchange-empty">${escapeHtml(t("No matching products found.", "Fant ingen produkter som passer."))}</p>`;
+              resultsEl.hidden = false;
+              return;
+            }
+            resultsEl.innerHTML = products.map((product) => `
+              <button type="button" class="returns-exchange-result" role="option" data-exchange-pick-line="${escapeHtml(lineNumber)}" data-exchange-pick-handle="${escapeHtml(product.handle)}" data-exchange-pick-title="${escapeHtml(product.title)}">
+                ${product.image ? `<img src="${escapeHtml(product.image)}" alt="" width="48" height="48" loading="lazy">` : `<span class="returns-exchange-thumb-placeholder" aria-hidden="true"></span>`}
+                <span class="returns-exchange-result-copy">
+                  <strong>${escapeHtml(product.title)}</strong>
+                  ${product.price != null ? `<small>${escapeHtml(formatMoney(product.price, currency))}</small>` : ""}
+                </span>
+              </button>
+            `).join("");
+            resultsEl.hidden = false;
+          } catch (error) {
+            if (/** @type {Error} */ (error)?.name !== "AbortError") {
+              resultsEl.innerHTML = `<p class="returns-exchange-empty">${escapeHtml(t("Could not search products right now.", "Kunne ikke søke i produkter akkurat nå."))}</p>`;
+              resultsEl.hidden = false;
+            }
+          }
+        }, 180);
+        searchState.set(lineNumber, { timer, controller: null });
+      });
 
       const footer = openBtn.closest(".returns-order-footer");
       openBtn.addEventListener("click", () => {
@@ -453,6 +672,9 @@ function initReturnsPortal(portal) {
           const lineNumber = target.getAttribute("data-item-check");
           const controls = form.querySelector(`[data-item-controls="${lineNumber}"]`);
           if (controls) controls.hidden = !/** @type {HTMLInputElement} */ (target).checked;
+        }
+        if (target?.matches("[data-exchange-select]")) {
+          updatePriceDifference(/** @type {HTMLSelectElement} */ (target));
         }
         idempotencyKey = crypto.randomUUID();
         syncExchangeVisibility();
