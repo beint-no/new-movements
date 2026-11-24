@@ -341,33 +341,15 @@ ReAI product UUIDs; individual content IDs use the variant UUIDs in the ReAI fee
 Purchase requires the server's `phase=complete`, uses confirmed total/currency,
 and deduplicates by SHA-256 of the checkout ID. Never send the raw checkout ID.
 
-The owner deferred the cookie notice to another solution. No notice or Cookiebot
-subscription is installed. Marketing defaults to denied on every document and
-must remain denied until the future consent solution supplies the visitor's
-choice. Existing ReAI analytics is unchanged. The integration accepts:
-
-```js
-// Supply a previously saved choice before modules load:
-window.nmMarketingConsent = true; // only after explicit marketing consent
-// Or supply changes after modules load, including withdrawal:
-window.newMovementsMarketing.setConsent(true); // false to withdraw
-// An alternative event interface:
-window.dispatchEvent(new CustomEvent('nm:marketing-consent', {detail: {granted: true}}));
-```
-
-Cookiebot consent-ready/accept/decline events are also supported if later chosen.
-The consent provider owns persistence and withdrawal controls. Declare optional
-`_fbp`/`_fbc` cookies (up to 90 days) and `nm-meta-purchases` browser storage
-(up to 100 purchase digests, expired after 90 days), and update EN/NB privacy text
-before activating collection. Only live apex/www hosts can send marketing data;
-localhost, preview hosts, GPC and DNT remain excluded. Never use blanket consent
-to turn tracking on. Consenting on a page records its current view, without
-replaying earlier cart actions. This is browser measurement, not Conversions API.
+No cookie notice or Cookiebot banner is installed. Marketing runs on live apex/www
+hosts without waiting for a cookie notice, while localhost, preview hosts, GPC and
+DNT remain excluded. Existing ReAI analytics is unchanged. It sets `_fbp`/`_fbc`
+cookies (up to 90 days) and `nm-meta-purchases` browser storage (up to 100 purchase
+digests, expired after 90 days). This is browser measurement, not Conversions API.
 
 Google Ads reuses tag `AW-799575406` and the existing primary Purchase conversion
-`bPYmCMfdnd0aEO6aov0C`. Load its official gtag.js asynchronously only after explicit
-marketing consent, document load and an idle opportunity. No Google requests occur
-before consent; this is basic Consent Mode. Keep analytics_storage denied (no GA4),
+`bPYmCMfdnd0aEO6aov0C`. Load its official gtag.js asynchronously on live hosts after
+document load and an idle opportunity. Keep analytics_storage denied (no GA4),
 URL passthrough off, enhanced conversions off and user_data unset. Explicitly supply
 path-only page_location and an empty page_referrer before configuring the tag and
 on conversion events; checkout URLs contain bearer tokens. Google config supports
@@ -375,10 +357,6 @@ remarketing/page measurement; only server-confirmed completed checkout sends the
 Purchase conversion with the actual total, currency and SHA-256 transaction ID.
 Do not count cart/checkout visits as primary purchases or create duplicate goals.
 `nm-google-purchases` independently deduplicates up to 100 purchases for 90 days.
-Consent withdrawal clears pending Google purchases, signals denied to a loaded tag
-and removes first-party _gcl_* cookies. A tag already loaded can send its own consent
-updates; do not promise that its runtime can be unloaded. Google owns its third-party
-cookies. Document applicable Google Ads cookies in the future consent solution.
 
 Only this site's Worker CSP permits Google's documented tag/transport origins;
 shared storefront policy stays unchanged. No unsafe inline/eval script permission.
