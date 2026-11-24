@@ -11,24 +11,15 @@ const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const maxAge = 90 * 24 * 60 * 60;
 const pendingImages = new Set();
 const purchases = new Set();
-let consent = false;
 let pageSent = false;
-let completedCheckout;
-let currentCheckout;
 let checkoutSent = false;
 
-const permitted = () => consent && ['newmovements.com', 'www.newmovements.com'].includes(location.hostname)
+const permitted = () => ['newmovements.com', 'www.newmovements.com'].includes(location.hostname)
   && navigator.globalPrivacyControl !== true && navigator.doNotTrack !== '1';
 
 function googleTag() {
   window.dataLayer = window.dataLayer || [];
   window.dataLayer.push(arguments);
-}
-
-function googleConsent(granted) {
-  googleTag('consent', 'update', {ad_storage: granted ? 'granted' : 'denied',
-    ad_user_data: granted ? 'granted' : 'denied', ad_personalization: granted ? 'granted' : 'denied',
-    analytics_storage: 'denied'});
 }
 
 function googlePage() {
@@ -38,10 +29,9 @@ function googlePage() {
 function startGoogle() {
   googleScheduled = false;
   if (!permitted() || googleScript) return;
-  googleTag('consent', 'default', {ad_storage: 'denied', ad_user_data: 'denied',
-    ad_personalization: 'denied', analytics_storage: 'denied'});
-  googleTag('set', {...googlePage(), ads_data_redaction: true, url_passthrough: false,
-    allow_enhanced_conversions: false});
+  googleTag('consent', 'default', {ad_storage: 'granted', ad_user_data: 'granted',
+    ad_personalization: 'granted', analytics_storage: 'denied'});
+  googleTag('set', {...googlePage(), url_passthrough: false, allow_enhanced_conversions: false});
   googleTag('set', 'user_data', null);
   googleScript = document.createElement('script');
   googleScript.async = true;
@@ -62,7 +52,6 @@ function startGoogle() {
 
 function configureGoogle() {
   if (!permitted() || !googleReady) return;
-  googleConsent(true);
   if (!googleConfigured) {
     googleConfigured = true;
     // Google requires a Date object for its initialization command.
@@ -137,39 +126,15 @@ function send(event, data = {}, eventId = crypto.randomUUID()) {
 }
 
 function currentPage() {
-  if (!permitted()) return;
-  if (!pageSent) {
-    pageSent = true;
-    send('PageView');
-    const product = document.querySelector('[data-add-to-cart]');
-    if (product && uuid.test(product.dataset.id || '')) {
-      const variants = document.querySelector('[data-product-variant]')?.options;
-      const single = variants?.length === 1 && uuid.test(variants[0].value);
-      send('ViewContent', {content_ids: [single ? variants[0].value : product.dataset.id], content_type: single ? 'product' : 'product_group'});
-    }
+  if (!permitted() || pageSent) return;
+  pageSent = true;
+  send('PageView');
+  const product = document.querySelector('[data-add-to-cart]');
+  if (product && uuid.test(product.dataset.id || '')) {
+    const variants = document.querySelector('[data-product-variant]')?.options;
+    const single = variants?.length === 1 && uuid.test(variants[0].value);
+    send('ViewContent', {content_ids: [single ? variants[0].value : product.dataset.id], content_type: single ? 'product' : 'product_group'});
   }
-  if (currentCheckout) trackCheckout(currentCheckout);
-  if (completedCheckout) void trackPurchase(completedCheckout);
-}
-
-export function setMarketingConsent(granted) {
-  const wasGranted = consent;
-  consent = granted === true;
-  if (!permitted()) {
-    googleQueue.clear();
-    if (googleScript) googleConsent(false);
-  } else {
-    configureGoogle();
-    prepareGoogle();
-  }
-  if (wasGranted && !consent) {
-    for (const name of ['_fbp', '_fbc', ...document.cookie.split('; ').map(part => part.split('=')[0]).filter(name => name.startsWith('_gcl_'))]) {
-      for (const domain of ['', '; Domain=newmovements.com', '; Domain=www.newmovements.com']) {
-        document.cookie = `${name}=; Path=/; Max-Age=0; SameSite=Lax; Secure${domain}`;
-      }
-    }
-  }
-  try { currentPage(); } catch { /* Marketing must never interrupt shopping. */ }
 }
 
 export function trackCartAddition(item, quantity) {
@@ -183,7 +148,6 @@ export function trackCartAddition(item, quantity) {
 
 export function trackCheckout(state) {
   try {
-    currentCheckout = state;
     if (state.phase !== 'details') return;
     if (permitted() && !checkoutSent) checkoutSent = send('InitiateCheckout', checkoutData(state));
   } catch { /* Marketing must never interrupt checkout. */ }
@@ -199,7 +163,6 @@ function checkoutData(state) {
 export async function trackPurchase(state) {
   try {
     if (state.phase !== 'complete') return;
-    completedCheckout = state;
     if (!permitted() || typeof state.id !== 'string' || !state.id || !Number.isFinite(Number(state.total))
       || Number(state.total) < 0 || !/^[A-Z]{3}$/.test(state.currency)) return;
     // The checkout ID grants access to customer details; only its SHA-256 digest
@@ -219,9 +182,7 @@ export async function trackPurchase(state) {
   } catch { /* Marketing must never interrupt order confirmation. */ }
 }
 
-window.newMovementsMarketing = Object.freeze({setConsent: setMarketingConsent});
-window.addEventListener('nm:marketing-consent', event => setMarketingConsent(event.detail?.granted));
-for (const event of ['CookiebotOnConsentReady', 'CookiebotOnAccept', 'CookiebotOnDecline']) {
-  window.addEventListener(event, () => setMarketingConsent(window.Cookiebot?.consent?.marketing));
+if (permitted()) {
+  prepareGoogle();
+  try { currentPage(); } catch { /* Marketing must never interrupt shopping. */ }
 }
-setMarketingConsent(window.Cookiebot?.consent?.marketing ?? window.nmMarketingConsent);

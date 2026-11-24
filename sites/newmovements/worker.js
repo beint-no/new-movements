@@ -37,7 +37,7 @@ export default {
     if (!review && /^(?:\/(?:nb|de))?\/robots\.txt$/.test(requestUrl.pathname)) return new Response("User-agent: *\nAllow: /\nSitemap: https://newmovements.com/sitemap.xml\nSitemap: https://newmovements.com/nb/sitemap.xml\n", { headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=3600", ...hsts } });
     const response = await worker.fetch(request, env, context);
     const headers = new Headers(response.headers);
-    // Only this storefront opts into consent-controlled advertising measurement.
+    // Only this storefront opts into advertising measurement.
     const csp = headers.get('Content-Security-Policy');
     const google = 'https://www.googletagmanager.com https://www.googleadservices.com https://www.google.com';
     const transport = `${google} https://www.google.no https://googleads.g.doubleclick.net https://pagead2.googlesyndication.com https://ad.doubleclick.net`;
