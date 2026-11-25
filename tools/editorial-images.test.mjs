@@ -28,7 +28,7 @@ test('every editorial rendition exists, matches its content hash, and remains ti
 test('responsive editorial markup keeps layout, descriptions and priority without changing product images', () => {
   const hero = optimizeEditorialImages('<img class="hero" src="/brand-assets/hero-men.jpg" alt="Shoe outdoors" width="1195" height="1465" fetchpriority="high">');
   assert.match(hero, /src="[^\"]+\.avif"/);
-  assert.match(hero, /srcset="[^\"]+ 640w, [^\"]+ 960w, [^\"]+ 1195w"/);
+  assert.match(hero, /srcset="[^\"]+ 640w, [^\"]+ 960w, [^\"]+ 1200w"/);
   assert.match(hero, /alt="Shoe outdoors" width="1195" height="1465" fetchpriority="high"/);
   assert.equal((hero.match(/width=/g) || []).length, 1);
   const product = '<img src="https://app.reai.no/media/product/image.avif" alt="Product">';
