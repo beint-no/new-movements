@@ -137,20 +137,24 @@ function currentPage() {
   }
 }
 
-export function trackCartAddition(item, quantity) {
+export function trackCartAddition(item, quantity, eventId) {
   try {
     if (!uuid.test(item.variant || '') || !(quantity > 0)) return;
     const data = {content_ids: [item.variant], content_type: 'product', contents: [{id: item.variant, quantity}]};
     if (Number.isFinite(item.price) && item.price >= 0 && /^[A-Z]{3}$/.test(item.currency || '')) Object.assign(data, {value: item.price * quantity, currency: item.currency});
-    send('AddToCart', data);
+    send('AddToCart', data, eventId);
   } catch { /* Marketing must never interrupt cart updates. */ }
 }
 
-export function trackCheckout(state) {
+export async function trackCheckout(state) {
+  if (!permitted() || checkoutSent || state.phase !== 'details' || typeof state.id !== 'string' || !state.id) return;
+  checkoutSent = true;
   try {
-    if (state.phase !== 'details') return;
-    if (permitted() && !checkoutSent) checkoutSent = send('InitiateCheckout', checkoutData(state));
-  } catch { /* Marketing must never interrupt checkout. */ }
+    const id = await checkoutEventId('reai-checkout:', state.id);
+    checkoutSent = send('InitiateCheckout', checkoutData(state), id);
+  } catch {
+    checkoutSent = false;
+  }
 }
 
 function checkoutData(state) {
@@ -160,15 +164,18 @@ function checkoutData(state) {
     num_items: contents.reduce((sum, line) => sum + line.quantity, 0), value: Number(state.total), currency: state.currency};
 }
 
+async function checkoutEventId(prefix, id) {
+  // Checkout IDs grant access to customer details. Only the digest may leave the browser.
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(prefix + id));
+  return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
 export async function trackPurchase(state) {
   try {
     if (state.phase !== 'complete') return;
     if (!permitted() || typeof state.id !== 'string' || !state.id || !Number.isFinite(Number(state.total))
       || Number(state.total) < 0 || !/^[A-Z]{3}$/.test(state.currency)) return;
-    // The checkout ID grants access to customer details; only its SHA-256 digest
-    // may leave this browser. The same ID also deduplicates refreshes and retries.
-    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`nm-purchase:${state.id}`));
-    const id = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+    const id = await checkoutEventId('nm-purchase:', state.id);
     if (!permitted()) return;
     googlePurchase(id, state);
     if (purchases.has(id)) return;

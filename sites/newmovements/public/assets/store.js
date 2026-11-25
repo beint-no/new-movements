@@ -27,8 +27,8 @@ const writeCart = (items) => {
   for(const item of items) {
     const delta=item.quantity-(previous.find(p=>p.variant===item.variant)?.quantity||0);
     if(delta>0) {
-      track('add_to_cart',{productId:item.id,variantId:item.variant,quantity:delta});
-      trackCartAddition(item,delta);
+      const eventId=track('add_to_cart',{productId:item.id,variantId:item.variant,quantity:delta});
+      trackCartAddition(item,delta,eventId);
     }
   }
   for(const item of previous) {
