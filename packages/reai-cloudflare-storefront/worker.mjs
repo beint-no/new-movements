@@ -105,7 +105,7 @@ function stripPathPrefix(pathname, pathPrefix) {
  *   messages?: Partial<typeof defaultMessages>,
  *   locale: string,
  *   market: string,
- *   countryCode?: string, imageOrigins?: string[],
+ *   countryCode?: string, imageOrigins?: string[], marketingUserAgentHosts?: string[],
  *   pathPrefix?: string,
  *   beforeRequest?: ((context: BeforeRequestContext) => Response | null | Promise<Response | null>) | null,
  * }} options
@@ -124,6 +124,7 @@ export function createReaiStorefrontWorker({
   beforeRequest = null,
   countryCode = undefined,
   imageOrigins = [],
+  marketingUserAgentHosts = [],
 }) {
   if (!cacheKey) throw new TypeError("cacheKey is required");
   if (!storefront?.HANDLE || !storefront?.matchRoute) throw new TypeError("storefront helpers are required");
@@ -191,6 +192,14 @@ export function createReaiStorefrontWorker({
     }), env),
   });
 
+  /** @param {Request} request @param {URL} url */
+  function marketingContext(request, url) {
+    if (url.protocol !== "https:" || !marketingUserAgentHosts.includes(url.hostname)
+        || request.headers.get("Sec-GPC") === "1" || request.headers.get("DNT") === "1") return undefined;
+    const clientUserAgent = request.headers.get("User-Agent")?.trim();
+    return clientUserAgent && clientUserAgent.length <= 512 ? { clientUserAgent } : undefined;
+  }
+
   async function checkoutRequest(request, url, env) {
     let body;
     try {
@@ -211,9 +220,11 @@ export function createReaiStorefrontWorker({
       return { error: jsonResponse({ error: messages.invalidLine }, 400, env) };
     }
 
+    const marketing = marketingContext(request, url);
     /** @type {SiteCheckoutSessionRequest} */
     const checkoutBody = {
       lines,
+      ...(marketing ? { marketingContext: marketing } : {}),
       ...(typeof body.analyticsSessionId === "string" && VARIANT_ID.test(body.analyticsSessionId) ? {analyticsSessionId: body.analyticsSessionId} : {}),
       returnUrl: new URL(publicPath(checkoutReturnPath), url.origin).href,
       ...(merchantCheckoutPath ? { merchantCheckoutUrl: new URL(publicPath(merchantCheckoutPath), url.origin).href } : {}),
@@ -558,8 +569,15 @@ export function createReaiStorefrontWorker({
           (event.productId!=null && !VARIANT_ID.test(event.productId)) || (event.variantId!=null && !VARIANT_ID.test(event.variantId)) ||
           (event.campaignRecipient!=null && !VARIANT_ID.test(event.campaignRecipient)) ||
           (event.quantity!=null && (!Number.isInteger(event.quantity) || event.quantity<1 || event.quantity>100)))) return jsonResponse({ error: "Invalid events" }, 400, env);
-      // Strip unknown fields so no personal data or arbitrary metadata reaches analytics.
-      upstreamResult=client.analyticsEvents({origin:url.origin,emailVisitTracking:batch.emailVisitTracking===true,events:batch.events.map(({id,sessionId,kind,path,productId,variantId,quantity,campaignRecipient})=>({id,sessionId,kind,path,productId,variantId,quantity,campaignRecipient}))});
+      const marketing = batch.events.some(event => event.kind === "add_to_cart") ? marketingContext(request, url) : undefined;
+      // Forward allowlisted event fields and derive marketing context from the request headers.
+      upstreamResult = client.analyticsEvents({
+        origin: url.origin,
+        emailVisitTracking: batch.emailVisitTracking === true,
+        events: batch.events.map(({ id, sessionId, kind, path, productId, variantId, quantity, campaignRecipient }) =>
+          ({ id, sessionId, kind, path, productId, variantId, quantity, campaignRecipient })),
+        ...(marketing ? { marketingContext: marketing } : {}),
+      });
       cacheControl="no-store";
     } else if (request.method === "POST" && ["/reai/newsletter/subscribe", "/reai/stock/subscribe"].includes(route)) {
       const origin = request.headers.get("Origin");

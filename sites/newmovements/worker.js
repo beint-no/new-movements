@@ -4,6 +4,8 @@ import { createReaiMarketStorefrontWorker } from "../../packages/reai-cloudflare
 import * as storefront from "./storefront.mjs";
 import { handleStorefrontRequest } from "./routes.mjs";
 
+const liveHosts = ["newmovements.com", "www.newmovements.com"];
+
 const worker = createReaiMarketStorefrontWorker({
   cacheKey: "newmovements-v18",
   storefront,
@@ -15,6 +17,7 @@ const worker = createReaiMarketStorefrontWorker({
   ],
   countryLocales: { NO: "nb-NO" },
   imageOrigins: ["https://cdn.shopify.com"],
+  marketingUserAgentHosts: liveHosts,
   merchantCheckoutPath: "/checkout",
   checkoutReturnPath: "/order/complete",
   beforeRequest: handleStorefrontRequest,
@@ -27,7 +30,7 @@ const worker = createReaiMarketStorefrontWorker({
 export default {
   async fetch(request, env, context) {
     const requestUrl = new URL(request.url);
-    const review = !["newmovements.com", "www.newmovements.com"].includes(requestUrl.hostname);
+    const review = !liveHosts.includes(requestUrl.hostname);
     const hsts = requestUrl.protocol === "https:" ? { "Strict-Transport-Security": "max-age=31536000" } : {};
     if (['GET', 'HEAD'].includes(request.method) && /^\/de(?:\/|$)/.test(requestUrl.pathname)) {
       requestUrl.pathname = requestUrl.pathname.slice(3) || '/';

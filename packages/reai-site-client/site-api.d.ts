@@ -219,6 +219,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/site/v1/commerce/checkout-sessions/{id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get checkout status
+         * @description Works for hosted and merchant checkouts and contains no personal data. ReAI sends no webhooks, so poll this from the trusted backend, also when the shopper never returns to returnUrl. phase is details, payment, processing, complete, expired or failed. When complete, orderNumber is the ReAI order and payment is paid (charged, or covered by a gift card) or invoice (business purchase the store invoices later).
+         */
+        get: operations["siteCheckoutDetailsApi_status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/site/v1/commerce/collections": {
         parameters: {
             query?: never;
@@ -632,6 +652,7 @@ export interface components {
         SiteAnalyticsBatchDto: {
             emailVisitTracking?: boolean;
             events: components["schemas"]["SiteAnalyticsEventDto"][];
+            marketingContext?: components["schemas"]["SiteMarketingContextDto"] | null;
             origin?: string | null;
         };
         SiteAnalyticsEventDto: {
@@ -837,6 +858,8 @@ export interface components {
             /** @description ISO 3166-1 alpha-2 delivery country within the selected market. Defaults to its first country when omitted. */
             countryCode?: string | null;
             lines: components["schemas"]["SiteCheckoutLineReq"][];
+            /** @description Optional server-forwarded browser attribution metadata for conversions integrations (such as Meta Conversions API). */
+            marketingContext?: components["schemas"]["SiteMarketingContextDto"] | null;
             /** @description Optional HTTPS details-page URL on the registered site domain. Opts into merchant checkout; ReAI appends the opaque checkout parameter. Omit for complete hosted checkout. */
             merchantCheckoutUrl?: string | null;
             returnUrl?: string | null;
@@ -853,6 +876,12 @@ export interface components {
             /** Format: uuid */
             marketId: string;
             total: components["schemas"]["SiteCheckoutTotalRes"];
+        };
+        SiteCheckoutStatusDto: {
+            id: string;
+            orderNumber?: string | null;
+            payment?: string | null;
+            phase: string;
         };
         SiteCheckoutTotalRes: {
             gross: number;
@@ -1218,6 +1247,16 @@ export interface components {
             price: number;
             sku: string;
             vatRate: number;
+        };
+        SiteMarketingContextDto: {
+            /** @description Optional shopper IP address observed by the storefront Worker. */
+            clientIpAddress?: string | null;
+            /** @description Optional shopper User-Agent header observed by the storefront Worker. */
+            clientUserAgent?: string | null;
+            /** @description Optional Meta _fbc click cookie value forwarded server-side for conversion attribution. */
+            fbc?: string | null;
+            /** @description Optional Meta _fbp browser cookie value forwarded server-side for conversion attribution. */
+            fbp?: string | null;
         };
         SiteNewsletterSubscriptionReq: {
             /** @description Must be true. The shopper explicitly requested newsletter email from this business. */
@@ -2205,6 +2244,80 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SiteCheckoutDetailsDto"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    siteCheckoutDetailsApi_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteCheckoutStatusDto"];
                 };
             };
             /** @description Bad request */
