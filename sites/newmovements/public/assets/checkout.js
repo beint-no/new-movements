@@ -21,6 +21,9 @@ let options = [], discovery = 0, choosingOption = null;
 const pickupMethod = () => state.shippingMethods.find(m => m.id === state.shippingMethodId && m.pickupDetails);
 let fulfillment = pickupMethod()?.id || 'delivery';
 const storePickup = () => fulfillment !== 'delivery';
+// Gift-card-only orders need no delivery: ReAI reports shippingRequired=false, so the address,
+// delivery choice and carrier discovery are skipped and payment only needs contact details.
+const noShipping = () => state.shippingRequired === false;
 const fulfillmentSaved = () => storePickup() ? pickupMethod()?.id === fulfillment : !!state.shippingMethodId && !pickupMethod();
 const deliveryAddress = c => JSON.stringify(['name','countryCode','addressPart1','addressPart2','postalCode','city','province'].map(n=>c[n]));
 const apiPath = sitePath(`/reai/checkout/${state.id}`);
@@ -244,14 +247,15 @@ function renderFulfillment() {
     });
   });
   if(focused)target.querySelector(`input[value="${CSS.escape(focused)}"]`)?.focus({preventScroll:true});
-  document.querySelector('.co-fulfillment').hidden=!pickups.length;
-  const address=document.querySelector('[data-delivery-address]');address.hidden=storePickup();
+  const skipAddress=storePickup()||noShipping();
+  document.querySelector('.co-fulfillment').hidden=!pickups.length||noShipping();
+  const address=document.querySelector('[data-delivery-address]');address.hidden=skipAddress;
   address.querySelectorAll('input').forEach(input=>{
-    input.required=!storePickup() && ['addressPart1','postalCode','city'].includes(input.name);
-    if(storePickup())clearFieldError(input);
+    input.required=!skipAddress && ['addressPart1','postalCode','city'].includes(input.name);
+    if(skipAddress)clearFieldError(input);
   });
-  document.querySelector('[data-carrier-delivery]').hidden=storePickup();
-  document.querySelector('[data-delivery-heading]').hidden=storePickup();
+  document.querySelector('[data-carrier-delivery]').hidden=skipAddress;
+  document.querySelector('[data-delivery-heading]').hidden=skipAddress;
 }
 function renderDelivery() {
   if (!delivery) return;
@@ -309,6 +313,7 @@ function enhanceAddress() {
   });
 }
 async function discover(optionToken, includeOtherOptions = false) {
+  if (noShipping()) return;
   const generation=++discovery,c=customer();
   if (storePickup() || !addressComplete(c)) return;
   if (!optionToken) text('[data-delivery-options]', t('Finding delivery options…','Henter leveringsalternativer…', "Lieferoptionen werden gesucht…"));

@@ -441,3 +441,23 @@ source table is 1–3 mm shorter in internal length per EU size (36–46) than t
 chart, so the difference is negligible for size choice. The Classic table stays archived
 for provenance; do not publish it as a separate choice without merchant approval.
 
+## Gift card sales, version 1 (2026-11-25)
+
+Martin approved selling gift cards online. This supersedes "keep gift-card product sales
+unpublished" above, once product 70025 has ReAI's gift-card flag enabled and is published.
+Never publish it without the flag: then it would be an ordinary shipped product.
+
+- Amounts are fixed ReAI variants: NOK 1 000–6 000 in 500 steps plus 10 000 (500 removed).
+  Market price lists use round merchant-approved amounts: NOK/SEK same numbers; EUR, USD,
+  CHF, GBP 100–600 and 1 000; DKK ×0.7, PLN ×0.4, RON ×0.5, CZK ×2.5, HUF ×35.
+  Variant names stay NOK labels; the storefront shows the market price instead.
+- `/pages/gift-cards` is the only purchase page (legacy gift-card URLs still redirect there).
+  Without a published gift card it shows the customer-care text.
+- `isGiftCardProduct` (product type "Gift Cards" or handle gift-card) keeps it out of
+  collections, search, recommendations, home rails and the sitemap. It stays in
+  `store.products` so `/reai/cart` can refresh its market price.
+- Checkout skips address, delivery choice and carrier discovery when ReAI reports
+  `shippingRequired: false` (gift-card-only orders). Mixed carts still ship normally.
+- ReAI emails the code to the buyer after payment. Not supported yet, and not promised on the
+  site: sending to another recipient with name/message, expiry dates, and custom amounts.
+

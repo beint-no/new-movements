@@ -379,3 +379,25 @@ assert.equal(sizeChartForProduct({ handle: "allrounder-s-beige-black" }), "");
 // The Price filter offers one-click price sorting through the same sort_by parameter.
 assert.match(renderCollectionPage(store, "sneakers"), /<button type="submit" name="sort_by" value="price-ascending" aria-pressed="false">Lowest price first<\/button><button type="submit" name="sort_by" value="price-descending" aria-pressed="false">Highest price first<\/button>/);
 assert.match(renderCollectionPage(store, "sneakers", { url: new URL("https://newmovements.com/collections/sneakers?sort_by=price-descending") }), /value="price-descending" aria-pressed="true"/);
+
+// Gift cards: sold only from /pages/gift-cards, priced in the market currency, never listed with shoes.
+{
+  const giftCard = {
+    id: "00000000-0000-4000-8000-0000000000aa", handle: "gift-card", title: "Gift Card", productType: "Gift Cards", images: [],
+    variants: [
+      { id: "aaaaaaaa-0000-4000-8000-000000000002", price: 150, options: [{ name: "Value", value: "NOK 1 500" }] },
+      { id: "aaaaaaaa-0000-4000-8000-000000000001", price: 100, options: [{ name: "Value", value: "NOK 1 000" }] },
+    ],
+  };
+  const giftStore = { ...store, currency: "EUR", products: [...store.products, giftCard], collections: [...store.collections, { id: "cg", handle: "all-gifts", title: "Gifts", products: [{ handle: "gift-card" }] }] };
+  const giftPage = renderPage(giftStore, "/pages/gift-cards");
+  assert.match(giftPage, /class="gift-card-page"/);
+  assert.match(giftPage, /data-variant-choice="aaaaaaaa-0000-4000-8000-000000000001" aria-pressed="false">EUR\s?100<\/button><button[^>]*data-variant-choice="aaaaaaaa-0000-4000-8000-000000000002"/);
+  assert.doesNotMatch(giftPage, /NOK 1 000/);
+  assert.match(giftPage, /data-add-to-cart data-choose-label="Choose an amount"/);
+  assert.doesNotMatch(renderCollectionPage(giftStore, "all"), /products\/gift-card|Gift Card</);
+  assert.equal(renderCollectionPage(giftStore, "all-gifts").includes('href="/products/gift-card'), false);
+  assert.doesNotMatch(renderSitemap(giftStore), /products\/gift-card/);
+  // Without a published gift card the page stays customer care.
+  assert.doesNotMatch(renderPage(store, "/pages/gift-cards"), /class="gift-card-page"/);
+}

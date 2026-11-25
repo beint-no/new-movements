@@ -324,7 +324,7 @@ const syncVariant = () => {
   add.disabled = option?.dataset.available !== 'true' || !UUID.test(add.dataset.variant);
   const unavailable = add.disabled;
   const unknown = option?.dataset.available === 'unknown';
-  add.textContent = !option?.value ? t('Select your size', 'Velg størrelse', "Wähle deine Größe") : unknown ? t('Check availability', 'Sjekk tilgjengelighet', "Verfügbarkeit prüfen") : unavailable ? t('Notify me', 'Varsle meg', "Benachrichtige mich") : t('Add to cart', 'Legg i handlekurv', "In den Warenkorb");
+  add.textContent = !option?.value ? (add.dataset.chooseLabel || t('Select your size', 'Velg størrelse', "Wähle deine Größe")) : unknown ? t('Check availability', 'Sjekk tilgjengelighet', "Verfügbarkeit prüfen") : unavailable ? t('Notify me', 'Varsle meg', "Benachrichtige mich") : t('Add to cart', 'Legg i handlekurv', "In den Warenkorb");
   add.dataset.checkStock = String(unknown);
   add.disabled = !option?.value;
   add.dataset.notify = String(unavailable && !!option?.value);
