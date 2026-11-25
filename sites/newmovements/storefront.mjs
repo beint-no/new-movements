@@ -548,9 +548,12 @@ function viewSelector(path, view, { collection = false, query = "", locale = "" 
 // Footwear categories shown above the women/men collections and their category pages, so
 // shoppers who arrive from "Shop women's"/"Shop men's" can narrow to one kind of shoe. Each link
 // is an existing ReAI collection; the women/men size view is kept as `?view=`.
+// Winter sneakers (Norwegian Sneaker and Allrounder Y) is its own ReAI collection; those models
+// also stay in Sneakers.
 const CATEGORY_COLLECTIONS = [
-  { handle: "sneakers", label: ["Sneakers", "Sneakers", "Sneaker"] },
   { handle: "boots", label: ["Boots", "Boots", "Boots"] },
+  { handle: "winter-sneakers", label: ["Winter sneakers", "Vintersneakers", "Wintersneaker"] },
+  { handle: "sneakers", label: ["Sneakers", "Sneakers", "Sneaker"] },
   { handle: "loafers-low-tops", label: ["Loafers", "Loafers", "Loafer"] },
 ];
 
@@ -563,7 +566,7 @@ function categorySelector(store, handle, view, t) {
   if (!categories.length || !(onCategory || handle === "all" || Object.hasOwn(VIEWS, handle))) return "";
   const allHref = view ? `/collections/${view}` : "/collections/all";
   const link = (href, label, current) => `<a href="${escapeHtml(href)}"${current ? ' aria-current="page"' : ""}>${label}</a>`;
-  return `<nav class="category-views" aria-label="${t("Shop by category", "Handle etter kategori", "Nach Kategorie shoppen")}">${link(allHref, t("All shoes", "Alle sko", "Alle Schuhe"), !onCategory)}${categories.map((category) => link(viewUrl(`/collections/${category.handle}`, view), t(...category.label), handle === category.handle)).join("")}</nav>`;
+  return `<nav class="category-views" aria-labelledby="category-views-heading"><h2 id="category-views-heading">${t("Shoes by category", "Sko per kategori", "Schuhe nach Kategorie")}</h2><div>${link(allHref, t("All shoes", "Alle sko", "Alle Schuhe"), !onCategory)}${categories.map((category) => link(viewUrl(`/collections/${category.handle}`, view), t(...category.label), handle === category.handle)).join("")}</div></nav>`;
 }
 
 // `label` is the canonical facet name the filtering package reports; `labelNb` is what the

@@ -314,7 +314,7 @@ assert.match(renderCollectionPage(store, "men"), /<h1>Men&#39;s Shoes<\/h1>/);
 assert.match(renderCollectionPage(store, "sneakers"), /<h1>Sneakers<\/h1>/);
 assert.match(renderCollectionPage(store, "loafers"), /<h1>Loafers<\/h1>/);
 // Women/men collections offer the footwear categories that exist, keeping the size view.
-assert.match(renderCollectionPage(store, "women"), /<nav class="category-views"[^>]*><a href="\/collections\/women" aria-current="page">All shoes<\/a><a href="\/collections\/sneakers\?view=women">Sneakers<\/a><\/nav>/);
+assert.match(renderCollectionPage(store, "women"), /<nav class="category-views"[^>]*><h2 id="category-views-heading">Shoes by category<\/h2><div><a href="\/collections\/women" aria-current="page">All shoes<\/a><a href="\/collections\/sneakers\?view=women">Sneakers<\/a><\/div><\/nav>/);
 assert.match(renderCollectionPage(store, "sneakers", { url: new URL("https://newmovements.com/collections/sneakers?view=men") }), /<a href="\/collections\/men">All shoes<\/a><a href="\/collections\/sneakers\?view=men" aria-current="page">Sneakers<\/a>/);
 assert.doesNotMatch(renderCollectionPage(store, "new-arrivals"), /class="category-views"/);
 assert.match(renderCollectionPage(store, "women"), /<title>Women&#39;s Shoes \| New Movements<\/title>/);
