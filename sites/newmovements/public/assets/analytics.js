@@ -83,6 +83,7 @@ export function track(kind, details = {}) {
     queue.splice(25);
     if (kind === 'add_to_cart') void flush();
     else schedule();
+    return event.id;
   } catch { /* Unsupported browser APIs must not affect the storefront. */ }
 }
 
