@@ -400,4 +400,6 @@ assert.match(renderCollectionPage(store, "sneakers", { url: new URL("https://new
   assert.doesNotMatch(renderSitemap(giftStore), /products\/gift-card/);
   // Without a published gift card the page stays customer care.
   assert.doesNotMatch(renderPage(store, "/pages/gift-cards"), /class="gift-card-page"/);
+  // The mobile menu links the gift card page, like the desktop Shop menu.
+  assert.match(renderCollectionPage(giftStore, "all"), /<nav class="mobile-nav"[^]*?href="\/pages\/gift-cards">Gift card<\/a>[^]*?<\/nav>/);
 }
