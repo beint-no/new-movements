@@ -144,10 +144,16 @@ export function matchRoute(pathname) {
 
 export const collectionByHandle = (store, handle) => (store?.collections || []).find((item) => item.handle === handle) || null;
 export const productByHandle = (store, handle) => (store?.products || []).find((item) => item.handle === handle) || null;
+// The gift card is a ReAI gift-card product sold only from /pages/gift-cards. It stays in the
+// catalog so bag prices refresh per market, but never appears among shoes: collections, search,
+// recommendations, home rails and the sitemap list `shopProducts` instead of `store.products`.
+export const isGiftCardProduct = (product) => /^gift ?cards?$/i.test(String(product?.productType || "").trim()) || product?.handle === "gift-card";
+export const giftCardProduct = (store) => (store?.products || []).find(isGiftCardProduct) || null;
+export const shopProducts = (store) => (store?.products || []).filter((item) => !isGiftCardProduct(item));
 export const publishedCollections = (store) => store?.collections || [];
 
 function collectionProducts(store, collection) {
-  return (collection?.products || []).map((member) => productByHandle(store, member.handle) || member).filter((item) => item?.handle);
+  return (collection?.products || []).map((member) => productByHandle(store, member.handle) || member).filter((item) => item?.handle && !isGiftCardProduct(item));
 }
 
 function featuredCollections(store) {
@@ -375,7 +381,7 @@ export function renderStoryPage(store) {
   const arrivals = findCollection(store, ["new-arrival", "new"]);
   const preferredHandles = ["allrounder-y-white", "allrounder-y-full-black", "allrounder-y-black-nordic-grey", "allrounder-y-smooth-forest", "allrounder-y-beige-smooth-forest", "allrounder-y-beige-sand"];
   const preferredProducts = preferredHandles.map((handle) => productByHandle(store, handle)).filter(Boolean);
-  const products = preferredProducts.length >= 4 ? preferredProducts : (collectionProducts(store, arrivals).length ? collectionProducts(store, arrivals) : (store.products || []));
+  const products = preferredProducts.length >= 4 ? preferredProducts : (collectionProducts(store, arrivals).length ? collectionProducts(store, arrivals) : shopProducts(store));
   const storyImage = (src, alt) => `<figure class="story-image"><img src="${src}" alt="${escapeHtml(alt)}" width="672" loading="lazy" decoding="async"></figure>`;
   const story = copy.article(storyImage);
   const rail = `<section class="story-products" aria-labelledby="story-products-title"><header><h2 id="story-products-title">${escapeHtml(copy.railHeading)}</h2><a href="${arrivals ? `/collections/${arrivals.handle}` : "/collections/all"}">${t("View all", "Se alle", "Alle ansehen")}</a></header>${productGrid(products, store.currency || "NOK", 8, { className: "story-product-rail", includeCurrency: false, priorityCards: 0, locale: store?.locale })}</section>`;
@@ -399,7 +405,7 @@ function renderMaterialsPage(store) {
   const arrivals = findCollection(store, ["new-arrival", "new"]);
   const preferredHandles = ["allrounder-y-white", "allrounder-y-full-black", "allrounder-y-black-nordic-grey", "allrounder-y-smooth-forest", "allrounder-y-beige-smooth-forest"];
   const preferredArrivals = preferredHandles.map((handle) => productByHandle(store, handle)).filter(Boolean);
-  const arrivalProducts = preferredArrivals.length >= 4 ? preferredArrivals : (collectionProducts(store, arrivals).length ? collectionProducts(store, arrivals) : (store.products || []));
+  const arrivalProducts = preferredArrivals.length >= 4 ? preferredArrivals : (collectionProducts(store, arrivals).length ? collectionProducts(store, arrivals) : shopProducts(store));
   const guide = copy.guide;
   const careRail = `<section class="story-products materials-products" aria-labelledby="care-products-title"><header><h2 id="care-products-title">${escapeHtml(copy.careHeading)}</h2></header>${productGrid(careProducts, currency, 8, { className: "story-product-rail", includeCurrency: false, priorityCards: 0, locale: store?.locale })}</section>`;
   const arrivalsRail = `<section class="story-products materials-products" aria-labelledby="materials-arrivals-title"><header><h2 id="materials-arrivals-title">${escapeHtml(copy.railHeading)}</h2><a href="${arrivals ? `/collections/${arrivals.handle}` : "/collections/all"}">${t("View all", "Se alle", "Alle ansehen")}</a></header>${productGrid(arrivalProducts, currency, 8, { className: "story-product-rail", includeCurrency: false, priorityCards: 0, locale: store?.locale })}</section>`;
@@ -432,7 +438,7 @@ function renderUtilityPage(store, path, context = {}) {
   if (path === "/search") {
     const view = selectedView(context);
     const query = (context.url?.searchParams.get("q") || "").trim().slice(0, 200);
-    const products = query ? searchProducts(catalogProductsForRequest(store.products || [], { ...context, collections: store.collections }), query) : [];
+    const products = query ? searchProducts(catalogProductsForRequest(shopProducts(store), { ...context, collections: store.collections }), query) : [];
     const status = query
       ? t(`${products.length} result${products.length === 1 ? "" : "s"} for “${query}”`, `${products.length} treff for «${query}»`, "" + (products.length) + " Ergebnis" + (products.length === 1 ? "" : "se") + " für „" + (query) + "“")
       : t("Enter a product name, style or material.", "Skriv inn et produktnavn, en stil eller et materiale.", "Gib einen Produktnamen, Style oder ein Material ein.");
@@ -444,6 +450,20 @@ function renderUtilityPage(store, path, context = {}) {
   }
   if (path === "/order/complete") return documentHtml({ title: t("Thank You for Your Order", "Takk for bestillingen", "Danke für deine Bestellung"), localizeTitle: false, description: t("Your New Movements order has been received.", "Vi har mottatt bestillingen din.", "Deine New Movements Bestellung ist eingegangen."), path, store, body: `<section class="message-page" data-order-complete><p class="eyebrow">${t("Order confirmed", "Ordre bekreftet", "Bestellung bestätigt")}</p><h1>${t("Thank you.", "Takk.", "Danke.")}</h1><p>${t("Your order has been received. Confirmation and delivery details will be sent to the email used at checkout.", "Vi har mottatt bestillingen din. Bekreftelse og leveringsdetaljer sendes til e-postadressen du brukte i kassen.", "Deine Bestellung ist eingegangen. Bestätigung und Lieferdetails werden an die im Checkout verwendete E-Mail-Adresse gesendet.")}</p><a class="outline-button" href="/collections/all">${t("Continue shopping", "Fortsett å handle", "Weiter einkaufen")}</a></section>` });
   return null;
+}
+
+// Gift cards are bought from this page only. Amount choices show the market price (the
+// variant names are NOK labels from ReAI). After payment ReAI emails the code to the buyer.
+function renderGiftCardPage(store, product) {
+  const t = translator(store?.locale);
+  const currency = store?.currency || "NOK";
+  const variants = [...(product.variants || [])].filter((item) => Number(item.price) > 0).sort((left, right) => Number(left.price) - Number(right.price));
+  const image = product.images?.[0];
+  const title = t("Gift card", "Gavekort", "Geschenkkarte");
+  const choices = variants.map((item) => `<button type="button" class="gift-card-amount" data-variant-choice="${escapeHtml(item.id)}" aria-pressed="false">${escapeHtml(formatMoney(item.price, currency))}</button>`).join("");
+  const options = `<option value="">${t("Choose an amount", "Velg beløp", "Betrag wählen")}</option>${variants.map((item) => `<option value="${escapeHtml(item.id)}" data-price="${escapeHtml(item.price)}" data-label="${escapeHtml(formatMoney(item.price, currency))}" data-available="true">${escapeHtml(formatMoney(item.price, currency))}</option>`).join("")}`;
+  const body = `<section class="gift-card-page"><div class="gift-card-media">${image ? responsiveImage(image, { alt: imageAltText(image, title, 0, store?.locale), width: 960, sizes: "(max-width: 900px) 100vw, 50vw", loading: "eager" }) : `<div class="gift-card-placeholder" aria-hidden="true">${brandLogo()}</div>`}</div><div class="gift-card-details"><p class="eyebrow">New Movements</p><h1>${title}</h1><p class="gift-card-intro">${t("Give shoes made to last. Choose an amount and we email the gift card code to you right after payment, ready to pass on.", "Gi bort sko som varer. Velg beløp, så sender vi gavekortkoden til deg på e-post rett etter betaling – klar til å gi videre.", "Verschenke Schuhe, die bleiben. Wähle einen Betrag, und wir senden dir den Geschenkkartencode direkt nach der Zahlung per E-Mail – bereit zum Weitergeben.")}</p><fieldset class="gift-card-amounts"><legend>${t("Amount", "Beløp", "Betrag")} · ${escapeHtml(currency)}</legend><div>${choices}</div></fieldset><select class="variant-fallback" aria-label="${t("Gift card amount", "Gavekortbeløp", "Geschenkkartenbetrag")}" data-product-variant>${options}</select><p class="product-price" data-product-price hidden></p><button type="button" class="gift-card-add" data-add-to-cart data-choose-label="${t("Choose an amount", "Velg beløp", "Betrag wählen")}" data-id="${escapeHtml(product.id)}" data-handle="${escapeHtml(product.handle)}" data-title="${escapeHtml(title)}" data-url="/pages/gift-cards" data-image="${escapeHtml(image ? imageUrl(image, 480) : "")}" data-image-alt="${escapeHtml(title)}" data-variant="" data-price="" disabled>${t("Choose an amount", "Velg beløp", "Betrag wählen")}</button><ul class="gift-card-facts"><li>${t("Delivered by email right after payment – no shipping.", "Sendes på e-post rett etter betaling – ingen frakt.", "Versand per E-Mail direkt nach der Zahlung – kein Versand.")}</li><li>${t(`Issued in ${escapeHtml(currency)} and redeemed with the code at checkout on newmovements.com.`, `Utstedes i ${escapeHtml(currency)} og brukes med koden i kassen på newmovements.com.`, `Ausgestellt in ${escapeHtml(currency)} und mit dem Code an der Kasse auf newmovements.com einlösbar.`)}</li><li>${t("Questions about an existing gift card?", "Spørsmål om et gavekort du allerede har?", "Fragen zu einer vorhandenen Geschenkkarte?")} <a href="mailto:store@newmovements.com">store@newmovements.com</a></li></ul></div></section>`;
+  return documentHtml({ title: t("Gift Cards", "Gavekort", "Geschenkkarten"), localizeTitle: false, description: t("Buy a New Movements gift card online. Choose an amount and receive the code by email right after payment.", "Kjøp et gavekort fra New Movements på nett. Velg beløp og få koden på e-post rett etter betaling.", "Kaufe online eine New Movements Geschenkkarte. Wähle einen Betrag und erhalte den Code direkt nach der Zahlung per E-Mail."), path: "/pages/gift-cards", body, store, image: image?.url || "" });
 }
 
 function renderContentPage(store, handle, page) {
@@ -527,6 +547,7 @@ export function renderPage(store, handle, context = {}) {
     const entry = JOURNAL_ENTRIES.find((item) => `/blogs/news/${item.slug}` === handle);
     return entry ? renderJournalArticle(store, entry) : null;
   }
+  if (handle === "/pages/gift-cards" && giftCardProduct(store)) return renderGiftCardPage(store, giftCardProduct(store));
   const utility = renderUtilityPage(store, handle, context);
   if (utility) return utility;
   const page = CONTENT_PAGES[handle];
@@ -586,7 +607,7 @@ const facetLabel = (facet, t) => t(facet.label, facet.labelNb, facet.labelDe);
 function collectionSourceProducts(store, handle, context) {
   const view = selectedView(context, Object.hasOwn(VIEWS, handle) ? handle : "");
   const collection = handle === "all" ? null : collectionByHandle(store, handle);
-  const source = handle === "all" ? store.products || [] : collectionProducts(store, collection);
+  const source = handle === "all" ? shopProducts(store) : collectionProducts(store, collection);
   const products = productsForView(source, view);
   if (!Object.hasOwn(VIEWS, handle) || view !== handle) return products;
   const winterHandles = collectionProducts(store, collectionByHandle(store, WINTER_COLLECTION_HANDLE)).map((product) => product.handle);
@@ -782,7 +803,7 @@ export function renderProductPage(store, product, availability = {}, context = {
   const notifyForm = unavailableVariants.length ? `<details class="stock-notification" data-stock-notification${availability[initialVariant?.id] === false ? " open" : ""}><summary>${t("Notify me when my size is back", "Varsle meg når størrelsen er tilbake", "Benachrichtige mich, wenn meine Größe wieder da ist")}</summary><form method="post" action="/reai/stock/subscribe" data-stock-form><label>${t("Size", "Størrelse", "Größe")}<select name="variantId" required>${unavailableVariants.map((variant) => `<option value="${escapeHtml(variant.id)}"${variant.id === initialVariant?.id ? " selected" : ""}>${escapeHtml(variant.options?.map((option) => option.value).join(" / ") || variant.sku)}</option>`).join("")}</select></label><label>${t("Email address", "E-postadresse", "E-Mail-Adresse")}<input type="email" name="email" autocomplete="email" maxlength="254" required></label><label class="stock-consent"><input type="checkbox" name="consent" value="true" checked required><span>${t("Email me once when this size is back in stock. This doesn’t sign me up for the newsletter.", "Send meg én e-post når denne størrelsen er tilbake på lager. Det melder meg ikke på nyhetsbrevet.", "Sende mir einmalig eine E-Mail, wenn diese Größe wieder auf Lager ist. Dadurch melde ich mich nicht für den Newsletter an.")}</span></label><input type="hidden" name="returnTo" value="${escapeHtml(productUrl)}"><button type="submit">${t("Notify me", "Varsle meg", "Benachrichtige mich")}</button><p class="stock-status" data-stock-status role="status" aria-live="polite">${context.url?.searchParams.get("notification") === "requested" ? t("You’re on the list. We’ll email you once when this size is available.", "Du står på listen. Vi sender deg én e-post når størrelsen er tilgjengelig.", "Du stehst auf der Liste. Wir senden dir einmalig eine E-Mail, sobald diese Größe verfügbar ist.") : ""}</p><small>${t("One notification for this item and size. Requests expire after 180 days.", "Én varsling for dette produktet og denne størrelsen. Forespørsler utløper etter 180 dager.", "Eine Benachrichtigung für diesen Artikel und diese Größe. Anfragen verfallen nach 180 Tagen.")} <a href="/policies/privacy-policy">${t("Privacy policy", "Personvernerklæring", "Datenschutzerklärung")}</a></small></form></details>` : "";
   const gallery = images.length ? `<section class="product-gallery${images.length > 1 ? " has-thumbs" : ""}"><button type="button" class="product-main" data-gallery-main data-zoom-open aria-label="${t("Enlarge product image", "Vis produktbildet større", "Produktbild vergrößern")}">${responsiveImage(images[0], { alt: imageAltText(images[0], product.title, 0, locale), width: 1280, sizes: "(max-width: 900px) 100vw, (min-width: 1450px) 780px, 54vw", priority: true })}</button>${images.length > 1 ? `<div class="product-thumbs">${images.map((image, index) => `<button type="button" data-gallery-url="${escapeHtml(imageUrl(image, 1280))}" data-gallery-srcset="${escapeHtml(imageSrcset(image))}" data-gallery-alt="${escapeHtml(imageAltText(image, product.title, index, locale))}" aria-label="${t(`Show image ${index + 1}`, `Vis bilde ${index + 1}`, "Bild " + (index + 1) + " anzeigen")}" aria-current="${index === 0}">${responsiveImage(image, { alt: "", width: 320, sizes: "96px", loading: "lazy" })}</button>`).join("")}</div>` : ""}</section>` : '<section class="product-gallery product-placeholder">New Movements</section>';
   const family = productFamily(product);
-  const colorProducts = (store.products || []).filter((item) => item.handle !== product.handle && productFamily(item) === family && productView(item, view));
+  const colorProducts = shopProducts(store).filter((item) => item.handle !== product.handle && productFamily(item) === family && productView(item, view));
   const colorSwatches = [product, ...colorProducts].map((item) => `<a class="product-color-swatch${item.handle === product.handle ? " is-selected" : ""}" data-color-link data-color-variants="${escapeHtml(JSON.stringify(item.variants.map((variant) => ({ id: variant.id, options: variant.options }))))}" href="${escapeHtml(colorProductUrl(item, view, initialVariant))}" aria-label="${escapeHtml(item.title)}"${item.handle === product.handle ? ' aria-current="page"' : ""}>${shoppingImages(productView(item, view))[0] ? responsiveImage(shoppingImages(productView(item, view))[0], { alt: "", width: 160, sizes: "88px", loading: "lazy" }) : ""}</a>`).join("");
   const sizeButtons = variants.map((item) => {
     const size = item.options?.find((option) => /size/i.test(option.name))?.value || item.options?.[0]?.value || item.sku || "Default";
@@ -820,12 +841,13 @@ export const renderUnavailablePage = (store) => {
 };
 
 export function renderSitemap(store) {
-  const paths = [...STATIC_PATHS, "/collections/all", ...publishedCollections(store).map((item) => `/collections/${item.handle}`), ...(store.products || []).map((item) => `/products/${item.handle}`)];
+  const paths = [...STATIC_PATHS, "/collections/all", ...publishedCollections(store).map((item) => `/collections/${item.handle}`), ...shopProducts(store).map((item) => `/products/${item.handle}`)];
   const prefix = store?.pathPrefix || "";
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${[...new Set(paths.map(canonicalPath))].filter((path) => !NON_INDEXABLE_PATHS.has(path)).map((path) => `  <url><loc>${SITE_ORIGIN}${prefix}${path === "/" ? "/" : path}</loc></url>`).join("\n")}\n</urlset>\n`;
 }
 
 export const catalogProductsForRequest = (products, context) => {
+  products = (products || []).filter((item) => !isGiftCardProduct(item));
   const membership = new Map();
   for (const collection of context.collections || []) {
     for (const member of collection.products || []) {
@@ -873,7 +895,7 @@ function productFacts(product, t) {
 }
 
 function recommendationCandidates(store, product, view) {
-  return (store.products || []).map((item) => productView(item, view)).filter(Boolean)
+  return shopProducts(store).map((item) => productView(item, view)).filter(Boolean)
     .filter((item) => item.handle !== product.handle && productFamily(item) !== productFamily(product) && isFootwearProduct(item) === isFootwearProduct(product))
     .sort((left, right) => Number(right.category?.id === product.category?.id) - Number(left.category?.id === product.category?.id)).slice(0, 8);
 }
