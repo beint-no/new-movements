@@ -400,6 +400,23 @@ assert.match(renderCollectionPage(store, "sneakers", { url: new URL("https://new
   assert.doesNotMatch(renderSitemap(giftStore), /products\/gift-card/);
   // Without a published gift card the page stays customer care.
   assert.doesNotMatch(renderPage(store, "/pages/gift-cards"), /class="gift-card-page"/);
-  // The mobile menu links the gift card page, like the desktop Shop menu.
-  assert.match(renderCollectionPage(giftStore, "all"), /<nav class="mobile-nav"[^]*?href="\/pages\/gift-cards">Gift card<\/a>[^]*?<\/nav>/);
+  // The mobile menu and footer link the gift card page, like the desktop Shop menu.
+  const allCollectionHtml = renderCollectionPage(giftStore, "all");
+  assert.match(allCollectionHtml, /<nav class="mobile-nav"[^]*?href="\/pages\/gift-cards">Gift card<\/a>[^]*?<\/nav>/);
+  assert.match(allCollectionHtml, /<footer class="site-footer"[^]*?href="\/pages\/gift-cards">Gift card<\/a>[^]*?<\/footer>/);
+  // Gift cards are discoverable in search (EN, NB, and women/men views) and link to /pages/gift-cards.
+  for (const q of ["gift", "gift card", "giftcard", "gavekort"]) {
+    const searchHtml = renderPage(giftStore, "/search", { url: new URL(`https://newmovements.com/search?q=${encodeURIComponent(q)}&view=women`) });
+    assert.match(searchHtml, /1 result for/);
+    assert.match(searchHtml, /<article class="product-card">[^]*?href="\/pages\/gift-cards"[^]*?>Gift card<\/a>/);
+    assert.doesNotMatch(searchHtml, /data-card-quick-add/);
+  }
+  const nbGiftStore = localizeStorefront({ ...giftStore, locale: "nb-NO", pathPrefix: "/nb" }, "nb-NO");
+  const nbSearchHtml = renderPage(nbGiftStore, "/search", { locale: "nb-NO", pathPrefix: "/nb", url: new URL("https://newmovements.com/nb/search?q=gavekort") });
+  assert.match(nbSearchHtml, /1 treff for/);
+  assert.match(nbSearchHtml, /href="\/nb\/pages\/gift-cards"[^]*?>Gavekort<\/a>/);
+  // Shoe-size searches do not match the gift card.
+  const sizeSearchHtml = renderPage(giftStore, "/search", { url: new URL("https://newmovements.com/search?q=40") });
+  const sizeResults = sizeSearchHtml.match(/<div data-search-results>([\s\S]*?)<\/div>/)?.[1] || "";
+  assert.doesNotMatch(sizeResults, /pages\/gift-cards/);
 }

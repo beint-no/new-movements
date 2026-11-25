@@ -454,8 +454,12 @@ Never publish it without the flag: then it would be an ordinary shipped product.
 - `/pages/gift-cards` is the only purchase page (legacy gift-card URLs still redirect there).
   Without a published gift card it shows the customer-care text.
 - `isGiftCardProduct` (product type "Gift Cards" or handle gift-card) keeps it out of
-  collections, search, recommendations, home rails and the sitemap. It stays in
-  `store.products` so `/reai/cart` can refresh its market price.
+  collections, recommendations, home rails and `/products/gift-card` sitemap entries.
+  It stays in `store.products` so `/reai/cart` can refresh its market price, and in
+  search (`catalogProductsForRequest` and `/search`) where it links directly to
+  `/pages/gift-cards` across EN/NB and women/men views (matching "gift card", "giftcard",
+  and "gavekort"). Desktop Shop menu, mobile menu, and footer Shop column all link to
+  `/pages/gift-cards`.
 - Checkout skips address, delivery choice and carrier discovery when ReAI reports
   `shippingRequired: false` (gift-card-only orders). Mixed carts still ship normally.
 - ReAI emails the code to the buyer after payment. Not supported yet, and not promised on the
