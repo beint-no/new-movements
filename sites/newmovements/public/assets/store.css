@@ -999,3 +999,4 @@ dialog.store-drawer::backdrop{background:#0005}
  .returns-qr-actions{flex-direction:column;width:100%}
  .returns-qr-actions .returns-secondary-btn{width:100%}
 }
+/* Quick price sorting inside the Price filter; the Sort menu keeps every option. */.price-sort{display:flex;gap:8px;margin-top:8px}.price-sort button{flex:1;padding:10px 12px;border:1px solid var(--line);background:#fff;color:#111;font:inherit;font-size:14px;cursor:pointer}.price-sort button:hover{border-color:#111}.price-sort button[aria-pressed=true]{border-color:#111;background:#111;color:#fff}.price-sort button:focus-visible{outline:2px solid #111;outline-offset:2px}

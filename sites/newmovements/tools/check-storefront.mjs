@@ -376,3 +376,6 @@ assert.doesNotMatch(unknownStockPage, /Sold out\. Get notified/);
 // Classic uses the Sneakers chart (merchant-approved 2026-11-25); Allrounder S still has none.
 assert.equal(sizeChartForProduct({ handle: "classic-vegan-black-white" }), "sneakers");
 assert.equal(sizeChartForProduct({ handle: "allrounder-s-beige-black" }), "");
+// The Price filter offers one-click price sorting through the same sort_by parameter.
+assert.match(renderCollectionPage(store, "sneakers"), /<button type="submit" name="sort_by" value="price-ascending" aria-pressed="false">Lowest price first<\/button><button type="submit" name="sort_by" value="price-descending" aria-pressed="false">Highest price first<\/button>/);
+assert.match(renderCollectionPage(store, "sneakers", { url: new URL("https://newmovements.com/collections/sneakers?sort_by=price-descending") }), /value="price-descending" aria-pressed="true"/);
