@@ -3,6 +3,7 @@
 import { createReaiMarketStorefrontWorker } from "../../packages/reai-cloudflare-storefront/markets.mjs";
 import * as storefront from "./storefront.mjs";
 import { handleStorefrontRequest } from "./routes.mjs";
+import { withMarketingCsp } from "./marketing-csp.mjs";
 
 const liveHosts = ["newmovements.com", "www.newmovements.com"];
 
@@ -42,12 +43,7 @@ export default {
     const headers = new Headers(response.headers);
     // Only this storefront opts into advertising measurement.
     const csp = headers.get('Content-Security-Policy');
-    const google = 'https://www.googletagmanager.com https://www.googleadservices.com https://www.google.com';
-    const transport = `${google} https://www.google.no https://googleads.g.doubleclick.net https://pagead2.googlesyndication.com https://ad.doubleclick.net`;
-    if (csp) headers.set('Content-Security-Policy', csp
-      .replace(/img-src ([^;]+)/, `img-src $1 https://www.facebook.com ${transport}`)
-      .replace(/script-src ([^;]+)/, `script-src $1 ${google}`)
-      + `; connect-src 'self' ${transport}; frame-src https://www.googletagmanager.com`);
+    if (csp) headers.set('Content-Security-Policy', withMarketingCsp(csp));
     if (requestUrl.protocol === "https:") headers.set("Strict-Transport-Security", "max-age=31536000");
     if (review) headers.set("X-Robots-Tag", "noindex, nofollow");
     return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
