@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { sizeChartForProduct } from "../size-guide.mjs";
 import { access } from "node:fs/promises";
 import path from "node:path";
 import {
@@ -372,3 +373,6 @@ const unknownStockPage = renderProductPage(store, product, { [product.variants[0
 assert.match(unknownStockPage, /Live availability could not be checked/);
 assert.match(unknownStockPage, /data-available="unknown"/);
 assert.doesNotMatch(unknownStockPage, /Sold out\. Get notified/);
+// Classic uses the Sneakers chart (merchant-approved 2026-11-25); Allrounder S still has none.
+assert.equal(sizeChartForProduct({ handle: "classic-vegan-black-white" }), "sneakers");
+assert.equal(sizeChartForProduct({ handle: "allrounder-s-beige-black" }), "");

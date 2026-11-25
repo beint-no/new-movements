@@ -20,7 +20,8 @@ export const SIZE_CHARTS = [
       "Allrounder Y",
       "Allrounder E",
       "The Norwegian Sneaker",
-      "Zen"
+      "Zen",
+      "Classic"
     ],
     "range": "A21:G37",
     "rows": [

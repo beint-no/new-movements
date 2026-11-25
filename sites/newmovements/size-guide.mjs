@@ -10,7 +10,7 @@ const audiences = (t) => ({ all: t('All sizes', 'Alle størrelser', "Alle Größ
 // open the general guide rather than silently receiving another model's fit.
 export function sizeChartForProduct(product) {
   const handle = product?.handle || '';
-  if (/^(original|allrounder(?:-e|-y)?|norwegian-sneaker|zen)-/.test(handle) && !handle.startsWith('allrounder-s-')) return 'sneakers';
+  if (/^(original|allrounder(?:-e|-y)?|norwegian-sneaker|zen|classic)-/.test(handle) && !handle.startsWith('allrounder-s-')) return 'sneakers';
   if (/^(flow-boot|cloud-boot|space-boot|high-space-boot|moss|low-cloud)-/.test(handle)) return 'boots';
   if (/^loafer-/.test(handle)) return 'loafers';
   return '';
