@@ -104,15 +104,25 @@ const addCartItem = (product, variant, quantity = 1) => {
   return true;
 };
 
+const siteHeader = document.querySelector('.site-header');
 const menuButton = document.querySelector('[data-menu-toggle], .menu-toggle');
 const mobileNav = document.querySelector('[data-mobile-nav]');
+const syncMobileNavTop = () => {
+  if (!mobileNav || !siteHeader) return;
+  const top = Math.max(0, Math.round(siteHeader.getBoundingClientRect().bottom));
+  mobileNav.style.setProperty('--mobile-nav-top', `${top}px`);
+};
 const setMenu = (open) => {
+  if (open) syncMobileNavTop();
   menuButton?.setAttribute('aria-expanded', String(open));
   mobileNav?.classList.toggle('is-open', open);
+  document.documentElement.classList.toggle('menu-open', open);
   document.body.classList.toggle('menu-open', open);
+  if (open && mobileNav) mobileNav.scrollTop = 0;
 };
 menuButton?.addEventListener('click', () => setMenu(menuButton.getAttribute('aria-expanded') !== 'true'));
 mobileNav?.addEventListener('click', (event) => { if (event.target.closest('a')) setMenu(false); });
+window.addEventListener('resize', () => { if (mobileNav?.classList.contains('is-open')) syncMobileNavTop(); });
 
 const megaToggle = document.querySelector('[data-mega-toggle]');
 const megaMenu = document.querySelector('[data-mega-menu]');
