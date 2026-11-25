@@ -13,7 +13,7 @@ export const SIZE_GUIDE_SOURCE = {
 export const SIZE_CHARTS = [
   {
     "id": "sneakers",
-    "label": "Original & Allrounder",
+    "label": "Sneakers",
     "models": [
       "Original",
       "Allrounder",
