@@ -13,14 +13,15 @@ export const SIZE_GUIDE_SOURCE = {
 export const SIZE_CHARTS = [
   {
     "id": "sneakers",
-    "label": "Original & Allrounder",
+    "label": "Sneakers",
     "models": [
       "Original",
       "Allrounder",
       "Allrounder Y",
       "Allrounder E",
       "The Norwegian Sneaker",
-      "Zen"
+      "Zen",
+      "Classic"
     ],
     "range": "A21:G37",
     "rows": [

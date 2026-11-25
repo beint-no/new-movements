@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { sizeChartForProduct } from "../size-guide.mjs";
 import { access } from "node:fs/promises";
 import path from "node:path";
 import {
@@ -372,3 +373,9 @@ const unknownStockPage = renderProductPage(store, product, { [product.variants[0
 assert.match(unknownStockPage, /Live availability could not be checked/);
 assert.match(unknownStockPage, /data-available="unknown"/);
 assert.doesNotMatch(unknownStockPage, /Sold out\. Get notified/);
+// Classic uses the Sneakers chart (merchant-approved 2026-11-25); Allrounder S still has none.
+assert.equal(sizeChartForProduct({ handle: "classic-vegan-black-white" }), "sneakers");
+assert.equal(sizeChartForProduct({ handle: "allrounder-s-beige-black" }), "");
+// The Price filter offers one-click price sorting through the same sort_by parameter.
+assert.match(renderCollectionPage(store, "sneakers"), /<button type="submit" name="sort_by" value="price-ascending" aria-pressed="false">Lowest price first<\/button><button type="submit" name="sort_by" value="price-descending" aria-pressed="false">Highest price first<\/button>/);
+assert.match(renderCollectionPage(store, "sneakers", { url: new URL("https://newmovements.com/collections/sneakers?sort_by=price-descending") }), /value="price-descending" aria-pressed="true"/);

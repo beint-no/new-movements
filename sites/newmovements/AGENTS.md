@@ -290,7 +290,7 @@ Purchase reassurance uses the confirmed delivery/returns policy beside Add to ca
 ## Merchant review (2026-10-14)
 
 Martin requested Boots as the guide heading, with Moss retained among its models.
-Only Original/Allrounder, Boots and Loafers are active guide choices. Classic/Cruiser
+Only Sneakers (formerly "Original & Allrounder"), Boots and Loafers are active guide choices. Classic/Cruiser
 and Everyday Sandals source tables remain archived in size-guide-data.mjs for
 provenance and are not offered in shopper navigation. Do not reintroduce them
 without merchant approval. The generic Features copy does not say Unisex.
@@ -433,3 +433,11 @@ ReAI automatically enables direct email links for this Site after a live batch i
 Respect the existing GPC/DNT and preview exclusions. No email/customer ID, persistent
 recipient storage or subsequent customer-session identity linkage. Repeated visits count
 once per original email recipient in ReAI. UTM tags remain automatic.
+
+## Size guide update (2026-11-25)
+
+Martin approved showing Classic products with the Sneakers chart. The archived Classic
+source table is 1–3 mm shorter in internal length per EU size (36–46) than the Sneakers
+chart, so the difference is negligible for size choice. The Classic table stays archived
+for provenance; do not publish it as a separate choice without merchant approval.
+
