@@ -33,14 +33,24 @@ export function productView(product, view) {
   product = sortProductSizes(product);
   const configuration = VIEWS[view];
   if (!configuration) return product;
-  return composeProductView(product, {
+  return catalogImageOrder(product, composeProductView(product, {
     option: "Size",
     values: (product.variants || []).flatMap((variant) => variant.options || [])
       .filter((option) => option.name.toLowerCase() === "size" && Number(option.value) >= configuration.minSize && Number(option.value) <= configuration.maxSize)
       .map((option) => option.value),
     imageTokens: configuration.imageTokens,
     excludedImageTokens: Object.entries(VIEWS).filter(([key]) => key !== view).flatMap(([, value]) => value.imageTokens),
-  });
+  }));
+}
+
+// The women/men views only hide the other audience's photos: the gallery keeps the ReAI
+// image order (studio product shots first, then lifestyle photos as arranged in ReAI), so the
+// merchant controls where an audience photo appears (Martin, 2026-11-25).
+function catalogImageOrder(source, product) {
+  if (!product) return product;
+  const position = new Map((source.images || []).map((image, index) => [image.url, index]));
+  const images = [...(product.images || [])].sort((left, right) => (position.get(left.url) ?? 0) - (position.get(right.url) ?? 0));
+  return { ...product, images: [...images.filter(isProductShot), ...images.filter((image) => !isProductShot(image))] };
 }
 
 export const viewUrl = (path, view) => `${path}${view ? `?view=${view}` : ""}`;
