@@ -47,7 +47,8 @@ export default {
     if (csp) headers.set('Content-Security-Policy', csp
       .replace(/img-src ([^;]+)/, `img-src $1 https://www.facebook.com ${transport}`)
       .replace(/script-src ([^;]+)/, `script-src $1 ${google}`)
-      + `; connect-src 'self' ${transport}; frame-src https://www.googletagmanager.com`);
+      .replace(/frame-src ([^;]+)/, 'frame-src $1 https://www.googletagmanager.com')
+      + `; connect-src 'self' ${transport}`);
     if (requestUrl.protocol === "https:") headers.set("Strict-Transport-Security", "max-age=31536000");
     if (review) headers.set("X-Robots-Tag", "noindex, nofollow");
     return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
