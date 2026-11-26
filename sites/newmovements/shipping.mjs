@@ -19,6 +19,10 @@ export function shippingCopy(store = {}) {
   // International markets ship with merchant-fulfilled DHL Express at a fixed price.
   const dhlOnly = methods.length > 0 && methods.every(m => m.carrier === 'dhl');
   const cheapest = methods.length ? Math.min(...methods.map(m => Number(m.amount))) : null;
+  const samePrice = methods.every(m => Number(m.amount) === cheapest);
+  // Only state a delivery time that the ReAI method name itself gives, e.g. "(2–4 business days)".
+  const days = [...new Set(methods.map(m => m.name?.match(/\((\d+\s*[–-]\s*\d+)\s*business days\)/i)?.[1]?.replace(/\s*[–-]\s*/, '–')))];
+  const leadTime = days.length === 1 && days[0] ? days[0] : null;
   const summary = free || threshold === 0
     ? freeCarrier
       ? t(`Free delivery with ${freeCarrier}`, `Gratis levering med ${freeCarrier}`, `Kostenlose Lieferung mit ${freeCarrier}`)
@@ -26,7 +30,10 @@ export function shippingCopy(store = {}) {
     : threshold != null
       ? t(`Free delivery from ${money(threshold)}`, `Gratis levering fra ${money(threshold)}`, `Kostenlose Lieferung ab ${money(threshold)}`)
       : dhlOnly
-        ? t(`DHL Express from ${money(cheapest)} · 2–4 business days`, `DHL Express fra ${money(cheapest)} · 2–4 virkedager`, `DHL Express ab ${money(cheapest)} · 2–4 Werktage`)
+        ? [
+          samePrice ? `DHL Express ${money(cheapest)}` : t(`DHL Express from ${money(cheapest)}`, `DHL Express fra ${money(cheapest)}`, `DHL Express ab ${money(cheapest)}`),
+          leadTime && t(`${leadTime} business days`, `${leadTime} virkedager`, `${leadTime} Werktage`),
+        ].filter(Boolean).join(' · ')
         : t('Shipping calculated at checkout', 'Frakt beregnes i kassen', 'Versandkosten werden im Checkout berechnet');
   const fixed = methods.length === 1 && methods[0].weightThresholdGrams == null;
   const carrierRates = methods.length > 1 && methods.every(m => carrierNames[m.carrier] && m.weightThresholdGrams == null && m.freeFromAmount == null)
