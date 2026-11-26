@@ -894,6 +894,56 @@ refreshCartPrices();
 renderCart();
 renderDrawerCart();
 
+// Signup forms carry a Turnstile site key. The widget loads on first interaction,
+// stays invisible unless Cloudflare needs a visible check, and each token is single-use.
+let turnstileLoader;
+const loadTurnstile = () => turnstileLoader ||= new Promise((resolve, reject) => {
+  const script = document.createElement('script');
+  script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+  script.async = true;
+  script.onload = () => (window.turnstile ? resolve(window.turnstile) : reject(new Error('Turnstile unavailable')));
+  script.onerror = () => { turnstileLoader = undefined; script.remove(); reject(new Error('Turnstile unavailable')); };
+  document.head.append(script);
+});
+const humanChecks = new WeakMap();
+const humanCheck = (form) => {
+  const sitekey = form.dataset.turnstile;
+  if (!sitekey) return undefined;
+  let check = humanChecks.get(form);
+  if (check) return check;
+  check = { token: '', waiters: [], widget: undefined };
+  humanChecks.set(form, check);
+  const settle = (token) => { check.token = token; if (token) check.waiters.splice(0).forEach((resolve) => resolve(token)); };
+  check.ready = loadTurnstile().then((turnstile) => {
+    const container = document.createElement('div');
+    container.className = 'turnstile-widget';
+    form.append(container);
+    check.widget = turnstile.render(container, {
+      sitekey, action: form.dataset.turnstileAction, appearance: 'interaction-only', 'response-field': false,
+      language: german ? 'de' : norwegian ? 'nb' : 'en',
+      callback: settle, 'expired-callback': () => settle(''), 'error-callback': () => settle(''),
+    });
+  }).catch(() => { humanChecks.delete(form); });
+  return check;
+};
+const humanToken = async (form) => {
+  const check = humanCheck(form);
+  if (!check) return undefined;
+  await check.ready;
+  if (check.token) return check.token;
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(''), 20000);
+    check.waiters.push((token) => { clearTimeout(timer); resolve(token); });
+  });
+};
+const spendHumanToken = (form) => {
+  const check = humanChecks.get(form);
+  if (check?.widget === undefined || !window.turnstile) return;
+  check.token = '';
+  window.turnstile.reset(check.widget);
+};
+document.querySelectorAll('[data-turnstile]').forEach((form) => form.addEventListener('focusin', () => humanCheck(form), { once: true }));
+
 document.querySelectorAll('[data-newsletter-form]').forEach((newsletterForm) => newsletterForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   if (!newsletterForm.reportValidity()) return;
@@ -907,10 +957,12 @@ document.querySelectorAll('[data-newsletter-form]').forEach((newsletterForm) => 
   button.textContent = t('Signing up…', 'Melder deg på …', "Anmeldung läuft…");
   status.hidden = true;
   try {
+    const turnstileToken = await humanToken(newsletterForm);
     const response = await fetch(sitePath('/reai/newsletter/subscribe'), {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: String(data.get('email') || '').trim(), ...(name ? { name } : {}), consent: true, ...(welcomeDiscount ? { welcomeDiscount: true } : {}) }),
+      body: JSON.stringify({ email: String(data.get('email') || '').trim(), ...(name ? { name } : {}), consent: true, ...(welcomeDiscount ? { welcomeDiscount: true } : {}), ...(turnstileToken ? { turnstileToken } : {}) }),
     });
+    spendHumanToken(newsletterForm);
     if (!response.ok) throw new Error('Signup unavailable');
     status.textContent = welcomeDiscount
       ? "You're on the list. Check your email for your 5% welcome discount. If you've already requested it, you can use the code in your earlier email."
@@ -935,7 +987,9 @@ document.querySelectorAll('[data-stock-form]').forEach((form) => form.addEventLi
   button.disabled = true;
   status.textContent = t('Saving your request…', 'Lagrer forespørselen …', "Deine Anfrage wird gespeichert…");
   try {
-    const response = await fetch(sitePath('/reai/stock/subscribe'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ variantId: data.get('variantId'), email: data.get('email'), consent: data.get('consent') === 'true' }) });
+    const turnstileToken = await humanToken(form);
+    const response = await fetch(sitePath('/reai/stock/subscribe'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ variantId: data.get('variantId'), email: data.get('email'), consent: data.get('consent') === 'true', ...(turnstileToken ? { turnstileToken } : {}) }) });
+    spendHumanToken(form);
     if (!response.ok) throw new Error(response.status === 429
       ? t('Please wait a minute before trying again.', 'Vent et minutt før du prøver igjen.', "Bitte warte eine Minute, bevor du es erneut versuchst.")
       : t('We could not save your request. Refresh the page and try again.', 'Vi klarte ikke å lagre forespørselen. Last siden på nytt og prøv igjen.', "Wir konnten deine Anfrage nicht speichern. Aktualisiere die Seite und versuche es erneut."));

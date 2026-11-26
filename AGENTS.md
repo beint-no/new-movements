@@ -23,6 +23,16 @@ Cloudflare Worker.
   Deploy reviewed `main` locally after running the checks. See README.md
   for the contributor workflow and the local deployment commands.
 
+## Bot protection
+
+Signup forms email whatever address is typed, so bots use them for subscription
+bombing, which damages the shared Bud sending reputation. Newsletter and stock forms
+carry `data-turnstile` with the public site key (`storefront.mjs`); `store.js` loads
+the Turnstile widget on first focus and sends a single-use token. The Worker verifies it
+when the secret `TURNSTILE_SECRET_KEY` is set (widget "New Movements newsletter and
+stock forms" in the merchant Cloudflare account). Keep every new email-sending form
+behind the same check.
+
 ## Brand constraints
 
 - New Movements is an Oslo footwear brand focused on unisex, repairable, and
