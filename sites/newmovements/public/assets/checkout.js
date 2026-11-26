@@ -26,13 +26,13 @@ const giftOffer = (() => {
     return offer && offer.currency === state.currency && Date.now() < Date.parse(offer.endsAt) ? offer : null;
   } catch { return null; }
 })();
-const giftVariant = (() => {
-  if (!giftOffer) return null;
-  try { return JSON.parse(localStorage.getItem('newmovements-cart-v1') || '[]').find(item => item.handle === giftOffer.handle)?.variant || null; } catch { return null; }
-})();
+const giftCart = (() => { try { return JSON.parse(localStorage.getItem('newmovements-cart-v1') || '[]'); } catch { return []; } })();
+const giftVariant = giftOffer ? giftCart.find(item => item.handle === giftOffer.handle)?.variant || null : null;
+// Shoes are bag items that are neither shoe care nor gift cards.
+const giftShoeVariants = giftOffer ? new Set(giftCart.filter(item => item.handle !== giftOffer.handle && !(giftOffer.careHandles || []).includes(item.handle) && !/gift-card|gavekort/i.test(item.handle || '')).map(item => item.variant)) : new Set();
 const giftDeclinedKey = `newmovements-gift-declined:${state.id}`;
 function giftQualifies() {
-  return !!giftVariant && state.lines.some(l => l.variantId === giftVariant) && state.lines.some(l => l.variantId !== giftVariant && Number(l.gross) >= 500);
+  return !!giftVariant && state.lines.some(l => l.variantId === giftVariant) && state.lines.some(l => giftShoeVariants.has(l.variantId));
 }
 function markGiftLine() {
   const active = giftOffer && state.discountCode === giftOffer.code;
