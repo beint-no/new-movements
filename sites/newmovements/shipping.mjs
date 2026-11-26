@@ -16,13 +16,18 @@ export function shippingCopy(store = {}) {
   const freeCarrier = freeCarriers.length === 1 && freeCarriers[0];
   const thresholds = methods.filter(m => m.freeFromAmount != null).map(m => Number(m.freeFromAmount));
   const threshold = thresholds.length ? Math.min(...thresholds) : null;
+  // International markets ship with merchant-fulfilled DHL Express at a fixed price.
+  const dhlOnly = methods.length > 0 && methods.every(m => m.carrier === 'dhl');
+  const cheapest = methods.length ? Math.min(...methods.map(m => Number(m.amount))) : null;
   const summary = free || threshold === 0
     ? freeCarrier
       ? t(`Free delivery with ${freeCarrier}`, `Gratis levering med ${freeCarrier}`, `Kostenlose Lieferung mit ${freeCarrier}`)
       : t('Free delivery', 'Gratis levering', 'Kostenlose Lieferung')
     : threshold != null
       ? t(`Free delivery from ${money(threshold)}`, `Gratis levering fra ${money(threshold)}`, `Kostenlose Lieferung ab ${money(threshold)}`)
-      : t('Shipping calculated at checkout', 'Frakt beregnes i kassen', 'Versandkosten werden im Checkout berechnet');
+      : dhlOnly
+        ? t(`DHL Express from ${money(cheapest)} · 2–4 business days`, `DHL Express fra ${money(cheapest)} · 2–4 virkedager`, `DHL Express ab ${money(cheapest)} · 2–4 Werktage`)
+        : t('Shipping calculated at checkout', 'Frakt beregnes i kassen', 'Versandkosten werden im Checkout berechnet');
   const fixed = methods.length === 1 && methods[0].weightThresholdGrams == null;
   const carrierRates = methods.length > 1 && methods.every(m => carrierNames[m.carrier] && m.weightThresholdGrams == null && m.freeFromAmount == null)
     ? [...new Set(methods.map(m => `${carrierNames[m.carrier]}: ${Number(m.amount) === 0 ? t('free delivery', 'gratis levering', 'kostenlose Lieferung') : money(m.amount)}.`))].join(' ')
