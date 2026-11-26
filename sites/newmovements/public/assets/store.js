@@ -11,6 +11,28 @@ const sitePath = (path) => `${pathPrefix}${path === '/' ? '/' : path}`;
 const localHref = (href) => typeof href === 'string' && href.startsWith('/') && !href.startsWith(`${pathPrefix}/`) ? sitePath(href) : href;
 const activeCurrency = document.body.dataset.currency || 'NOK';
 const activeMarket = document.body.dataset.market || 'default';
+// Black Week gift (see sites/newmovements/gift-offer.mjs): one free waterproofing spray with shoes.
+const giftOffer = (() => {
+  try {
+    const offer = JSON.parse(document.body.dataset.giftOffer || 'null');
+    return offer && offer.currency === activeCurrency && Date.now() < Date.parse(offer.endsAt) ? offer : null;
+  } catch { return null; }
+})();
+const GIFT_STATE_KEY = 'newmovements-gift-v1';
+const giftState = () => { try { return JSON.parse(sessionStorage.getItem(GIFT_STATE_KEY) || '{}'); } catch { return {}; } };
+const setGiftState = (next) => { try { sessionStorage.setItem(GIFT_STATE_KEY, JSON.stringify({ ...giftState(), ...next })); } catch { /* Storage can be disabled. */ } };
+const careHandles = () => new Set([...document.querySelectorAll('[data-cart-upsell]')].flatMap((input) => { try { return [JSON.parse(input.dataset.cartUpsell).product.handle]; } catch { return []; } }));
+const giftQualifies = (items) => !!giftOffer && items.some((item) => item.handle !== giftOffer.handle && !careHandles().has(item.handle) && !/gift-card|gavekort/i.test(item.handle || ''));
+const giftItem = (items) => (giftQualifies(items) ? items.find((item) => item.handle === giftOffer.handle) || null : null);
+const giftValue = (items) => Number(giftItem(items)?.price || 0);
+const cartTotal = (items) => items.reduce((sum, item) => sum + item.price * item.quantity, 0) - giftValue(items);
+const isGiftLine = (item, items) => giftItem(items)?.variant === item.variant;
+const giftBadge = (item, items) => (isGiftLine(item, items) ? ` <span class="gift-badge">${t('Gift through 29 Nov', 'Gave t.o.m. 29.11.', 'Geschenk bis 29.11.')}</span>` : '');
+// The gift line shows its normal price struck through and one unit at zero.
+const linePrice = (item, items) => (isGiftLine(item, items)
+  ? `${item.quantity > 1 ? `${item.quantity} × ` : ''}<s>${money(item.price, item.currency || 'NOK')}</s> ${money(item.price * (item.quantity - 1), item.currency || 'NOK')}`
+  : `${item.quantity} × ${money(item.price, item.currency || 'NOK')}`);
+let syncingGift = false;
 let cartRepricing = false;
 let cartPriceRequest = 0;
 let cartPriceFailed = false;
@@ -42,6 +64,7 @@ const writeCart = (items) => {
   document.querySelectorAll('[data-checkout-error]').forEach((node) => { node.hidden = true; });
   updateCount();
   renderDrawerCart();
+  if (giftOffer && !syncingGift) { syncingGift = true; try { syncGift(); } catch { /* Bag still works without the gift. */ } finally { syncingGift = false; } }
 };
 const updateCount = () => {
   const count = readCart().reduce((total, item) => total + Number(item.quantity || 0), 0);
@@ -242,8 +265,8 @@ function renderDrawerCart() {
   const subtotal = document.querySelector('[data-drawer-subtotal]');
   if (!list) return;
   const items = readCart();
-  list.innerHTML = items.length ? items.map((item, index) => `<article class="drawer-cart-line${checkoutStockIssues.has(item.variant) ? ' has-stock-issue' : ''}" data-drawer-cart-index="${index}">${item.image ? `<img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.imageAlt || t(`${item.title} product image`, `Produktbilde av ${item.title}`, "" + (item.title) + " Produktbild"))}">` : '<div class="drawer-cart-placeholder"></div>'}<div><a href="${escapeHtml(localHref(item.url || `/products/${item.handle}`))}">${escapeHtml(item.title)}</a><span>${cartOptions(item) ? `${escapeHtml(cartOptions(item))} · ` : ''}${item.quantity} × ${money(item.price, item.currency || 'NOK')}</span>${cartStockNotice(item)}<label class="drawer-quantity">${t('Quantity', 'Antall', "Menge")}<input data-drawer-quantity type="number" min="1" max="20" inputmode="numeric" value="${item.quantity}" aria-label="${escapeHtml(t(`Quantity for ${item.title}`, `Antall for ${item.title}`, "Menge für " + (item.title) + ""))}"></label><button type="button" data-drawer-remove>${t('Remove', 'Fjern', "Entfernen")}</button></div></article>`).join('') : `<div class="drawer-empty"><p>${t('Your bag is empty.', 'Handlekurven din er tom.', "Deine Tasche ist leer.")}</p><a href="${sitePath('/collections/all')}">${t('Continue shopping', 'Fortsett å handle', "Weiter einkaufen")}</a></div>`;
-  if (subtotal) subtotal.textContent = cartRepricing ? t('Updating prices…', 'Oppdaterer priser …', "Preise werden aktualisiert…") : cartPriceFailed || items.some((item) => unavailableMarketVariants.has(item.variant)) ? t('Price unavailable', 'Pris utilgjengelig', "Preis nicht verfügbar") : money(items.reduce((sum, item) => sum + item.price * item.quantity, 0));
+  list.innerHTML = items.length ? items.map((item, index) => `<article class="drawer-cart-line${checkoutStockIssues.has(item.variant) ? ' has-stock-issue' : ''}" data-drawer-cart-index="${index}">${item.image ? `<img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.imageAlt || t(`${item.title} product image`, `Produktbilde av ${item.title}`, "" + (item.title) + " Produktbild"))}">` : '<div class="drawer-cart-placeholder"></div>'}<div><a href="${escapeHtml(localHref(item.url || `/products/${item.handle}`))}">${escapeHtml(item.title)}</a><span>${cartOptions(item) ? `${escapeHtml(cartOptions(item))} · ` : ''}${linePrice(item, items)}${giftBadge(item, items)}</span>${cartStockNotice(item)}<label class="drawer-quantity">${t('Quantity', 'Antall', "Menge")}<input data-drawer-quantity type="number" min="1" max="20" inputmode="numeric" value="${item.quantity}" aria-label="${escapeHtml(t(`Quantity for ${item.title}`, `Antall for ${item.title}`, "Menge für " + (item.title) + ""))}"></label><button type="button" data-drawer-remove>${t('Remove', 'Fjern', "Entfernen")}</button></div></article>`).join('') : `<div class="drawer-empty"><p>${t('Your bag is empty.', 'Handlekurven din er tom.', "Deine Tasche ist leer.")}</p><a href="${sitePath('/collections/all')}">${t('Continue shopping', 'Fortsett å handle', "Weiter einkaufen")}</a></div>`;
+  if (subtotal) subtotal.textContent = cartRepricing ? t('Updating prices…', 'Oppdaterer priser …', "Preise werden aktualisiert…") : cartPriceFailed || items.some((item) => unavailableMarketVariants.has(item.variant)) ? t('Price unavailable', 'Pris utilgjengelig', "Preis nicht verfügbar") : money(cartTotal(items));
   syncCartUpsells(items);
   cartDrawer.querySelectorAll('[data-checkout-start]').forEach((button) => { button.disabled = !items.length || checkoutPending || cartRepricing || cartPriceFailed || items.some((item) => unavailableMarketVariants.has(item.variant)); });
 }
@@ -268,6 +291,28 @@ function syncCartUpsells(items = readCart()) {
   }
 }
 
+// Adds the gift once the spray is confirmed in stock, and removes an automatically added
+// gift when no shoes remain. A shopper who unchecks the gift keeps that choice this session.
+function syncGift() {
+  if (!giftOffer) return false;
+  const choice = upsellChoices.find(({ product }) => product.handle === giftOffer.handle);
+  const items = readCart();
+  const inCart = items.some((item) => item.handle === giftOffer.handle);
+  const state = giftState();
+  if (giftQualifies(items)) {
+    if (!inCart && !state.declined && choice && upsellAvailability?.has(choice.variant.id)) {
+      setGiftState({ auto: true });
+      addCartItem(choice.product, choice.variant);
+      return true;
+    }
+  } else if (inCart && state.auto) {
+    setGiftState({ auto: false });
+    writeCart(items.filter((item) => item.handle !== giftOffer.handle));
+    return true;
+  }
+  return false;
+}
+
 async function refreshUpsellStock() {
   if (!upsellChoices.length || !readCart().length || checkingUpsellStock) return;
   checkingUpsellStock = true;
@@ -285,12 +330,14 @@ async function refreshUpsellStock() {
   } finally {
     checkingUpsellStock = false;
     syncCartUpsells();
+    if (syncGift()) renderCart();
   }
 }
 
 cartUpsells?.addEventListener('change', (event) => {
   const choice = upsellChoices.find(({ input }) => input === event.target);
   if (!choice) return;
+  if (giftOffer && choice.product.handle === giftOffer.handle) setGiftState(choice.input.checked ? { declined: false } : { declined: true, auto: false });
   if (choice.input.checked) {
     if (checkingUpsellStock || !upsellAvailability?.has(choice.variant.id)) return syncCartUpsells();
     addCartItem(choice.product, choice.variant);
@@ -403,6 +450,8 @@ add?.addEventListener('click', () => {
   if (!UUID.test(add.dataset.variant || '')) return;
   const quantity = Math.max(1, Math.min(20, Number(document.querySelector('[data-quantity]')?.value || 1)));
   addCartItem({ id: add.dataset.id, handle: add.dataset.handle, title: add.dataset.title, url: add.dataset.url, image: add.dataset.image, imageAlt: add.dataset.imageAlt }, { id: add.dataset.variant, price: Number(add.dataset.price), label: add.dataset.label }, quantity);
+  // Add the gift straight away, so a shopper who checks out from the toast still gets it.
+  if (giftOffer) refreshUpsellStock();
 });
 
 const setCardSlide = (card, requestedIndex) => {
@@ -573,9 +622,9 @@ const renderCart = () => {
   if (!items.length) {
     list.innerHTML = `<div class="message-page"><h2>${t('Your bag is empty', 'Handlekurven er tom', "Deine Tasche ist leer")}</h2><p><a href="${sitePath('/collections/all')}">${t('Continue shopping', 'Fortsett å handle', "Weiter einkaufen")}</a></p></div>`;
   } else {
-    list.innerHTML = items.map((item, index) => `<article class="cart-line${checkoutStockIssues.has(item.variant) ? ' has-stock-issue' : ''}" data-cart-index="${index}">${item.image ? `<img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.imageAlt || `${item.title} product image`)}">` : '<div></div>'}<div><h2><a href="${escapeHtml(localHref(item.url || `/products/${item.handle}`))}">${escapeHtml(item.title)}</a></h2>${cartOptions(item) ? `<p>${escapeHtml(cartOptions(item))}</p>` : ''}<p>${money(item.price, item.currency || 'NOK')}</p><label>${t('Qty', 'Antall', "Menge")} <input type="number" min="1" max="20" value="${item.quantity}" data-cart-quantity></label>${cartStockNotice(item)}<button type="button" data-cart-remove>${t('Remove', 'Fjern', "Entfernen")}</button></div><strong>${money(item.price * item.quantity, item.currency || 'NOK')}</strong></article>`).join('');
+    list.innerHTML = items.map((item, index) => `<article class="cart-line${checkoutStockIssues.has(item.variant) ? ' has-stock-issue' : ''}" data-cart-index="${index}">${item.image ? `<img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.imageAlt || `${item.title} product image`)}">` : '<div></div>'}<div><h2><a href="${escapeHtml(localHref(item.url || `/products/${item.handle}`))}">${escapeHtml(item.title)}</a></h2>${cartOptions(item) ? `<p>${escapeHtml(cartOptions(item))}</p>` : ''}<p>${money(item.price, item.currency || 'NOK')}${giftBadge(item, items)}</p><label>${t('Qty', 'Antall', "Menge")} <input type="number" min="1" max="20" value="${item.quantity}" data-cart-quantity></label>${cartStockNotice(item)}<button type="button" data-cart-remove>${t('Remove', 'Fjern', "Entfernen")}</button></div><strong>${money(item.price * item.quantity - (giftItem(items)?.variant === item.variant ? giftValue(items) : 0), item.currency || 'NOK')}</strong></article>`).join('');
   }
-  const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const total = cartTotal(items);
   if (subtotal) subtotal.textContent = cartRepricing ? t('Updating prices…', 'Oppdaterer priser …', "Preise werden aktualisiert…") : cartPriceFailed || items.some((item) => unavailableMarketVariants.has(item.variant)) ? t('Price unavailable', 'Pris utilgjengelig', "Preis nicht verfügbar") : money(total);
   checkoutButtons.forEach((button) => { button.disabled = !items.length || checkoutPending || cartRepricing || cartPriceFailed || items.some((item) => unavailableMarketVariants.has(item.variant)); });
 };
