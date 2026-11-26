@@ -58,23 +58,23 @@ export const EDITORIAL_IMAGES = {
     "sourceHash": "66c5f717e6098cd066783927248b1a1a7cf61cec46858636557338a5217ded67"
   },
   "/brand-assets/hero-men.jpg": {
-    "width": 1195,
-    "height": 1465,
+    "width": 1200,
+    "height": 1749,
     "renditions": [
       {
         "width": 640,
-        "url": "/brand-assets/hero-men.jpg.640.e2ac1463f14f4f23.avif"
+        "url": "/brand-assets/hero-men.jpg.640.601abe587a9fd1c3.avif"
       },
       {
         "width": 960,
-        "url": "/brand-assets/hero-men.jpg.960.934ff8a1340da9c1.avif"
+        "url": "/brand-assets/hero-men.jpg.960.c155b1d5a5aee2fc.avif"
       },
       {
-        "width": 1195,
-        "url": "/brand-assets/hero-men.jpg.1195.0f7832da748dc4b0.avif"
+        "width": 1200,
+        "url": "/brand-assets/hero-men.jpg.1200.ebc26480544ddf71.avif"
       }
     ],
-    "sourceHash": "f372ea00a53ccded05ffad3d503a600741b5fd04b5c975d3cc3fb65c7c3984b4"
+    "sourceHash": "cd279ee547cf41b21548f8ec7b8249c3d319ac45a0ce33bc744c57a61ff0d157"
   },
   "/brand-assets/hero-women.jpg": {
     "width": 1116,

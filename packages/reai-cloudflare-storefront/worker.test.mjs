@@ -519,7 +519,7 @@ test("allows an explicit image CDN without broadening script or form permissions
   const response = await worker.fetch(new Request("https://shop.example/reai/catalog"), {});
   const policy = response.headers.get("Content-Security-Policy");
   assert.match(policy, /img-src 'self' data: https:\/\/app.reai.no https:\/\/cdn.shopify.com;/);
-  assert.match(policy, /script-src 'self'; form-action 'self' mailto:/);
+  assert.match(policy, /script-src 'self' https:\/\/challenges.cloudflare.com; frame-src https:\/\/challenges.cloudflare.com; form-action 'self' mailto:/);
   assert.throws(() => createReaiStorefrontWorker({ cacheKey: "unsafe-image-cdn", storefront, market: "default", locale: "en", imageOrigins: ["https://cdn.shopify.com; script-src *"] }), /Invalid URL|HTTPS origins/);
 });
 

@@ -420,3 +420,14 @@ assert.match(renderCollectionPage(store, "sneakers", { url: new URL("https://new
   const sizeResults = sizeSearchHtml.match(/<div data-search-results>([\s\S]*?)<\/div>/)?.[1] || "";
   assert.doesNotMatch(sizeResults, /pages\/gift-cards/);
 }
+
+// Women/men views keep the ReAI image order (studio shots first) and only hide the other audience.
+{
+  const { productView } = await import("../merchandising.mjs");
+  const img = (name) => ({ url: `https://app.reai.no/media/product-images/x/${name}.avif`, alt: "" });
+  const shoe = { handle: "low-cloud-camel-brown", variants: [{ id: "a", options: [{ name: "Size", value: "38" }] }, { id: "b", options: [{ name: "Size", value: "44" }] }],
+    images: ["model-her-close", "lowcloud-side-camel", "bootsole-cognac", "street-women", "lowcloud-back-camel", "close-him"].map(img) };
+  const names = (view) => productView(shoe, view).images.map((image) => image.url.split("/").pop().replace(".avif", ""));
+  assert.deepEqual(names("women"), ["lowcloud-side-camel", "lowcloud-back-camel", "model-her-close", "bootsole-cognac", "street-women"]);
+  assert.deepEqual(names("men"), ["lowcloud-side-camel", "lowcloud-back-camel", "bootsole-cognac", "close-him"]);
+}

@@ -76,8 +76,9 @@ an explicit `filename` field if a delivery contract supplies one later. No backe
 schema, gender taxonomy or second catalog is needed.
 
 Name model photos with `women` / `men` (legacy `woman`, `female`, `her`, `man`,
-`male`, `him` also work). Matching photos lead the gallery; opposite markers are
-excluded. Unmarked studio and lifestyle photos appear in both views. All sizes
+`male`, `him` also work). Women/men views only exclude opposite markers; the gallery keeps
+the ReAI image order, with studio product shots (side/back/front/insole) first (Martin,
+2026-11-25). Reorder images in ReAI to move an audience photo. Unmarked studio and lifestyle photos appear in both views. All sizes
 shows every photo in the catalog order. Rename images through ReAI to assign them
 to a gender view. Keep alt text descriptive; do not use it as a hidden
 merchandising tag.

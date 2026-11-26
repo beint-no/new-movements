@@ -14,4 +14,5 @@ const transport = `${google} ${GOOGLE_COUNTRY_DOMAINS.join(" ")} https://googlea
 export const withMarketingCsp = (csp) => csp
   .replace(/img-src ([^;]+)/, `img-src $1 https://www.facebook.com ${transport}`)
   .replace(/script-src ([^;]+)/, `script-src $1 ${google}`)
-  + `; connect-src 'self' ${transport}; frame-src https://www.googletagmanager.com`;
+  .replace(/frame-src ([^;]+)/, "frame-src $1 https://www.googletagmanager.com")
+  + `; connect-src 'self' ${transport}`;
