@@ -650,7 +650,9 @@ export function createReaiStorefrontWorker({
         }
       } else {
         if (body.welcomeDiscount != null && typeof body.welcomeDiscount !== "boolean") return jsonResponse({ error: messages.invalidNewsletter }, 400, env);
-        upstreamResult = client.subscribeNewsletter({ email, consent: true, locale: canonicalLocale, ...(body.welcomeDiscount === true ? { welcomeDiscount: true } : {}), ...(name ? { name } : {}) });
+        // Only a Turnstile check this Worker actually passed vouches for a person; without it ReAI asks the address to confirm.
+        const humanVerified = Boolean(env.TURNSTILE_SECRET_KEY);
+        upstreamResult = client.subscribeNewsletter({ email, consent: true, locale: canonicalLocale, ...(body.welcomeDiscount === true ? { welcomeDiscount: true } : {}), ...(name ? { name } : {}), ...(humanVerified ? { humanVerified: true } : {}) });
         if (request.headers.get("Content-Type")?.includes("application/x-www-form-urlencoded")) {
           const upstream = (await upstreamResult.catch(() => ({ response: new Response(null, { status: 503 }) }))).response;
           return htmlResponse(storefront.renderMessagePage(null, upstream.ok

@@ -533,7 +533,7 @@ export interface paths {
         put?: never;
         /**
          * Subscribe to the Site owner's newsletter
-         * @description Accepts an email and optional name with explicit newsletter consent. Reuses the tenant's customer consent records without changing existing customer details. Repeated submissions are idempotent. Returns the same receipt for new and existing contacts; ensures enrollment in the configured welcome flow at most once per email and store, including existing subscribers. Explicit welcomeDiscount=true selects the separately enabled welcome_discount flow instead, at most once per email and store even for existing subscribers. An unavailable offer rejects the request without saving consent. Does not create a discount.
+         * @description Accepts an email and optional name with explicit newsletter consent. Reuses the tenant's customer consent records without changing existing customer details. Repeated submissions are idempotent. Returns the same receipt for new and existing contacts; ensures enrollment in the configured welcome flow at most once per email and store, including existing subscribers. Explicit welcomeDiscount=true selects the separately enabled welcome_discount flow instead, at most once per email and store even for existing subscribers. An unavailable offer rejects the request without saving consent. Does not create a discount. Double opt-in by default: unless the site sets humanVerified after its own server-side bot check, and the address or the site shows no sign of signup abuse (the address joined another store recently, its inbox is being flooded, or signups surge far above the site's normal), ReAI emails the address a confirmation link and records nothing else until it is confirmed. At most one confirmation per address and week is sent across all sites. The receipt is the same either way.
          */
         post: operations["siteDeliveryApi_subscribeNewsletter"];
         delete?: never;
@@ -1263,6 +1263,8 @@ export interface components {
             consent: boolean;
             /** Format: email */
             email: string;
+            /** @description Set to true only when the site verified on its server that a person submitted this signup, for example by checking a Cloudflare Turnstile token. Unverified signups, and verified ones that look like signup abuse, are recorded only after the address owner confirms by email; until then no customer or consent exists. Defaults to false. */
+            humanVerified?: boolean;
             locale?: string | null;
             name?: string | null;
             /** @description Explicitly request the enabled welcome_discount flow instead of the ordinary welcome. Defaults to false. Sends at most once per email and store, including existing subscribers. Its editable template must refer to an existing discount code; no codes are created. */
