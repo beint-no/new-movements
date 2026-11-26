@@ -4,7 +4,7 @@ import { searchProducts } from "../reai-site-client/search.mjs";
 import { ReaiSiteClient } from "../reai-site-client/client.mjs";
 
 /** @typedef {import("../reai-site-client/site-api.d.ts").components["schemas"]["SiteCheckoutSessionReq"]} SiteCheckoutSessionRequest */
-/** @typedef {{ REAI_BASE_URL?: string, REAI_SITE_TOKEN?: string, CHECKOUT_ENABLED?: string, NEWSLETTER_RATE_LIMIT?: { limit(options: { key: string }): Promise<{ success: boolean }> }, CHECKOUT_RATE_LIMIT?: { limit(options: { key: string }): Promise<{ success: boolean }> }, ASSETS: { fetch(request: Request): Promise<Response> } }} WorkerEnv */
+/** @typedef {{ REAI_BASE_URL?: string, REAI_SITE_TOKEN?: string, TURNSTILE_SECRET_KEY?: string, CHECKOUT_ENABLED?: string, NEWSLETTER_RATE_LIMIT?: { limit(options: { key: string }): Promise<{ success: boolean }> }, CHECKOUT_RATE_LIMIT?: { limit(options: { key: string }): Promise<{ success: boolean }> }, ASSETS: { fetch(request: Request): Promise<Response> } }} WorkerEnv */
 /** @typedef {{ request: Request, env: WorkerEnv, url: URL, renderContext: any }} BeforeRequestContext */
 
 const STATIC_ASSET = /\.(?:avif|css|eot|gif|ico|jpe?g|js|json|map|mp4|ogg|otf|png|svg|ttf|webm|webp|woff2?)$/i;
@@ -20,6 +20,7 @@ const defaultMessages = {
   invalidJson: "Invalid JSON.",
   invalidNewsletter: "Provide a valid email and newsletter consent; name is optional (75 characters maximum).",
   signupRateLimited: "Please wait a moment before signing up again.",
+  humanCheckFailed: "We could not verify this request. Refresh the page and try again.",
   invalidLineCount: "The cart must contain between 1 and 100 lines.",
   invalidLine: "The cart contains an invalid variant or quantity.",
   notConfigured: "The Site API is not configured.",
@@ -35,6 +36,7 @@ export const norwegianMessages = {
   invalidJson: "Ugyldig JSON.",
   invalidNewsletter: "Oppgi en gyldig e-postadresse og samtykke til nyhetsbrev; navn er valgfritt (maks 75 tegn).",
   signupRateLimited: "Vent litt før du melder deg på igjen.",
+  humanCheckFailed: "Vi klarte ikke å bekrefte forespørselen. Last inn siden på nytt og prøv igjen.",
   invalidLineCount: "Handlekurven må inneholde mellom 1 og 100 linjer.",
   invalidLine: "Handlekurven inneholder en ugyldig variant eller et ugyldig antall.",
   notConfigured: "Site API er ikke konfigurert.",
@@ -64,9 +66,34 @@ function baseSecurityHeaders(headers, env, extraImageOrigins) {
   headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
   headers.set(
     "Content-Security-Policy",
-    `default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: ${siteOrigin(env)}${extraImageOrigins ? ` ${extraImageOrigins}` : ''}; script-src 'self'; form-action 'self' mailto:; base-uri 'self'; frame-ancestors 'none'; object-src 'none'`,
+    `default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: ${siteOrigin(env)}${extraImageOrigins ? ` ${extraImageOrigins}` : ''}; script-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; form-action 'self' mailto:; base-uri 'self'; frame-ancestors 'none'; object-src 'none'`,
   );
   return headers;
+}
+
+const TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
+
+/**
+ * Signup forms send email to the address a visitor types, so bots use them for
+ * subscription bombing. With TURNSTILE_SECRET_KEY set, a signup needs a Turnstile
+ * token issued for this hostname and form action. Verification fails closed.
+ * @param {Request} request @param {WorkerEnv} env @param {URL} url @param {unknown} token @param {string} action
+ */
+async function humanCheckFailed(request, env, url, token, action) {
+  if (!env.TURNSTILE_SECRET_KEY) return false;
+  if (typeof token !== "string" || !token || token.length > 2048) return true;
+  const body = new FormData();
+  body.append("secret", env.TURNSTILE_SECRET_KEY);
+  body.append("response", token);
+  const ip = request.headers.get("CF-Connecting-IP");
+  if (ip) body.append("remoteip", ip);
+  try {
+    const response = await fetch(TURNSTILE_VERIFY_URL, { method: "POST", body });
+    const result = await response.json();
+    return !(result?.success === true && result.hostname === url.hostname && result.action === action);
+  } catch {
+    return true;
+  }
 }
 
 function withHsts(response, url) {
@@ -589,7 +616,7 @@ export function createReaiStorefrontWorker({
       let body;
       try {
         const text = await request.text();
-        if (text.length > 1024) return jsonResponse({ error: messages.invalidNewsletter }, 400, env);
+        if (text.length > 4096) return jsonResponse({ error: messages.invalidNewsletter }, 400, env);
         if (request.headers.get("Content-Type")?.includes("application/x-www-form-urlencoded")) {
           const form = new URLSearchParams(text);
           body = Object.fromEntries(form);
@@ -604,6 +631,13 @@ export function createReaiStorefrontWorker({
       const name = typeof body?.name === "string" ? body.name.trim() : body?.name;
       if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || body.consent !== true || (name != null && (typeof name !== "string" || name.length > 75))) {
         return jsonResponse({ error: messages.invalidNewsletter }, 400, env);
+      }
+      const formPost = request.headers.get("Content-Type")?.includes("application/x-www-form-urlencoded");
+      const action = route === "/reai/stock/subscribe" ? "stock" : "newsletter";
+      if (await humanCheckFailed(request, env, url, formPost ? body["cf-turnstile-response"] : body.turnstileToken, action)) {
+        return formPost
+          ? htmlResponse(storefront.renderMessagePage(null, { title: "Signup", heading: "Please try again", text: "We could not verify your request. Make sure JavaScript is enabled, refresh the page and try again." }), env, 403, "no-store")
+          : jsonResponse({ error: messages.humanCheckFailed }, 403, env);
       }
       if (route === "/reai/stock/subscribe") {
         if (!VARIANT_ID.test(body.variantId)) return jsonResponse({ error: messages.invalidVariantId }, 400, env);

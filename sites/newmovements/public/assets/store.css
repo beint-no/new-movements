@@ -580,6 +580,7 @@ body[data-view="women"] .collection-layout .product-shot picture{
 .newsletter button:disabled{opacity:.65;cursor:wait}
 .newsletter-consent,[data-newsletter-status]{margin:12px 0 0;color:#555;font-size:.78rem;line-height:1.5}
 .newsletter-consent a{text-decoration:underline}
+.turnstile-widget{max-width:100%}.turnstile-widget:empty{display:none}
 .cart-drawer footer [data-checkout-start]{width:100%;padding:17px;border:0;color:#fff;background:#111;text-transform:uppercase;cursor:pointer;font-size:.82rem;letter-spacing:.06em}
 .cart-drawer footer [data-checkout-start]:disabled{opacity:.5;cursor:default}
 .cart-drawer footer [data-checkout-error]{display:block;margin:12px 0 0;color:#a12626;font-size:.85rem}
