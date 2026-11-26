@@ -18,6 +18,29 @@ const delivery = document.querySelector('[data-delivery-options]');
 const customerFields = ['email','phone','name','countryCode','addressPart1','addressPart2','postalCode','city','province'];
 let chain = Promise.resolve(), timer, conflict = false, submitting = false, lastSentCustomer = null;
 let options = [], discovery = 0, choosingOption = null;
+// Black Week gift (see sites/newmovements/gift-offer.mjs). The bag adds the spray; checkout applies
+// the hidden gift code once, while the shopper has shoes and has not entered or removed a code.
+const giftOffer = (() => {
+  try {
+    const offer = JSON.parse(root.dataset.giftOffer || 'null');
+    return offer && offer.currency === state.currency && Date.now() < Date.parse(offer.endsAt) ? offer : null;
+  } catch { return null; }
+})();
+const giftCart = (() => { try { return JSON.parse(localStorage.getItem('newmovements-cart-v1') || '[]'); } catch { return []; } })();
+const giftVariant = giftOffer ? giftCart.find(item => item.handle === giftOffer.handle)?.variant || null : null;
+// Shoes are bag items that are neither shoe care nor gift cards.
+const giftShoeVariants = giftOffer ? new Set(giftCart.filter(item => item.handle !== giftOffer.handle && !(giftOffer.careHandles || []).includes(item.handle) && !/gift-card|gavekort/i.test(item.handle || '')).map(item => item.variant)) : new Set();
+const giftDeclinedKey = `newmovements-gift-declined:${state.id}`;
+function giftQualifies() {
+  return !!giftVariant && state.lines.some(l => l.variantId === giftVariant) && state.lines.some(l => giftShoeVariants.has(l.variantId));
+}
+function markGiftLine() {
+  const active = giftOffer && state.discountCode === giftOffer.code;
+  document.querySelectorAll('.co-product').forEach((node, index) => {
+    node.querySelector('.gift-badge')?.remove();
+    if (active && state.lines[index]?.variantId === giftVariant) node.querySelector('strong')?.insertAdjacentHTML('afterend', `<span class="gift-badge">${t('Gift through 29 Nov','Gave t.o.m. 29.11.','Geschenk bis 29.11.')}</span>`);
+  });
+}
 const pickupMethod = () => state.shippingMethods.find(m => m.id === state.shippingMethodId && m.pickupDetails);
 let fulfillment = pickupMethod()?.id || 'delivery';
 const storePickup = () => fulfillment !== 'delivery';
@@ -70,7 +93,7 @@ function refresh(next) {
   rememberDraft();
   text('[data-subtotal]', money(state.subtotal)); text('[data-total]', money(state.total)); text('[data-mobile-total]', money(state.total));
   text('[data-shipping-price]', state.shippingGross == null ? t('Choose delivery','Velg levering', "Lieferung wählen") : Number(state.shippingGross) === 0 ? t('Free','Gratis', "Kostenlos") : money(state.shippingGross));
-  text('[data-discount-name]',state.discountCode || ''); text('[data-discount-amount]',money(-(state.discountGross || 0)));
+  text('[data-discount-name]',giftOffer && state.discountCode===giftOffer.code ? t('Limited gift through 29 Nov: waterproofing spray','Gave t.o.m. 29.11.: impregneringsspray','Geschenk bis 29.11.: Imprägnierspray') : state.discountCode || ''); markGiftLine(); text('[data-discount-amount]',money(-(state.discountGross || 0)));
   document.querySelector('[data-discount-row]').hidden = !state.discountCode;
   text('[data-gift-card-name]', state.giftCardCode ? '•••• ' + state.giftCardCode.slice(-4) : '');
   text('[data-gift-card-amount]', money(-(state.giftCardAmount || 0)));
@@ -413,6 +436,7 @@ codeForm?.addEventListener('submit', async e => {
 for(const [selector,field] of [['[data-remove-discount]','discountCode'],['[data-remove-gift-card]','giftCardCode']]) {
   document.querySelector(selector)?.addEventListener('click',async e=> {
     const button=e.currentTarget;button.disabled=true;
+    if(field==='discountCode' && giftOffer && state.discountCode===giftOffer.code){try{sessionStorage.setItem(giftDeclinedKey,'1');}catch{}}
     try {await save({[field]:''});text('[data-code-status]','');warmPayment();}
     catch(e){text('[data-code-status]',e.message);}
     finally{button.disabled=false;}
@@ -465,3 +489,10 @@ if(root.dataset.completed==='true' && state.phase==='complete')clearDraft();
 window.addEventListener('pagehide',rememberDraft);
 window.addEventListener('pageshow',e=>{if(e.persisted)location.reload();});
 if(matchMedia('(max-width:760px)').matches)document.querySelector('.co-summary-mobile').open=false;
+
+markGiftLine();
+if (giftOffer && form && state.editable && root.dataset.completed !== 'true' && !state.discountCode && giftQualifies()) {
+  let declined = false;
+  try { declined = sessionStorage.getItem(giftDeclinedKey) === '1'; } catch {}
+  if (!declined) save({ code: giftOffer.code }).then(() => text('[data-code-status]', t('Your gift is included.', 'Gaven er lagt til.', 'Dein Geschenk ist enthalten.'))).catch(() => { /* The shopper can still check out without the gift. */ });
+}

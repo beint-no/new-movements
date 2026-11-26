@@ -1008,3 +1008,8 @@ dialog.store-drawer::backdrop{background:#0005}
 /* The men's hero is a tall full-length photo; keep the boots in view on wide screens. */
 .home-hero-panel--men img{object-position:center 92%}
 @media(max-width:900px){.home-hero-panel--men img{object-position:center 96%}}
+.gift-offer-note{margin:16px 0 0;padding:14px 16px;border:1px solid var(--ink);border-radius:8px;font-size:.88rem;line-height:1.45}.gift-offer-note p{margin:0}.gift-offer-eyebrow{margin-bottom:4px!important;font-size:.7rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase}.gift-offer-small{margin-top:4px!important;color:#666;font-size:.78rem}
+.gift-offer-note strong{font-weight:600}
+.gift-offer-note span{color:#666}
+.gift-badge{display:inline-block;margin-left:4px;padding:1px 7px;border-radius:999px;background:var(--ink);color:#fff;font-size:.68rem;font-weight:500;letter-spacing:.02em;vertical-align:1px;white-space:nowrap}
+.cart-upsell-price s{color:#888}

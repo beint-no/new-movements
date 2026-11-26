@@ -3,3 +3,4 @@
 .co-pickup input{padding-right:40px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath d='m4 6 4 4 4-4' fill='none' stroke='%23252322' stroke-width='1.5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center}.co-retry{border:0;background:none;padding:4px 0;color:inherit;text-decoration:underline;text-underline-offset:3px;font-size:13px}
 
 .co-field-error{display:block;color:#9b2019;font-size:12px;font-weight:400;margin-top:6px}.co-save{text-align:right}
+.co-product .gift-badge{display:inline-block;margin-top:4px;padding:1px 7px;border-radius:999px;background:#252322;color:#fff;font-size:11px;font-weight:500}
