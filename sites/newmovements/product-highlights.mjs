@@ -5,9 +5,16 @@
 // the catalogue says. ReAI's shared taxonomy has no "wool lining" or "rubber sole"
 // feature, so those read the footwear materials. Add a model here only after
 // confirming that its wool is the lining and its rubber is the outsole.
+// The merchant confirmed (2026-11-26) that every boot model except Moss is
+// waterproof, wool-lined and has a rubber sole.
+const BOOT_HIGHLIGHTS = Object.freeze(["waterproof", "wool-lining", "rubber-sole"]);
 export const HIGHLIGHT_MODELS = Object.freeze({
-  "Cloud Boot": ["waterproof", "wool-lining", "rubber-sole"],
-  "Low Cloud": ["waterproof", "wool-lining", "rubber-sole"],
+  "Cloud Boot": BOOT_HIGHLIGHTS,
+  "Low Cloud": BOOT_HIGHLIGHTS,
+  "Flow Boot": BOOT_HIGHLIGHTS,
+  "Space Boot": BOOT_HIGHLIGHTS,
+  "High Space Boot": BOOT_HIGHLIGHTS,
+  "Zipper Boot": BOOT_HIGHLIGHTS,
 });
 
 const ICONS = {
