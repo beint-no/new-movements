@@ -1,4 +1,4 @@
-import './analytics.js';
+import {checkoutAnalytics} from './analytics.js';
 import {trackCheckout, trackPurchase} from './marketing.js';
 const root = document.body;
 const pathPrefix = root.dataset.pathPrefix || '';
@@ -31,8 +31,43 @@ const giftVariant = giftOffer ? giftCart.find(item => item.handle === giftOffer.
 // Shoes are bag items that are neither shoe care nor gift cards.
 const giftShoeVariants = giftOffer ? new Set(giftCart.filter(item => item.handle !== giftOffer.handle && !(giftOffer.careHandles || []).includes(item.handle) && !/gift-card|gavekort/i.test(item.handle || '')).map(item => item.variant)) : new Set();
 const giftDeclinedKey = `newmovements-gift-declined:${state.id}`;
+const GIFT_STATE_KEY = 'newmovements-gift-v1';
+const PENDING_CODE_KEY = 'newmovements-checkout-pending-code-v1';
+const readGiftState = () => { try { return JSON.parse(sessionStorage.getItem(GIFT_STATE_KEY) || '{}'); } catch { return {}; } };
+const writeGiftState = (next) => { try { sessionStorage.setItem(GIFT_STATE_KEY, JSON.stringify({ ...readGiftState(), ...next })); } catch {} };
 function giftQualifies() {
   return !!giftVariant && state.lines.some(l => l.variantId === giftVariant) && state.lines.some(l => giftShoeVariants.has(l.variantId));
+}
+function autoGiftRemainingLines() {
+  if (!giftOffer || !giftVariant || readGiftState().auto === false) return null;
+  const giftLine = state.lines.find(l => l.variantId === giftVariant);
+  if (!giftLine || giftLine.quantity !== 1) return null;
+  const remaining = state.lines.filter(l => l.variantId !== giftVariant).map(l => ({ variantId: l.variantId, quantity: l.quantity }));
+  return remaining.length ? remaining : null;
+}
+async function restartWithoutAutoGift(pending) {
+  const lines = autoGiftRemainingLines();
+  if (!lines) return false;
+  rememberDraft();
+  const analytics = await checkoutAnalytics().catch(() => ({}));
+  const response = await fetch(sitePath('/reai/checkout/start'), {
+    method: 'POST',
+    cache: 'no-store',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json', 'Idempotency-Key': crypto.randomUUID() },
+    body: JSON.stringify({ lines, ...analytics }),
+  });
+  const started = await response.json().catch(() => ({}));
+  if (!response.ok || !started.checkoutUrl) return false;
+  // Remove the auto-added spray from the saved bag only after the clean checkout exists.
+  try {
+    const cart = JSON.parse(localStorage.getItem('newmovements-cart-v1') || '[]');
+    localStorage.setItem('newmovements-cart-v1', JSON.stringify(cart.filter(item => item.variant !== giftVariant)));
+  } catch {}
+  writeGiftState({ declined: true, auto: false });
+  try { sessionStorage.setItem(PENDING_CODE_KEY, JSON.stringify({ ...pending, expiresAt: Date.now() + 5 * 60 * 1000 })); } catch {}
+  location.assign(started.checkoutUrl);
+  return true;
 }
 function markGiftLine() {
   const active = giftOffer && state.discountCode === giftOffer.code;
@@ -424,22 +459,36 @@ codeForm?.addEventListener('submit', async e => {
   input.value=code;
   if(!code)return;
   const btn=codeForm.querySelector('button');
+  const hadGift = !!(giftOffer && (state.discountCode === giftOffer.code || (!state.discountCode && giftQualifies())));
+  let redirecting = false;
   btn.disabled=true;text('[data-code-status]','');
   try {
-    await save({code});
+    const next = await save({code});
     codeForm.reset();
-    text('[data-code-status]', t('Code applied.','Koden er lagt til.','Code angewendet.'));
+    const replacedGift = hadGift && next.discountCode !== giftOffer.code;
+    if (replacedGift) {
+      if (await restartWithoutAutoGift({ code: next.discountCode, giftCardCode: next.giftCardCode || null, replacedGift: true })) { redirecting = true; return; }
+      text('[data-code-status]', t('Code applied. Only one offer can be used per order, so the waterproofing spray is no longer free.', 'Koden er lagt til. Kun ett tilbud kan brukes per bestilling, så impregneringssprayen er ikke lenger gratis.', 'Code angewendet. Pro Bestellung kann nur ein Angebot genutzt werden, daher ist das Imprägnierspray nicht mehr kostenlos.'));
+    } else {
+      text('[data-code-status]', t('Code applied.','Koden er lagt til.','Code angewendet.'));
+    }
     warmPayment();
   } catch(e) {text('[data-code-status]',e.message);}
-  finally {btn.disabled=false;}
+  finally {if(!redirecting)btn.disabled=false;}
 });
 for(const [selector,field] of [['[data-remove-discount]','discountCode'],['[data-remove-gift-card]','giftCardCode']]) {
   document.querySelector(selector)?.addEventListener('click',async e=> {
     const button=e.currentTarget;button.disabled=true;
-    if(field==='discountCode' && giftOffer && state.discountCode===giftOffer.code){try{sessionStorage.setItem(giftDeclinedKey,'1');}catch{}}
-    try {await save({[field]:''});text('[data-code-status]','');warmPayment();}
+    const removingGift = field==='discountCode' && !!(giftOffer && state.discountCode===giftOffer.code);
+    if(removingGift){try{sessionStorage.setItem(giftDeclinedKey,'1');}catch{}}
+    let redirecting = false;
+    try {
+      await save({[field]:''});
+      if (removingGift && await restartWithoutAutoGift({ giftCardCode: state.giftCardCode || null, removedGift: true })) { redirecting = true; return; }
+      text('[data-code-status]','');warmPayment();
+    }
     catch(e){text('[data-code-status]',e.message);}
-    finally{button.disabled=false;}
+    finally{if(!redirecting)button.disabled=false;}
   });
 }
 if (form) {
@@ -490,8 +539,35 @@ window.addEventListener('pagehide',rememberDraft);
 window.addEventListener('pageshow',e=>{if(e.persisted)location.reload();});
 if(matchMedia('(max-width:760px)').matches)document.querySelector('.co-summary-mobile').open=false;
 
+const pendingCode = (() => {
+  try {
+    const raw = sessionStorage.getItem(PENDING_CODE_KEY);
+    if (!raw) return null;
+    sessionStorage.removeItem(PENDING_CODE_KEY);
+    const parsed = JSON.parse(raw);
+    return parsed && Number.isFinite(parsed.expiresAt) && parsed.expiresAt > Date.now() ? parsed : null;
+  } catch { return null; }
+})();
+
 markGiftLine();
-if (giftOffer && form && state.editable && root.dataset.completed !== 'true' && !state.discountCode && giftQualifies()) {
+if (pendingCode && form && state.editable && root.dataset.completed !== 'true') {
+  (async () => {
+    try {
+      if (pendingCode.code) await save({ code: pendingCode.code });
+      if (pendingCode.giftCardCode) await save({ code: pendingCode.giftCardCode });
+      if (pendingCode.replacedGift && pendingCode.code) {
+        text('[data-code-status]', t(
+          `Code ${pendingCode.code} applied. Only one offer can be used per order, so the free waterproofing spray gift was removed.`,
+          `Koden ${pendingCode.code} er lagt til. Kun ett tilbud kan brukes per bestilling, så den gratis impregneringssprayen ble fjernet.`,
+          `Code ${pendingCode.code} angewendet. Pro Bestellung kann nur ein Angebot genutzt werden, daher wurde das kostenlose Imprägnierspray entfernt.`,
+        ));
+      } else if (pendingCode.removedGift) {
+        text('[data-code-status]', t('Free waterproofing spray gift removed.', 'Gratis impregneringsspray ble fjernet.', 'Kostenloses Imprägnierspray entfernt.'));
+      }
+      warmPayment();
+    } catch (e) { text('[data-code-status]', e.message); }
+  })();
+} else if (giftOffer && form && state.editable && root.dataset.completed !== 'true' && !state.discountCode && giftQualifies()) {
   let declined = false;
   try { declined = sessionStorage.getItem(giftDeclinedKey) === '1'; } catch {}
   if (!declined) save({ code: giftOffer.code }).then(() => text('[data-code-status]', t('Your gift is included.', 'Gaven er lagt til.', 'Dein Geschenk ist enthalten.'))).catch(() => { /* The shopper can still check out without the gift. */ });
