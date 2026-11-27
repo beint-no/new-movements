@@ -337,7 +337,7 @@ async function refreshUpsellStock() {
 cartUpsells?.addEventListener('change', (event) => {
   const choice = upsellChoices.find(({ input }) => input === event.target);
   if (!choice) return;
-  if (giftOffer && choice.product.handle === giftOffer.handle) setGiftState(choice.input.checked ? { declined: false } : { declined: true, auto: false });
+  if (giftOffer && choice.product.handle === giftOffer.handle) setGiftState(choice.input.checked ? { declined: false, auto: false } : { declined: true, auto: false });
   if (choice.input.checked) {
     if (checkingUpsellStock || !upsellAvailability?.has(choice.variant.id)) return syncCartUpsells();
     addCartItem(choice.product, choice.variant);
@@ -361,6 +361,7 @@ cartDrawer?.addEventListener('click', (event) => {
   if (!button) return;
   const index = Number(button.closest('[data-drawer-cart-index]')?.dataset.drawerCartIndex);
   const items = readCart();
+  if (giftOffer && items[index]?.handle === giftOffer.handle) setGiftState({ declined: true, auto: false });
   items.splice(index, 1);
   writeCart(items);
   renderCart();
@@ -449,6 +450,7 @@ add?.addEventListener('click', () => {
   if (add.dataset.notify === 'true') { const notify = document.querySelector('[data-stock-notification]'); if (notify) { notify.open = true; notify.querySelector('input[type=email]')?.focus(); } return; }
   if (!UUID.test(add.dataset.variant || '')) return;
   const quantity = Math.max(1, Math.min(20, Number(document.querySelector('[data-quantity]')?.value || 1)));
+  if (giftOffer && add.dataset.handle === giftOffer.handle) setGiftState({ declined: false, auto: false });
   addCartItem({ id: add.dataset.id, handle: add.dataset.handle, title: add.dataset.title, url: add.dataset.url, image: add.dataset.image, imageAlt: add.dataset.imageAlt }, { id: add.dataset.variant, price: Number(add.dataset.price), label: add.dataset.label }, quantity);
   // Add the gift straight away, so a shopper who checks out from the toast still gets it.
   if (giftOffer) refreshUpsellStock();
@@ -640,7 +642,9 @@ cartRoot?.addEventListener('click', (event) => {
   const button = event.target.closest('[data-cart-remove]');
   if (!button) return;
   const index = Number(button.closest('[data-cart-index]')?.dataset.cartIndex);
-  const items = readCart(); items.splice(index, 1); writeCart(items); renderCart();
+  const items = readCart();
+  if (giftOffer && items[index]?.handle === giftOffer.handle) setGiftState({ declined: true, auto: false });
+  items.splice(index, 1); writeCart(items); renderCart();
 });
 
 document.addEventListener('click', (event) => {
