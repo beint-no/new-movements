@@ -131,9 +131,22 @@ function currentPage() {
   send('PageView');
   const product = document.querySelector('[data-add-to-cart]');
   if (product && uuid.test(product.dataset.id || '')) {
-    const variants = document.querySelector('[data-product-variant]')?.options;
+    const variantSelect = document.querySelector('[data-product-variant]');
+    const variants = variantSelect?.options;
     const single = variants?.length === 1 && uuid.test(variants[0].value);
-    send('ViewContent', {content_ids: [single ? variants[0].value : product.dataset.id], content_type: single ? 'product' : 'product_group'});
+    const data = {content_ids: [single ? variants[0].value : product.dataset.id], content_type: single ? 'product' : 'product_group'};
+    const selected = variantSelect?.selectedOptions[0];
+    // A preselected option replaces the displayed range. Otherwise use its lower bound.
+    const pricedOptions = selected?.value ? [selected] : Array.from(variants || []).filter(option => option.value);
+    const value = Math.min(...pricedOptions.map(option => {
+      const price = option.dataset.price || '';
+      return /^\d+(?:\.\d+)?$/.test(price) ? Number(price) : NaN;
+    }));
+    const currency = document.body.dataset.currency;
+    if (Number.isFinite(value) && Intl.supportedValuesOf?.('currency').includes(currency)) {
+      Object.assign(data, {value, currency});
+    }
+    send('ViewContent', data);
   }
 }
 
